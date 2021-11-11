@@ -1,0 +1,12 @@
+package cdk
+
+type EventMask uint64
+
+const (
+	EVENT_MASK_NONE EventMask = iota
+	EVENT_MASK_KEY
+	EVENT_MASK_MOUSE
+	EVENT_MASK_PASTE
+	EVENT_MASK_QUEUE
+	EVENt_MASK_RESIZE
+)
