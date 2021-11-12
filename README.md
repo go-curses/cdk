@@ -99,7 +99,7 @@ GLOBAL OPTIONS:
 
 ## Application Server
 
-This is something not found in GTK at all and is entirely exclusive to terminal
+This is something not found in [GTK] at all and is entirely exclusive to terminal
 environments. The idea is simple. Be able to write a terminal interface for
 local (/dev/tty) and/or remote connections (ssh).
 
@@ -223,6 +223,8 @@ file for details.
 * Thanks to [TCell] for providing a great starting point for [CDK] and thus
   making [CTK] a plausible reality.
 
+[GTK]: https://docs.gtk.org/gtk3
+[GDK]: https://docs.gtk.org/gdk3
 [CTK]: https://github.com/go-curses/ctk
 [CDK]: https://github.com/go-curses/cdk
 [TCell]: https://github.com/gdamore/tcell
