@@ -77,8 +77,8 @@ clean-logs:
 	@rm -rfv /tmp/*.cdk.pprof || true
 
 clean: clean-logs
-	@echo "# cleaning go caches"
-	@go clean -cache -modcache ./...   || true
+#	@echo "# cleaning go caches"
+#	@go clean -cache -modcache ./...   || true
 	@echo "# cleaning binaries"
 	@rm -fv go_build_*   || true
 	@rm -fv go_test_*    || true
