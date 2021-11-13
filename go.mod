@@ -26,7 +26,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa
-	golang.org/x/sys v0.0.0-20211110154304-99a53858aa08
+	golang.org/x/sys v0.0.0-20211113001501-0c823b97ae02
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7
 )
