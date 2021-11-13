@@ -15,8 +15,6 @@
 package cdk
 
 import (
-	"fmt"
-
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
 )
@@ -60,7 +58,7 @@ func (o *CObject) Init() (already bool) {
 	_ = o.InstallProperty(PropertyThemeRequest, ThemeProperty, true, paint.DefaultColorTheme)
 	o.Connect(
 		SignalSetProperty,
-		fmt.Sprintf("%v.set-property--name", o.ObjectName()),
+		ObjectSetPropertyHandle,
 		func(data []interface{}, argv ...interface{}) enums.EventFlag {
 			if len(argv) == 3 {
 				if key, ok := argv[1].(Property); ok && key == PropertyName {
@@ -148,3 +146,5 @@ const PropertyName Property = "name"
 const PropertyTheme Property = "theme"
 
 const PropertyThemeRequest Property = "theme-request"
+
+const ObjectSetPropertyHandle = "object-set-property-handle"
