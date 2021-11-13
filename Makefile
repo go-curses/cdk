@@ -92,6 +92,28 @@ build: clean
 	@echo "# building cdk"
 	@go build -v
 
+debug-examples: clean
+	@echo "# building debug versions of all examples..."
+	@for name in `ls examples`; do \
+		if [ -d examples/$$name ]; then \
+			cd examples/$$name/; \
+			echo -n "#\tbuilding $$name... "; \
+			( go build -v \
+				-ldflags="\
+-X 'main.IncludeProfiling=true' \
+-X 'main.IncludeLogFile=true' \
+-X 'main.IncludeLogLevel=true' \
+" \
+				-gcflags=all="-N -l" \
+				-o ../../$$name 2>&1 \
+			) > ../../$$name.build.log; \
+			cd ../..; \
+			[ -f $$name ] \
+				&& echo "done." \
+				|| echo "failed.\n>\tsee ./$$name.build.log for errors"; \
+		fi; \
+	done
+
 examples: clean
 	@echo "# building all examples..."
 	@for name in `ls examples`; do \
