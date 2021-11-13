@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/jtolio/gls"
+
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/term"
 )
@@ -91,8 +93,15 @@ func (d *CScreen) finalize() {
 		if err := d.term.Restore(); err != nil {
 			log.ErrorF("error restoring terminal: %v", err)
 		}
-		if err := d.term.Close(); err != nil {
-			log.ErrorF("error closing terminal: %v", err)
+		gls.Go(func() {
+			if err := d.term.Close(); err != nil {
+				log.ErrorF("error closing terminal: %v", err)
+			}
+		})
+	}
+	if d.ttyFile != nil {
+		if err := d.ttyFile.Close(); err != nil {
+			log.ErrorF("error closing ttyFile: %v", err)
 		}
 	}
 }
