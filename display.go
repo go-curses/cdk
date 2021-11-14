@@ -482,19 +482,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	var overlayWindow Window
 	if w := d.ActiveWindow(); w != nil {
 		if overlay := d.getOverlay(w.ObjectID()); overlay != nil {
-			if overlaySurface, err := memphis.GetSurface(overlay.ObjectID()); err != nil {
-				overlay.LogErr(err)
-			} else {
-				switch e := evt.(type) {
-				case *EventMouse:
-					x, y := e.Position()
-					origin := overlaySurface.GetOrigin()
-					x -= origin.X
-					y -= origin.Y
-					evt = e.CloneForPosition(x, y)
-				}
-				overlayWindow = overlay
-			}
+			overlayWindow = overlay
 		}
 	}
 	defer func() {
