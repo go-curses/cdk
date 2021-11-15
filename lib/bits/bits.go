@@ -14,7 +14,15 @@
 
 package bits
 
-// HasBit - returns true if `v` has the bitmask `b`
-func HasBit(v, b uint64) bool {
-	return v&b != 0
-}
+// Set returns `flag` with the given `mask` added.
+func Set(flag, mask uint64) uint64 { return flag | mask }
+
+// Clear returns `flag` with the given `mask` removed.
+func Clear(b, flag uint64) uint64 { return b &^ flag }
+
+// Toggle returns `flag` with the state of `mask` inverted. If it was present, its
+// removed, if it was not present its added.
+func Toggle(b, flag uint64) uint64 { return b ^ flag }
+
+// Has returns TRUE if `flag` has the given `mask` present.
+func Has(b, flag uint64) bool { return b&flag != 0 }
