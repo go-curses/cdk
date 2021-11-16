@@ -892,7 +892,7 @@ func (d *CScreen) drawCell(x, y int) int {
 		if attrs&paint.AttrItalic != 0 {
 			d.TPuts(ti.Italic)
 		}
-		if attrs&paint.AttrStrikeThrough != 0 {
+		if attrs&paint.AttrStrike != 0 {
 			d.TPuts(ti.StrikeThrough)
 		}
 		d.curStyle = style

@@ -119,7 +119,7 @@ func (m *CTango) init() error {
 			case "i":
 				cStyle = cStyle.Italic(true)
 			case "s":
-				cStyle = cStyle.StrikeThrough(true)
+				cStyle = cStyle.Strike(true)
 			case "u":
 				cStyle = cStyle.Underline(true)
 			case "d":
@@ -140,7 +140,7 @@ func (m *CTango) init() error {
 			case "i":
 				cStyle = cStyle.Italic(false)
 			case "s":
-				cStyle = cStyle.StrikeThrough(false)
+				cStyle = cStyle.Strike(false)
 			case "u":
 				cStyle = cStyle.Underline(false)
 			case "d":
@@ -206,7 +206,7 @@ func (m *CTango) parseStyleAttrs(attrs []xml.Attr) (style paint.Style) {
 		case "underline":
 			style = style.Underline(attr.Value == "true" || attr.Value == "1")
 		case "strikethrough":
-			style = style.StrikeThrough(attr.Value == "true" || attr.Value == "1")
+			style = style.Strike(attr.Value == "true" || attr.Value == "1")
 		}
 	}
 	return

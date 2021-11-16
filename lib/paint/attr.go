@@ -28,12 +28,12 @@ const (
 	AttrUnderline
 	AttrDim
 	AttrItalic
-	AttrStrikeThrough
+	AttrStrike
 	AttrInvalid              // Mark the style or attributes invalid
 	AttrNone    AttrMask = 0 // Just normal text.
 )
 
-const attrAll = AttrBlink | AttrBold | AttrReverse | AttrUnderline | AttrDim | AttrItalic | AttrStrikeThrough
+const attrAll = AttrBlink | AttrBold | AttrReverse | AttrUnderline | AttrDim | AttrItalic | AttrStrike
 
 // check if the attributes are normal
 func (m AttrMask) IsNormal() bool {
@@ -50,11 +50,6 @@ func (m AttrMask) IsBlink() bool {
 	return m&AttrBlink != 0
 }
 
-// check if the attributes include dim
-func (m AttrMask) IsDim() bool {
-	return m&AttrDim != 0
-}
-
 // check if the attributes include reverse
 func (m AttrMask) IsReverse() bool {
 	return m&AttrReverse != 0
@@ -63,6 +58,21 @@ func (m AttrMask) IsReverse() bool {
 // check if the attributes include underline
 func (m AttrMask) IsUnderline() bool {
 	return m&AttrUnderline != 0
+}
+
+// check if the attributes include dim
+func (m AttrMask) IsDim() bool {
+	return m&AttrDim != 0
+}
+
+// check if the attributes include italics
+func (m AttrMask) IsItalic() bool {
+	return m&AttrItalic != 0
+}
+
+// check if the attributes include italics
+func (m AttrMask) IsStrike() bool {
+	return m&AttrStrike != 0
 }
 
 // return a normal attribute mask
@@ -86,14 +96,6 @@ func (m AttrMask) Blink(v bool) AttrMask {
 	return m &^ AttrBlink
 }
 
-// return the attributes with (true) or without (false) dim
-func (m AttrMask) Dim(v bool) AttrMask {
-	if v {
-		return m | AttrDim
-	}
-	return m &^ AttrDim
-}
-
 // return the attributes with (true) or without (false) reverse
 func (m AttrMask) Reverse(v bool) AttrMask {
 	if v {
@@ -108,4 +110,28 @@ func (m AttrMask) Underline(v bool) AttrMask {
 		return m | AttrUnderline
 	}
 	return m &^ AttrUnderline
+}
+
+// return the attributes with (true) or without (false) dim
+func (m AttrMask) Dim(v bool) AttrMask {
+	if v {
+		return m | AttrDim
+	}
+	return m &^ AttrDim
+}
+
+// return the attributes with (true) or without (false) italic
+func (m AttrMask) Italic(v bool) AttrMask {
+	if v {
+		return m | AttrItalic
+	}
+	return m &^ AttrItalic
+}
+
+// return the attributes with (true) or without (false) strikethrough
+func (m AttrMask) Strike(v bool) AttrMask {
+	if v {
+		return m | AttrStrike
+	}
+	return m &^ AttrStrike
 }

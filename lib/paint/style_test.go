@@ -54,11 +54,11 @@ func TestStyle(t *testing.T) {
 			Bold(true).
 			Dim(true).
 			Italic(true).
-			StrikeThrough(true)
+			Strike(true)
 		_, _, attr = s6.Decompose()
-		So(attr, ShouldEqual, AttrReverse|AttrBold|AttrDim|AttrItalic|AttrStrikeThrough)
-		s7 := s5.Attributes(AttrReverse | AttrBold | AttrDim | AttrItalic | AttrStrikeThrough)
+		So(attr, ShouldEqual, AttrReverse|AttrBold|AttrDim|AttrItalic|AttrStrike)
+		s7 := s5.Attributes(AttrReverse | AttrBold | AttrDim | AttrItalic | AttrStrike)
 		_, _, attr = s7.Decompose()
-		So(attr, ShouldEqual, AttrReverse|AttrBold|AttrDim|AttrItalic|AttrStrikeThrough)
+		So(attr, ShouldEqual, AttrReverse|AttrBold|AttrDim|AttrItalic|AttrStrike)
 	})
 }
