@@ -285,10 +285,10 @@ type CScreen struct {
 	cells        *CellBuffer
 	term         *term.Term
 	buffering    bool // true if we are collecting writes to buf instead of sending directly to out
-	buf      bytes.Buffer
-	curStyle paint.Style
-	style    paint.Style
-	evCh     chan Event
+	buf          bytes.Buffer
+	curStyle     paint.Style
+	style        paint.Style
+	evCh         chan Event
 	sigWinch     chan os.Signal
 	quit         chan struct{}
 	inDoneQ      chan struct{}
