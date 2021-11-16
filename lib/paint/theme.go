@@ -38,20 +38,16 @@ var (
 		Down:  RuneDArrow,
 		Right: RuneRArrow,
 	}
-	FancyArrowRune = ArrowRuneSet{
-		Up:    RuneBlackMediumUpPointingTriangleCentred,
-		Left:  RuneBlackMediumLeftPointingTriangleCentred,
-		Down:  RuneBlackMediumDownPointingTriangleCentred,
-		Right: RuneBlackMediumRightPointingTriangleCentred,
-	}
 )
 
 var (
 	DefaultNilTheme        = Theme{}
 	DefaultMonoThemeAspect = ThemeAspect{
 		Normal:      DefaultMonoStyle,
-		Focused:     DefaultMonoStyle.Dim(false),
+		Selected:    DefaultMonoStyle.Dim(false),
 		Active:      DefaultMonoStyle.Dim(false).Reverse(true),
+		Prelight:    DefaultMonoStyle.Dim(false),
+		Insensitive: DefaultMonoStyle.Dim(true),
 		FillRune:    DefaultFillRune,
 		BorderRunes: DefaultBorderRune,
 		ArrowRunes:  DefaultArrowRune,
@@ -59,8 +55,10 @@ var (
 	}
 	DefaultColorThemeAspect = ThemeAspect{
 		Normal:      DefaultColorStyle.Dim(true),
-		Focused:     DefaultColorStyle.Dim(false),
+		Selected:    DefaultColorStyle.Dim(false),
 		Active:      DefaultColorStyle.Dim(false).Reverse(true),
+		Prelight:    DefaultColorStyle.Dim(false),
+		Insensitive: DefaultColorStyle.Dim(true),
 		FillRune:    DefaultFillRune,
 		BorderRunes: DefaultBorderRune,
 		ArrowRunes:  DefaultArrowRune,
@@ -120,8 +118,10 @@ func (b ArrowRuneSet) String() string {
 
 type ThemeAspect struct {
 	Normal      Style
-	Focused     Style
+	Selected    Style
 	Active      Style
+	Prelight    Style
+	Insensitive Style
 	FillRune    rune
 	BorderRunes BorderRuneSet
 	ArrowRunes  ArrowRuneSet
@@ -130,10 +130,12 @@ type ThemeAspect struct {
 
 func (t ThemeAspect) String() string {
 	return fmt.Sprintf(
-		"{Normal=%v,Focused=%v,Active=%v,FillRune=%v,BorderRunes=%v,ArrowRunes=%v,Overlay=%v}",
+		"{Normal=%v,Selected=%v,Active=%v,Prelight=%v,Insensitive=%v,FillRune=%v,BorderRunes=%v,ArrowRunes=%v,Overlay=%v}",
 		t.Normal,
-		t.Focused,
+		t.Selected,
 		t.Active,
+		t.Prelight,
+		t.Insensitive,
 		t.FillRune,
 		t.BorderRunes,
 		t.ArrowRunes,

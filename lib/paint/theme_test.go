@@ -25,7 +25,7 @@ func TestTheme(t *testing.T) {
 		So(
 			DefaultMonoTheme.String(),
 			ShouldEqual,
-			"{Content={Normal={unnamed[-1],unnamed[-1],16},Focused={unnamed[-1],unnamed[-1],0},Active={unnamed[-1],unnamed[-1],4},FillRune=32,BorderRunes={BorderRunes=9488,9472,9484,9474,9492,9472,9496,9474},ArrowRunes={ArrowRunes=8593,8592,8595,8594},Overlay=false},Border={Normal={unnamed[-1],unnamed[-1],16},Focused={unnamed[-1],unnamed[-1],0},Active={unnamed[-1],unnamed[-1],4},FillRune=32,BorderRunes={BorderRunes=9488,9472,9484,9474,9492,9472,9496,9474},ArrowRunes={ArrowRunes=8593,8592,8595,8594},Overlay=false}}",
+			"{Content={Normal={unnamed[-1],unnamed[-1],16},Selected={unnamed[-1],unnamed[-1],0},Active={unnamed[-1],unnamed[-1],4},Prelight={unnamed[-1],unnamed[-1],0},Insensitive={unnamed[-1],unnamed[-1],16},FillRune=32,BorderRunes={BorderRunes=9488,9472,9484,9474,9492,9472,9496,9474},ArrowRunes={ArrowRunes=8593,8592,8595,8594},Overlay=false},Border={Normal={unnamed[-1],unnamed[-1],16},Selected={unnamed[-1],unnamed[-1],0},Active={unnamed[-1],unnamed[-1],4},Prelight={unnamed[-1],unnamed[-1],0},Insensitive={unnamed[-1],unnamed[-1],16},FillRune=32,BorderRunes={BorderRunes=9488,9472,9484,9474,9492,9472,9496,9474},ArrowRunes={ArrowRunes=8593,8592,8595,8594},Overlay=false}}",
 		)
 	})
 }
