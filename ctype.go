@@ -30,6 +30,11 @@ type Type interface {
 	Add(item interface{})
 	Remove(item TypeItem) error
 	Aliases() []string
+
+	Lock()
+	Unlock()
+	RLock()
+	RUnlock()
 }
 
 type CType struct {
@@ -38,7 +43,7 @@ type CType struct {
 	new   func() interface{}
 	alias []string
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 func NewType(tag TypeTag, constructor func() interface{}, aliases ...string) Type {
@@ -58,17 +63,23 @@ func (t *CType) New() interface{} {
 }
 
 func (t *CType) Aliases() (aliases []string) {
-
+	t.RLock()
+	defer t.RUnlock()
+	for _, alias := range t.alias {
+		aliases = append(aliases, alias)
+	}
 	return
 }
 
 func (t *CType) Buildable() (hasConstructor bool) {
+	t.RLock()
+	defer t.RUnlock()
 	return t.new != nil
 }
 
 func (t *CType) Items() []interface{} {
-	t.Lock()
-	defer t.Unlock()
+	t.RLock()
+	defer t.RUnlock()
 	return t.items
 }
 
