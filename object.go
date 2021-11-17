@@ -56,19 +56,6 @@ func (o *CObject) Init() (already bool) {
 	_ = o.InstallProperty(PropertyName, StringProperty, true, "")
 	_ = o.InstallProperty(PropertyTheme, ThemeProperty, true, paint.DefaultColorTheme)
 	_ = o.InstallProperty(PropertyThemeRequest, ThemeProperty, true, paint.DefaultColorTheme)
-	o.Connect(
-		SignalSetProperty,
-		ObjectSetPropertyHandle,
-		func(data []interface{}, argv ...interface{}) enums.EventFlag {
-			if len(argv) == 3 {
-				if key, ok := argv[1].(Property); ok && key == PropertyName {
-					if name, ok := argv[2].(string); ok {
-						o.CTypeItem.SetName(name)
-					}
-				}
-			}
-			return enums.EVENT_PASS
-		})
 	return false
 }
 
@@ -101,6 +88,8 @@ func (o *CObject) GetName() (name string) {
 func (o *CObject) SetName(name string) {
 	if err := o.SetStringProperty(PropertyName, name); err != nil {
 		o.LogErr(err)
+	} else {
+		o.CTypeItem.SetName(name)
 	}
 }
 
