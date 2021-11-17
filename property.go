@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
@@ -37,6 +38,8 @@ type CProperty struct {
 	buildable bool
 	def       interface{}
 	value     interface{}
+
+	sync.RWMutex
 }
 
 func NewProperty(name Property, kind PropertyType, write bool, buildable bool, def interface{}) (property *CProperty) {
@@ -62,26 +65,37 @@ func (p *CProperty) Clone() *CProperty {
 }
 
 func (p *CProperty) Name() Property {
+	p.RLock()
+	defer p.RUnlock()
 	return p.name
 }
 
 func (p *CProperty) Type() PropertyType {
+	p.RLock()
+	defer p.RUnlock()
 	return p.kind
 }
 
 func (p *CProperty) ReadOnly() bool {
+	p.RLock()
+	defer p.RUnlock()
 	return !p.write
 }
 
 func (p *CProperty) Buildable() bool {
+	p.RLock()
+	defer p.RUnlock()
 	return p.buildable
 }
 
 func (p *CProperty) Set(value interface{}) error {
-	if !p.write {
+	if p.ReadOnly() {
 		return fmt.Errorf("cannot change read-only property: %v", p.name)
 	}
-	switch p.Type() {
+	t := p.Type()
+	p.Lock()
+	defer p.Unlock()
+	switch t {
 	case BoolProperty:
 		if _, ok := value.(bool); !ok {
 			return fmt.Errorf("%v value is not of bool type: %v (%T)", p.name, value, value)
@@ -128,6 +142,9 @@ func (p *CProperty) Set(value interface{}) error {
 }
 
 func (p *CProperty) SetFromString(value string) error {
+	if p.ReadOnly() {
+		return fmt.Errorf("cannot change read-only property: %v", p.name)
+	}
 	switch p.Type() {
 	case BoolProperty:
 		switch strings.ToLower(value) {
@@ -140,8 +157,9 @@ func (p *CProperty) SetFromString(value string) error {
 	case IntProperty:
 		if index := strings.Index(value, "px"); index > -1 {
 			value = value[:index-1]
-		}
-		if index := strings.Index(value, "%"); index > -1 {
+		} else if index := strings.Index(value, "pt"); index > -1 {
+			value = value[:index-1]
+		} else if index := strings.Index(value, "%"); index > -1 {
 			value = value[:index-1]
 		}
 		if v, err := strconv.Atoi(value); err != nil {
@@ -201,11 +219,15 @@ func (p *CProperty) SetFromString(value string) error {
 }
 
 func (p *CProperty) Default() (def interface{}) {
+	p.RLock()
+	defer p.RUnlock()
 	def = p.def
 	return
 }
 
 func (p *CProperty) Value() (value interface{}) {
+	p.RLock()
+	defer p.RUnlock()
 	if p.value == nil {
 		value = p.def
 	} else {
