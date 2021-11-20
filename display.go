@@ -250,20 +250,22 @@ func (d *CDisplay) DisplayCaptured() bool {
 
 func (d *CDisplay) CaptureDisplay() (err error) {
 	d.Lock()
-	defer d.Unlock()
 	if d.ttyPath == OffscreenTtyPath {
 		d.screen = NewOffScreen("UTF-8")
 	} else {
 		if d.screen, err = NewScreen(); err != nil {
+			d.Unlock()
 			return fmt.Errorf("error getting new screen: %v", err)
 		}
 	}
 	if d.ttyHandle != nil {
 		if err = d.screen.InitWithFileHandle(d.ttyHandle); err != nil {
+			d.Unlock()
 			return fmt.Errorf("error initializing new tty handle screen: %v", err)
 		}
 	} else {
 		if err = d.screen.InitWithFilePath(d.ttyPath); err != nil {
+			d.Unlock()
 			return fmt.Errorf("error initializing new tty path screen: %v", err)
 		}
 	}
@@ -272,6 +274,7 @@ func (d *CDisplay) CaptureDisplay() (err error) {
 	d.screen.EnablePaste()
 	d.screen.Clear()
 	d.captured = true
+	d.Unlock()
 	d.Emit(SignalDisplayCaptured, d)
 	return
 }
