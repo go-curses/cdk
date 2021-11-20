@@ -66,23 +66,32 @@ func (o *CSignaling) Init() (already bool) {
 	if o.listeners == nil {
 		o.listeners = make(map[Signal][]*CSignalListener)
 	}
-	o.Emit(SignalSignalingInit)
 	return false
 }
 
+// Handled returns TRUE if there is at least one signal listener with the given
+// handle.
+//
+// Locking: read
 func (o *CSignaling) Handled(signal Signal, handle string) (found bool) {
+	o.RLock()
 	if listeners, ok := o.listeners[signal]; ok {
 		for _, listener := range listeners {
 			if listener.n == handle {
+				o.RUnlock()
 				return true
 			}
 		}
 	}
+	o.RUnlock()
 	return false
 }
 
 // Connect callback to signal, identified by handle
+//
+// Locking: write
 func (o *CSignaling) Connect(signal Signal, handle string, c SignalListenerFn, data ...interface{}) {
+	o.Lock()
 	if o.listeners == nil {
 		o.listeners = make(map[Signal][]*CSignalListener)
 	}
@@ -95,30 +104,40 @@ func (o *CSignaling) Connect(signal Signal, handle string, c SignalListenerFn, d
 				log.TraceDF(1, "replacing %v listener for handler: %v", signal, handle)
 				o.listeners[signal][idx].c = c
 				o.listeners[signal][idx].d = data
+				o.Unlock()
 				return
 			}
 		}
 	}
 	log.TraceDF(1, "connecting %v listener with handler: %v", signal, handle)
 	o.listeners[signal] = append(o.listeners[signal], newSignalListener(signal, handle, c, data))
+	o.Unlock()
 }
 
 // Disconnect callback from signal identified by handle
+//
+// Locking: write
 func (o *CSignaling) Disconnect(signal Signal, handle string) error {
+	o.Lock()
 	if listeners, ok := o.listeners[signal]; ok {
 		for idx, listener := range listeners {
 			if listener.n == handle {
 				o.listeners[signal] = append(o.listeners[signal][:idx], o.listeners[signal][idx+1:]...)
 				o.LogTrace("disconnected %v listener: %v", signal, handle)
+				o.Unlock()
 				return nil
 			}
 		}
+		o.Unlock()
 		return fmt.Errorf("%v signal handler not found: %v", signal, handle)
 	}
+	o.Unlock()
 	return fmt.Errorf("signal not found: %v", signal)
 }
 
 // Emit a signal event to all connected listener callbacks
+//
+// Locking: none
 func (o *CSignaling) Emit(signal Signal, argv ...interface{}) enums.EventFlag {
 	if o.frozen > 0 {
 		return enums.EVENT_PASS
@@ -143,14 +162,21 @@ func (o *CSignaling) Emit(signal Signal, argv ...interface{}) enums.EventFlag {
 	return enums.EVENT_PASS
 }
 
-// Disable propagation of the given signal
+// StopSignal disables propagation of the given signal with an EVENT_STOP
+//
+// Locking: write
 func (o *CSignaling) StopSignal(signal Signal) {
 	if !o.IsSignalStopped(signal) {
 		o.LogTrace("stopping %v signal", signal)
+		o.Lock()
 		o.stopped = append(o.stopped, signal)
+		o.Unlock()
 	}
 }
 
+// IsSignalStopped returns TRUE if the given signal is currently stopped.
+//
+// Locking: none
 func (o *CSignaling) IsSignalStopped(signal Signal) bool {
 	return o.getSignalStopIndex(signal) >= 0
 }
@@ -164,13 +190,21 @@ func (o *CSignaling) getSignalStopIndex(signal Signal) int {
 	return -1
 }
 
+// PassSignal disables propagation of the given signal with an EVENT_PASS
+//
+// Locking: write
 func (o *CSignaling) PassSignal(signal Signal) {
 	if !o.IsSignalPassed(signal) {
 		o.LogTrace("passing %v signal", signal)
+		o.Lock()
 		o.passed = append(o.passed, signal)
+		o.Unlock()
 	}
 }
 
+// IsSignalPassed returns TRUE if the given signal is curerntly passed.
+//
+// Locking: none
 func (o *CSignaling) IsSignalPassed(signal Signal) bool {
 	return o.getSignalPassIndex(signal) >= 0
 }
@@ -184,32 +218,38 @@ func (o *CSignaling) getSignalPassIndex(signal Signal) int {
 	return -1
 }
 
-// Enable propagation of the given signal
+// ResumeSignal enables propagation of the given signal if the signal is
+// currently stopped.
+//
+// Locking: write
 func (o *CSignaling) ResumeSignal(signal Signal) {
-	id := o.getSignalStopIndex(signal)
-	if id >= 0 {
+	o.Lock()
+	sid := o.getSignalStopIndex(signal)
+	pid := o.getSignalPassIndex(signal)
+	if sid >= 0 {
 		o.LogTrace("resuming %v signal from being stopped", signal)
 		if len(o.stopped) > 1 {
 			o.stopped = append(
-				o.stopped[:id],
-				o.stopped[id+1:]...,
+				o.stopped[:sid],
+				o.stopped[sid+1:]...,
 			)
 		} else {
 			o.stopped = []Signal{}
 		}
+		o.Unlock()
 		return
 	}
-	id = o.getSignalPassIndex(signal)
-	if id >= 0 {
+	if pid >= 0 {
 		o.LogTrace("resuming %v signal from being passed", signal)
 		if len(o.passed) > 1 {
 			o.passed = append(
-				o.passed[:id],
-				o.passed[id+1:]...,
+				o.passed[:pid],
+				o.passed[pid+1:]...,
 			)
 		} else {
 			o.passed = []Signal{}
 		}
+		o.Unlock()
 		return
 	}
 	if _, ok := o.listeners[signal]; ok {
@@ -217,16 +257,38 @@ func (o *CSignaling) ResumeSignal(signal Signal) {
 	} else {
 		o.LogError("failed to resume unknown signal: %v", signal)
 	}
+	o.Unlock()
 }
 
+// Freeze pauses all signal emissions until a corresponding Thaw is called.
+//
+// Locking: write
 func (o *CSignaling) Freeze() {
+	o.Lock()
 	o.frozen += 1
+	o.Unlock()
 }
 
+// Thaw restores all signal emissions after a Freeze call.
+//
+// Locking: write
 func (o *CSignaling) Thaw() {
-	o.frozen -= 1
+	o.Lock()
+	if o.frozen <= 0 {
+		o.frozen = 0
+		o.LogError("Thaw() called too many times")
+	} else {
+		o.frozen -= 1
+	}
+	o.Unlock()
 }
 
-func (o *CSignaling) IsFrozen() bool {
-	return o.frozen > 0
+// IsFrozen returns TRUE if Thaw has been called at least once.
+//
+// Locking: read, signal read
+func (o *CSignaling) IsFrozen() (frozen bool) {
+	o.RLock()
+	frozen = o.frozen > 0
+	o.RUnlock()
+	return
 }
