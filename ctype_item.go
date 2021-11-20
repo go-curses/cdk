@@ -55,51 +55,52 @@ type CTypeItem struct {
 	ancestry []TypeTag
 	valid    bool
 	self     interface{}
-	typeLock *sync.RWMutex
 
+	itemLock  *sync.RWMutex
 	sync.RWMutex
 }
 
 func NewTypeItem(tag CTypeTag, name string) TypeItem {
 	return &CTypeItem{
-		id:       uuid.Nil,
-		typeTag:  tag,
-		name:     name,
-		ancestry: make([]TypeTag, 0),
-		valid:    false,
-		self:     nil,
-		typeLock: &sync.RWMutex{},
+		id:        uuid.Nil,
+		typeTag:   tag,
+		name:      name,
+		ancestry:  make([]TypeTag, 0),
+		valid:     false,
+		self:      nil,
+		itemLock:  &sync.RWMutex{},
+		lockStack: make([]string, 0),
 	}
 }
 
 func (o *CTypeItem) InitTypeItem(tag TypeTag, thing interface{}) (already bool) {
-	if o.typeLock == nil {
-		o.typeLock = &sync.RWMutex{}
+	if o.itemLock == nil {
+		o.itemLock = &sync.RWMutex{}
 	}
-	o.typeLock.RLock()
+	o.itemLock.RLock()
 	already = o.valid
 	if !already {
 		if o.typeTag == TypeNil {
 			o.typeTag = tag.Tag()
 		}
 		if o.id == uuid.Nil {
-			o.typeLock.RUnlock()
-			o.typeLock.Lock()
+			o.itemLock.RUnlock()
+			o.itemLock.Lock()
 			var err error
 			if o.id, err = TypesManager.AddTypeItem(o.typeTag, thing); err != nil {
 				log.FatalDF(1, "failed to add self to \"%v\" type: %v", o.typeTag, err)
 			} else {
 				o.self = thing
 			}
-			o.typeLock.Unlock()
+			o.itemLock.Unlock()
 		} else {
-			o.typeLock.RUnlock()
-			o.typeLock.Lock()
+			o.itemLock.RUnlock()
+			o.itemLock.Lock()
 			o.ancestry = append(o.ancestry, tag)
-			o.typeLock.Unlock()
+			o.itemLock.Unlock()
 		}
 	} else {
-		o.typeLock.RUnlock()
+		o.itemLock.RUnlock()
 	}
 	return
 }
@@ -108,7 +109,7 @@ func (o *CTypeItem) Init() (already bool) {
 	if o.IsValid() {
 		return true
 	}
-	o.typeLock.RLock()
+	o.itemLock.RLock()
 	if o.typeTag == TypeNil {
 		log.FatalDF(1, "invalid object type: nil")
 	}
@@ -116,35 +117,35 @@ func (o *CTypeItem) Init() (already bool) {
 	if TypesManager.HasType(o.typeTag) {
 		for _, i := range TypesManager.GetTypeItems(o.typeTag) {
 			if c, ok := i.(TypeItem); ok {
-				o.typeLock.RUnlock()
+				o.itemLock.RUnlock()
 				if c.ObjectID() == o.ObjectID() {
-					o.typeLock.RLock()
+					o.itemLock.RLock()
 					found = true
 					break
 				}
-				o.typeLock.RLock()
+				o.itemLock.RLock()
 			}
 		}
 	}
 	if !found {
 		log.FatalDF(1, "type or instance not found: %v (%v)", o.ObjectName(), o.typeTag)
 	}
-	o.typeLock.RUnlock()
-	o.typeLock.Lock()
-	defer o.typeLock.Unlock()
+	o.itemLock.RUnlock()
+	o.itemLock.Lock()
+	defer o.itemLock.Unlock()
 	o.valid = true
 	return false
 }
 
 func (o *CTypeItem) IsValid() bool {
-	o.typeLock.RLock()
-	defer o.typeLock.RUnlock()
+	o.itemLock.RLock()
+	defer o.itemLock.RUnlock()
 	return o.valid && o.self != nil
 }
 
 func (o *CTypeItem) Self() (this interface{}) {
-	o.typeLock.RLock()
-	defer o.typeLock.RUnlock()
+	o.itemLock.RLock()
+	defer o.itemLock.RUnlock()
 	return o.self
 }
 
@@ -153,33 +154,33 @@ func (o *CTypeItem) String() string {
 }
 
 func (o *CTypeItem) GetTypeTag() TypeTag {
-	o.typeLock.RLock()
-	defer o.typeLock.RUnlock()
+	o.itemLock.RLock()
+	defer o.itemLock.RUnlock()
 	return o.typeTag
 }
 
 func (o *CTypeItem) GetName() string {
-	o.typeLock.RLock()
-	defer o.typeLock.RUnlock()
+	o.itemLock.RLock()
+	defer o.itemLock.RUnlock()
 	return o.name
 }
 
 func (o *CTypeItem) SetName(name string) {
-	o.typeLock.Lock()
-	defer o.typeLock.Unlock()
+	o.itemLock.Lock()
+	defer o.itemLock.Unlock()
 	o.name = name
 }
 
 func (o *CTypeItem) ObjectID() uuid.UUID {
-	o.typeLock.RLock()
-	defer o.typeLock.RUnlock()
+	o.itemLock.RLock()
+	defer o.itemLock.RUnlock()
 	return o.id
 }
 
 func (o *CTypeItem) ObjectName() string {
-	o.typeLock.RLock()
+	o.itemLock.RLock()
 	tt, n := o.typeTag, o.name
-	o.typeLock.RUnlock()
+	o.itemLock.RUnlock()
 	if len(o.name) > 0 {
 		return fmt.Sprintf("%v-%v#%v", tt, o.ObjectID(), n)
 	}
@@ -192,17 +193,17 @@ func (o *CTypeItem) DestroyObject() (err error) {
 		o.LogErr(err)
 	}
 	o.RUnlock()
-	o.typeLock.Lock()
-	defer o.typeLock.Unlock()
+	o.itemLock.Lock()
+	defer o.itemLock.Unlock()
 	o.valid = false
 	o.id = uuid.Nil
 	return nil
 }
 
 func (o *CTypeItem) LogTag() string {
-	o.typeLock.RLock()
+	o.itemLock.RLock()
 	tt, n := o.typeTag, o.name
-	o.typeLock.RUnlock()
+	o.itemLock.RUnlock()
 	if len(o.name) > 0 {
 		return fmt.Sprintf("[%v.%v.%v]", tt, o.ObjectID(), n)
 	}
