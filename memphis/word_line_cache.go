@@ -47,7 +47,7 @@ func (c *CWordLineCache) Hit(tag string, fn WordLineCacheFn) (lines []WordLine) 
 func MakeTag(argv ...interface{}) (tag string) {
 	tag += "{"
 	for i, v := range argv {
-		if len(tag) > 0 {
+		if len(tag) > 1 {
 			tag += ";"
 		}
 		tag += fmt.Sprintf("%d=%v", i, v)
