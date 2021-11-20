@@ -57,6 +57,7 @@ type CTypeItem struct {
 	self     interface{}
 
 	itemLock  *sync.RWMutex
+	lockStack []string
 	sync.RWMutex
 }
 
