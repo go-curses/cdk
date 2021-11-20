@@ -94,11 +94,11 @@ func (o *CMetaData) InstallProperty(name Property, kind PropertyType, write bool
 		return fmt.Errorf("property exists: %v", name)
 	}
 	o.propertyLock.Lock()
-	defer o.propertyLock.Unlock()
 	o.properties = append(
 		o.properties,
 		NewProperty(name, kind, write, false, def),
 	)
+	o.propertyLock.Unlock()
 	return nil
 }
 
@@ -108,11 +108,11 @@ func (o *CMetaData) InstallBuildableProperty(name Property, kind PropertyType, w
 		return fmt.Errorf("property exists: %v", name)
 	}
 	o.propertyLock.Lock()
-	defer o.propertyLock.Unlock()
 	o.properties = append(
 		o.properties,
 		NewProperty(name, kind, write, true, def),
 	)
+	o.propertyLock.Unlock()
 	return nil
 }
 
@@ -122,7 +122,6 @@ func (o *CMetaData) OverloadProperty(name Property, kind PropertyType, write boo
 		return fmt.Errorf("property not found: %v", name)
 	}
 	o.propertyLock.Lock()
-	defer o.propertyLock.Unlock()
 	overload := Property(fmt.Sprintf("%v--overload", name))
 	index := -1
 	for idx, prop := range o.properties {
@@ -141,26 +140,27 @@ func (o *CMetaData) OverloadProperty(name Property, kind PropertyType, write boo
 		o.properties[index].write = write
 		o.properties[index].def = def
 	}
+	o.propertyLock.Unlock()
 	return nil
 }
 
 func (o *CMetaData) ListProperties() (properties []Property) {
 	o.propertyLock.RLock()
-	defer o.propertyLock.RUnlock()
 	for _, prop := range o.properties {
 		properties = append(properties, prop.Name())
 	}
+	o.propertyLock.RUnlock()
 	return
 }
 
 func (o *CMetaData) ListBuildableProperties() (properties []Property) {
 	o.propertyLock.RLock()
-	defer o.propertyLock.RUnlock()
 	for _, prop := range o.properties {
 		if prop.Buildable() {
 			properties = append(properties, prop.Name())
 		}
 	}
+	o.propertyLock.RUnlock()
 	return
 }
 
@@ -190,32 +190,35 @@ func (o *CMetaData) IsProperty(name Property) bool {
 	return false
 }
 
-func (o *CMetaData) IsBuildableProperty(name Property) bool {
+func (o *CMetaData) IsBuildableProperty(name Property) (buildable bool) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
-		return prop.Buildable()
+		buildable = prop.Buildable()
+		o.propertyLock.RUnlock()
+		return
 	}
 	return false
 }
 
 func (o *CMetaData) GetProperty(name Property) *CProperty {
 	o.propertyLock.RLock()
-	defer o.propertyLock.RUnlock()
 	// check for overloaded properties first
 	overload := Property(fmt.Sprintf("%v.overload", name))
 	for _, prop := range o.properties {
 		if prop.Name() == overload {
+			o.propertyLock.RUnlock()
 			return prop
 		}
 	}
 	// check for regular named property
 	for _, prop := range o.properties {
 		if prop.Name() == name {
+			o.propertyLock.RUnlock()
 			return prop
 		}
 	}
 	// o.LogError("property not found: %v", name)
+	o.propertyLock.RUnlock()
 	return nil
 }
 
@@ -224,12 +227,13 @@ func (o *CMetaData) SetPropertyFromString(name Property, value string) error {
 		if prop.ReadOnly() {
 			return fmt.Errorf("error cannot update read-only property: %v", name)
 		}
-		o.propertyLock.Lock()
-		defer o.propertyLock.Unlock()
 		if f := o.Emit(SignalSetProperty, o, name, value); f == enums.EVENT_PASS {
+			o.propertyLock.Lock()
 			if err := prop.SetFromString(value); err != nil {
+				o.propertyLock.Unlock()
 				return err
 			}
+			o.propertyLock.Unlock()
 		}
 	}
 	return nil
@@ -240,12 +244,13 @@ func (o *CMetaData) SetProperty(name Property, value interface{}) error {
 		if prop.ReadOnly() {
 			return fmt.Errorf("error setting read-only property: %v", name)
 		}
-		o.propertyLock.Lock()
-		defer o.propertyLock.Unlock()
 		if f := o.Emit(SignalSetProperty, o, name, value); f == enums.EVENT_PASS {
+			o.propertyLock.Lock()
 			if err := prop.Set(value); err != nil {
+				o.propertyLock.Unlock()
 				return err
 			}
+			o.propertyLock.Unlock()
 		}
 	}
 	return nil
@@ -254,15 +259,17 @@ func (o *CMetaData) SetProperty(name Property, value interface{}) error {
 func (o *CMetaData) GetBoolProperty(name Property) (value bool, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == BoolProperty {
 			if v, ok := prop.Value().(bool); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(bool); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return false, fmt.Errorf("%v.(%v) property is not a bool", name, prop.Type())
 	}
 	return false, fmt.Errorf("property not found: %v", name)
@@ -281,15 +288,17 @@ func (o *CMetaData) SetBoolProperty(name Property, value bool) error {
 func (o *CMetaData) GetStringProperty(name Property) (value string, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == StringProperty {
 			if v, ok := prop.Value().(string); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(string); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return "", fmt.Errorf("%v.(%v) property is not a string", name, prop.Type())
 	}
 	return "", fmt.Errorf("property not found: %v", name)
@@ -308,15 +317,17 @@ func (o *CMetaData) SetStringProperty(name Property, value string) error {
 func (o *CMetaData) GetIntProperty(name Property) (value int, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == IntProperty {
 			if v, ok := prop.Value().(int); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(int); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return 0, fmt.Errorf("%v.(%v) property is not an int", name, prop.Type())
 	}
 	return 0, fmt.Errorf("property not found: %v", name)
@@ -339,15 +350,17 @@ func (o *CMetaData) GetFloat64Property(name Property) (value float64, err error)
 func (o *CMetaData) GetFloatProperty(name Property) (value float64, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == FloatProperty {
 			if v, ok := prop.Value().(float64); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(float64); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return 0.0, fmt.Errorf("%v.(%v) property is not a float", name, prop.Type())
 	}
 	return 0.0, fmt.Errorf("property not found: %v", name)
@@ -366,15 +379,17 @@ func (o *CMetaData) SetFloatProperty(name Property, value float64) error {
 func (o *CMetaData) GetColorProperty(name Property) (value paint.Color, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == ColorProperty {
 			if v, ok := prop.Value().(paint.Color); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(paint.Color); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return paint.Color(0), fmt.Errorf("%v.(%v) property is not a Color", name, prop.Type())
 	}
 	return paint.Color(0), fmt.Errorf("property not found: %v", name)
@@ -393,15 +408,17 @@ func (o *CMetaData) SetColorProperty(name Property, value paint.Color) error {
 func (o *CMetaData) GetStyleProperty(name Property) (value paint.Style, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == StyleProperty {
 			if v, ok := prop.Value().(paint.Style); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(paint.Style); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return paint.Style{}, fmt.Errorf("%v.(%v) property is not a Style", name, prop.Type())
 	}
 	return paint.Style{}, fmt.Errorf("property not found: %v", name)
@@ -420,15 +437,17 @@ func (o *CMetaData) SetStyleProperty(name Property, value paint.Style) error {
 func (o *CMetaData) GetThemeProperty(name Property) (value paint.Theme, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == ThemeProperty {
 			if v, ok := prop.Value().(paint.Theme); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(paint.Theme); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return paint.Theme{}, fmt.Errorf("%v.(%v) property is not a Theme", name, prop.Type())
 	}
 	return paint.Theme{}, fmt.Errorf("property not found: %v", name)
@@ -447,15 +466,17 @@ func (o *CMetaData) SetThemeProperty(name Property, value paint.Theme) error {
 func (o *CMetaData) GetPointProperty(name Property) (value ptypes.Point2I, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == PointProperty {
 			if v, ok := prop.Value().(ptypes.Point2I); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(ptypes.Point2I); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return ptypes.Point2I{}, fmt.Errorf("%v.(%v) property is not a Point2I", name, prop.Type())
 	}
 	return ptypes.Point2I{}, fmt.Errorf("property not found: %v", name)
@@ -474,15 +495,17 @@ func (o *CMetaData) SetPointProperty(name Property, value ptypes.Point2I) error 
 func (o *CMetaData) GetRectangleProperty(name Property) (value ptypes.Rectangle, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == RectangleProperty {
 			if v, ok := prop.Value().(ptypes.Rectangle); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(ptypes.Rectangle); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return ptypes.Rectangle{}, fmt.Errorf("%v.(%v) property is not a Rectangle", name, prop.Type())
 	}
 	return ptypes.Rectangle{}, fmt.Errorf("property not found: %v", name)
@@ -501,15 +524,17 @@ func (o *CMetaData) SetRectangleProperty(name Property, value ptypes.Rectangle) 
 func (o *CMetaData) GetRegionProperty(name Property) (value ptypes.Region, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == RegionProperty {
 			if v, ok := prop.Value().(ptypes.Region); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 			if v, ok := prop.Default().(ptypes.Region); ok {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
 		}
+		o.propertyLock.RUnlock()
 		return ptypes.Region{}, fmt.Errorf("%v.(%v) property is not a Region", name, prop.Type())
 	}
 	return ptypes.Region{}, fmt.Errorf("property not found: %v", name)
@@ -528,13 +553,15 @@ func (o *CMetaData) SetRegionProperty(name Property, value ptypes.Region) error 
 func (o *CMetaData) GetStructProperty(name Property) (value interface{}, err error) {
 	if prop := o.GetProperty(name); prop != nil {
 		o.propertyLock.RLock()
-		defer o.propertyLock.RUnlock()
 		if prop.Type() == StructProperty {
 			if v := prop.Value(); v != nil {
+				o.propertyLock.RUnlock()
 				return v, nil
 			}
+			o.propertyLock.RUnlock()
 			return prop.Default(), nil
 		}
+		o.propertyLock.RUnlock()
 		return 0, fmt.Errorf("%v.(%v) property is not a struct", name, prop.Type())
 	}
 	return 0, fmt.Errorf("property not found: %v", name)
