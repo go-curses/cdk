@@ -192,11 +192,7 @@ func (w *CWordLine) HasSpace() bool {
 
 func (w *CWordLine) Value() (s string) {
 	for _, c := range w.words {
-		if c.IsNil() {
-			s += " "
-		} else {
-			s += c.Value()
-		}
+		s += c.Value()
 	}
 	return
 }

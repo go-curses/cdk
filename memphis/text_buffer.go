@@ -124,12 +124,13 @@ func (b *CTextBuffer) ClearText(wordWrap enums.WrapMode, ellipsize bool, justify
 		}
 		for _, word := range line.Words() {
 			for _, char := range word.Characters() {
-				plain += string(char.Value())
+				plain += char.StringValue()
 			}
 		}
 	}
 	return
 }
+
 func (b *CTextBuffer) PlainText(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (plain string) {
 	lines := b.input.Make(b.mnemonics, wordWrap, ellipsize, justify, maxChars, b.style)
 	for _, line := range lines {
@@ -138,7 +139,7 @@ func (b *CTextBuffer) PlainText(wordWrap enums.WrapMode, ellipsize bool, justify
 		}
 		for _, word := range line.Words() {
 			for _, char := range word.Characters() {
-				plain += string(char.Value())
+				plain += char.StringValue()
 			}
 		}
 	}

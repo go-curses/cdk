@@ -133,7 +133,7 @@ func (w *CWordCell) CompactLen() (count int) {
 func (w *CWordCell) Value() (word string) {
 	word = ""
 	for _, c := range w.characters {
-		word += string(c.Value())
+		word += c.StringValue()
 	}
 	return
 }

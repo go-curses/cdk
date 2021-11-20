@@ -29,6 +29,7 @@ type TextCell interface {
 	Equals(mc rune, style paint.Style, width int) bool
 	Width() int
 	Value() rune
+	StringValue() string
 	String() string
 	Style() paint.Style
 	IsNil() bool
@@ -103,6 +104,10 @@ func (t *CTextCell) Width() int {
 
 func (t *CTextCell) Value() rune {
 	return t.char.Value()
+}
+
+func (t *CTextCell) StringValue() string {
+	return t.char.String()
 }
 
 func (t *CTextCell) String() string {

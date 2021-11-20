@@ -60,6 +60,9 @@ func (c *CTextChar) Value() rune {
 }
 
 func (c *CTextChar) String() string {
+	if c.value == 0 {
+		return " "
+	}
 	return fmt.Sprintf("%c", c.value)
 }
 
