@@ -31,6 +31,8 @@ type WordLine interface {
 	RemoveWord(index int)
 	GetCharacter(index int) TextCell
 	SetCharacter(index int, r rune)
+	GetCharacterStyle(index int) (style paint.Style, ok bool)
+	SetCharacterStyle(index int, style paint.Style)
 	Words() []WordCell
 	Len() (wordSpaceCount int)
 	CharacterCount() (count int)
@@ -157,6 +159,36 @@ func (w *CWordLine) SetCharacter(index int, r rune) {
 	}
 }
 
+func (w *CWordLine) GetCharacterStyle(index int) (style paint.Style, ok bool) {
+	if index < w.CharacterCount() {
+		count := 0
+		for _, word := range w.words {
+			for _, c := range word.Characters() {
+				if count == index {
+					return c.Style(), true
+				}
+				count++
+			}
+		}
+	}
+	return paint.Style{}, false
+}
+
+func (w *CWordLine) SetCharacterStyle(index int, style paint.Style) {
+	if index < w.CharacterCount() {
+		count := 0
+		for _, word := range w.words {
+			for _, c := range word.Characters() {
+				if count == index {
+					c.SetStyle(style)
+					return
+				}
+				count++
+			}
+		}
+	}
+}
+
 func (w *CWordLine) Words() []WordCell {
 	return w.words
 }
@@ -211,7 +243,8 @@ func (w *CWordLine) String() (s string) {
 
 // wrap, justify and align the set input, with filler style
 func (w *CWordLine) Make(mnemonic bool, wrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int, fillerStyle paint.Style) (formatted []WordLine) {
-	return w.cache.Hit(MakeTag(mnemonic, wrap, justify, maxChars, fillerStyle), func() []WordLine {
+	tag := MakeTag(mnemonic, wrap, justify, maxChars, fillerStyle)
+	return w.cache.Hit(tag, func() []WordLine {
 		var lines []WordLine
 		lines = append(lines, NewEmptyWordLine())
 		cid, wid, lid := 0, 0, 0
