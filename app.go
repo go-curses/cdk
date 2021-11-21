@@ -17,6 +17,7 @@ package cdk
 // TODO: app determines if local and/or server?
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -55,6 +56,8 @@ type goProfileFn = func(p *profile.Profile)
 
 type DisplayInitFn = func(d Display) error
 
+type AppMainFn func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
+
 type App interface {
 	GetContext() *cli.Context
 	Tag() string
@@ -70,7 +73,6 @@ type App interface {
 	AddFlag(f cli.Flag)
 	AddCommand(c *cli.Command)
 	Run(args []string) error
-	MainActionFn(c *cli.Context) error
 }
 
 type CApp struct {
@@ -116,9 +118,9 @@ func (app *CApp) init() {
 		Usage:       app.usage,
 		Description: app.description,
 		Version:     app.version,
-		Flags:       getCdkCliFlags(),
+		Flags:       getAppCliFlags(),
 		Commands:    []*cli.Command{},
-		Action:      app.MainActionFn,
+		Action:      app.action,
 	}
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "version",
@@ -235,7 +237,6 @@ func (app *CApp) Run(args []string) (err error) {
 	cdkContextManager.SetValues(
 		newGlsValuesWithContext(env.Get("USER", "nil"), "localhost", app.display, nil),
 		func() {
-			app.setDisplay(app.display)
 			if app.cli.Commands != nil && len(app.cli.Commands) > 0 {
 				sort.Sort(cli.CommandsByName(app.cli.Commands))
 			} else {
@@ -251,8 +252,12 @@ func (app *CApp) Run(args []string) (err error) {
 	return err
 }
 
-func (app *CApp) MainActionFn(ctx *cli.Context) error {
-	app.context = ctx
+func (app *CApp) MainInit(ctx *cli.Context) (ok bool) {
+	if ctx == nil {
+		app.context = cli.NewContext(app.cli, nil, nil)
+	} else {
+		app.context = ctx
+	}
 	if Build.LogLevel {
 		if v := ctx.String("cdk-log-level"); !cstrings.IsEmpty(v) {
 			env.Set("GO_CDK_LOG_LEVEL", v)
@@ -262,7 +267,7 @@ func (app *CApp) MainActionFn(ctx *cli.Context) error {
 				for i := len(log.LogLevels) - 1; i >= 0; i-- {
 					fmt.Printf("%s\n", log.LogLevels[i])
 				}
-				return nil
+				return false
 			}
 		}
 	}
@@ -327,6 +332,50 @@ func (app *CApp) MainActionFn(ctx *cli.Context) error {
 				goProfile = profile.Start(p, profile.ProfilePath(profilePath))
 			}
 		}
+	}
+	return true
+}
+
+func (app *CApp) MainRun(fn AppMainFn) {
+	app.SetupDisplay()
+	var wg *sync.WaitGroup
+	cdkContextManager.SetValues(
+		newGlsValuesWithContext(env.Get("USER", "nil"), "localhost", app.display, nil),
+		func() {
+			var ctx context.Context
+			var cancel context.CancelFunc
+			ctx, cancel, wg = app.Display().MainInit()
+			wg.Add(1)
+			fn(ctx, cancel, wg)
+			wg.Done()
+		},
+	)
+	wg.Wait()
+	return
+}
+
+func (app *CApp) MainEventsPending() (pending bool) {
+	if d := app.Display(); d != nil {
+		pending = d.HasPendingEvents()
+	}
+	return
+}
+
+func (app *CApp) MainIterateEvents() {
+	if d := app.Display(); d != nil {
+		d.IterateBufferedEvents()
+	}
+}
+
+func (app *CApp) MainFinish() {
+	if d := app.Display(); d != nil {
+		d.MainFinish()
+	}
+}
+
+func (app *CApp) action(ctx *cli.Context) error {
+	if !app.MainInit(ctx) {
+		return nil
 	}
 	if app.runFn != nil {
 		return app.runFn(ctx)
