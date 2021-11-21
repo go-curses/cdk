@@ -44,6 +44,10 @@ var (
 	DisplayCallQueueCapacity = 16
 	// DisplayStartupDelay is the delay for triggering screen resize events during initialization
 	DisplayStartupDelay = time.Millisecond * 128
+	// MainInitDelay is the short delay imposed by MainInit()
+	MainInitDelay = time.Millisecond * 10
+	// MainIterateDelay is the event iteration loop delay
+	MainIterateDelay = time.Millisecond * 25
 )
 
 const (
@@ -809,7 +813,7 @@ func (d *CDisplay) Run() (err error) {
 				return
 			default:
 				// nop
-				time.Sleep(time.Millisecond * 100)
+				time.Sleep(MainIterateDelay)
 			}
 		}
 		wg.Done()
@@ -829,7 +833,7 @@ func (d *CDisplay) MainInit() (ctx context.Context, cancel context.CancelFunc, w
 		}
 		wg.Done()
 	})
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(MainInitDelay)
 	return
 }
 
