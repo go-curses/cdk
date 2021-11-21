@@ -158,6 +158,7 @@ type CDisplay struct {
 	buffer   []interface{}
 	inbound  chan Event
 	requests chan ScreenStateReq
+	compress bool
 
 	eventMutex *sync.Mutex
 	drawMutex  *sync.Mutex
@@ -197,6 +198,7 @@ func (d *CDisplay) Init() (already bool) {
 	d.buffer = make([]interface{}, 0)
 	d.inbound = make(chan Event, DisplayCallQueueCapacity)
 	d.requests = make(chan ScreenStateReq, DisplayCallQueueCapacity)
+	d.compress = true
 
 	d.priorEvent = nil
 	d.eventFocus = nil
@@ -254,6 +256,18 @@ func (d *CDisplay) GetTtyHandle() *os.File {
 
 func (d *CDisplay) SetTtyHandle(ttyHandle *os.File) {
 	d.ttyHandle = ttyHandle
+}
+
+func (d *CDisplay) GetCompressEvents() bool {
+	d.RLock()
+	defer d.RUnlock()
+	return d.compress
+}
+
+func (d *CDisplay) SetCompressEvents(compress bool) {
+	d.Lock()
+	d.compress = compress
+	d.Unlock()
 }
 
 func (d *CDisplay) Screen() Screen {
@@ -925,13 +939,33 @@ func (d *CDisplay) HasBufferedEvents() (hasEvents bool) {
 func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 	d.Lock()
 	buffer := make([]interface{}, len(d.buffer))
-	for _, evt := range d.buffer {
-		buffer = append(buffer, evt)
+	for idx, e := range d.buffer {
+		buffer[idx] = e
 	}
 	d.buffer = make([]interface{}, 0)
 	d.Unlock()
+	var pending []interface{}
+	if d.GetCompressEvents() {
+		pending = make([]interface{}, 0)
+		history := make(map[string]int)
+		for _, e := range buffer {
+			switch t := e.(type) {
+			default:
+				key := fmt.Sprintf("%T", t)
+				if idx, ok := history[key]; ok {
+					if idx < len(pending) {
+						pending = append(pending[:idx], pending[idx+1:]...)
+					}
+				}
+				pending = append(pending, e)
+				history[key] = len(pending) - 1
+			}
+		}
+	} else {
+		pending = buffer
+	}
 	stopped := false
-	for _, e := range buffer {
+	for _, e := range pending {
 		if evt, ok := e.(Event); ok {
 			if f := d.ProcessEvent(evt); f == enums.EVENT_STOP {
 				stopped = true
