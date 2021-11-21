@@ -115,7 +115,7 @@ func AddTimeout(delay time.Duration, fn TimerCallbackFn) (id uuid.UUID) {
 
 func StopTimeout(id uuid.UUID) {
 	if ac, err := GetLocalContext(); err != nil {
-		log.ErrorDF(1, "error getting app context for CancelTimeout()")
+		log.WarnDF(1, "error getting app context for CancelTimeout()")
 	} else {
 		for cdkTimeouts.Valid(id) {
 			if t := cdkTimeouts.Get(id); t != nil {
@@ -130,7 +130,7 @@ func StopTimeout(id uuid.UUID) {
 
 func CancelAllTimeouts() {
 	if ac, err := GetLocalContext(); err != nil {
-		log.ErrorDF(1, "error getting app context for CancelAllTimeouts()")
+		log.WarnDF(1, "error getting app context for CancelAllTimeouts()")
 	} else {
 		for _, t := range cdkTimeouts.timers {
 			if t != nil && ac.Display.ObjectName() == t.display.ObjectName() {
