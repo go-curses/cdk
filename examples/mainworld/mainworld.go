@@ -92,7 +92,7 @@ func main() {
 					return
 				default:
 					// nop, throttle CPU
-					time.Sleep(time.Millisecond * 100)
+					time.Sleep(cdk.MainIterateDelay)
 				}
 			}
 			app.MainFinish()
