@@ -14,10 +14,6 @@
 
 package cdk
 
-import (
-	"github.com/urfave/cli/v2"
-)
-
 type Config struct {
 	Profiling          bool
 	LogFile            bool
@@ -40,35 +36,4 @@ var Build = Config{
 	LogTimestamps:      false,
 	LogTimestampFormat: false,
 	LogOutput:          false,
-}
-
-func getCdkCliFlags() (flags []cli.Flag) {
-	if Build.Profiling {
-		flags = append(flags, cdkProfileFlag, cdkProfilePathFlag)
-	}
-	if Build.LogFile {
-		flags = append(flags, cdkLogFileFlag)
-	}
-	if Build.LogFormat {
-		flags = append(flags, cdkLogFormatFlag)
-	}
-	if Build.LogFullPaths {
-		flags = append(flags, cdkLogFullPathsFlag)
-	}
-	if Build.LogLevel {
-		flags = append(flags, cdkLogLevel)
-	}
-	if Build.LogLevels {
-		flags = append(flags, cdkLogLevelsFlag)
-	}
-	if Build.LogTimestampFormat {
-		flags = append(flags, cdkLogTimestampFormatFlag)
-	}
-	if Build.LogTimestamps {
-		flags = append(flags, cdkLogTimestampsFlag)
-	}
-	if Build.LogOutput {
-		flags = append(flags, cdkLogOutputFlag)
-	}
-	return
 }
