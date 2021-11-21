@@ -45,6 +45,13 @@ func newGlsValuesWithContext(user, host string, display *CDisplay, data interfac
 	return
 }
 
+func IsLocalContextValid() (valid bool) {
+	if v, ok := cdkContextManager.GetValue(cdkContextKey); ok {
+		_, valid = v.(*AppContext)
+	}
+	return
+}
+
 func GetLocalContext() (ac *AppContext, err error) {
 	if v, ok := cdkContextManager.GetValue(cdkContextKey); ok {
 		if vd, vok := v.(*AppContext); vok {
