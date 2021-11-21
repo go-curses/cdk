@@ -111,8 +111,14 @@ type Display interface {
 	PostEvent(evt Event) error
 	AddQuitHandler(tag string, fn func())
 	RemoveQuitHandler(tag string)
-	Run() error
+	Run() (err error)
 	IsRunning() bool
+	MainInit() (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
+	MainLoop(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) (err error)
+	MainFinish()
+	HasPendingEvents() (pending bool)
+	HasBufferedEvents() (hasEvents bool)
+	IterateBufferedEvents() (refreshed bool)
 }
 
 // Basic display type
@@ -145,7 +151,8 @@ type CDisplay struct {
 	done     chan bool
 	queue    chan DisplayCallbackFn
 	events   chan Event
-	process  chan Event
+	buffer   []interface{}
+	inbound  chan Event
 	requests chan ScreenStateReq
 
 	eventMutex *sync.Mutex
@@ -183,7 +190,8 @@ func (d *CDisplay) Init() (already bool) {
 	d.done = make(chan bool)
 	d.queue = make(chan DisplayCallbackFn, DisplayCallQueueCapacity)
 	d.events = make(chan Event, DisplayCallQueueCapacity)
-	d.process = make(chan Event, DisplayCallQueueCapacity)
+	d.buffer = make([]interface{}, 0)
+	d.inbound = make(chan Event, DisplayCallQueueCapacity)
 	d.requests = make(chan ScreenStateReq, DisplayCallQueueCapacity)
 
 	d.priorEvent = nil
@@ -201,6 +209,10 @@ func (d *CDisplay) Init() (already bool) {
 	return false
 }
 
+func (d *CDisplay) App() *CApp {
+	return d.app
+}
+
 func (d *CDisplay) Destroy() {
 	d.setRunning(false)
 	d.ReleaseDisplay()
@@ -211,7 +223,7 @@ func (d *CDisplay) closeChannels() {
 	d.closing.Do(func() {
 		close(d.done)
 		close(d.queue)
-		close(d.process)
+		close(d.inbound)
 		close(d.requests)
 	})
 }
@@ -453,10 +465,6 @@ func (d *CDisplay) getOverlay(windowId uuid.UUID) (overlay Window) {
 		}
 	}
 	return
-}
-
-func (d *CDisplay) App() *CApp {
-	return d.app
 }
 
 func (d *CDisplay) SetEventFocus(widget interface{}) error {
@@ -708,7 +716,7 @@ pollEventWorkerLoop:
 	for d.IsRunning() && d.screen != nil {
 		select {
 		case evt := <-d.screen.PollEventChan():
-			d.process <- evt
+			d.inbound <- evt
 		case <-ctx.Done():
 			break pollEventWorkerLoop
 			// default: // nop
@@ -723,17 +731,18 @@ processEventWorkerLoop:
 		select {
 		case <-ctx.Done():
 			break processEventWorkerLoop
-		case evt := <-d.process:
+		case evt := <-d.inbound:
 			select {
 			case <-ctx.Done():
 				break processEventWorkerLoop
 			default: // nop
 			}
 			if evt != nil {
-				if f := d.ProcessEvent(evt); f == enums.EVENT_STOP {
-					// TODO: ProcessEvent must ONLY flag stop when UI changes
-					d.RequestDraw()
-					d.RequestShow()
+				switch t := evt.(type) {
+				default:
+					d.Lock()
+					d.buffer = append(d.buffer, t)
+					d.Unlock()
 				}
 			} else {
 				// nil event, quit?
@@ -788,13 +797,46 @@ screenRequestWorkerLoop:
 	}
 }
 
-func (d *CDisplay) Run() error {
-	// this happens in the actual main thread
-	if err := d.CaptureDisplay(); err != nil {
-		return err
+func (d *CDisplay) Run() (err error) {
+	ctx, _, wg := d.MainInit()
+	wg.Add(1)
+	gls.Go(func() {
+		for d.HasPendingEvents() {
+			d.IterateBufferedEvents()
+			select {
+			case <-ctx.Done():
+				wg.Done()
+				return
+			default:
+				// nop
+				time.Sleep(time.Millisecond * 100)
+			}
+		}
+		wg.Done()
+	})
+	wg.Wait()
+	d.MainFinish()
+	return
+}
+
+func (d *CDisplay) MainInit() (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
+	ctx, cancel = context.WithCancel(context.Background())
+	wg = &sync.WaitGroup{}
+	wg.Add(1)
+	gls.Go(func() {
+		if err := d.MainLoop(ctx, cancel, wg); err != nil {
+			d.LogErr(err)
+		}
+		wg.Done()
+	})
+	time.Sleep(time.Millisecond * 10)
+	return
+}
+
+func (d *CDisplay) MainLoop(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) (err error) {
+	if err = d.CaptureDisplay(); err != nil {
+		return
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
 	d.setRunning(true)
 	wg.Add(1)
 	gls.Go(func() {
@@ -812,17 +854,11 @@ func (d *CDisplay) Run() error {
 		wg.Done()
 	})
 	defer func() {
-		d.Destroy()
-		if p := recover(); p != nil {
-			panic(p)
-		}
-		for _, quitter := range d.quitters {
-			quitter()
-		}
+
 	}()
 	d.RequestDraw()
 	d.RequestSync()
-runLoop:
+mainForLoop:
 	for d.IsRunning() {
 		select {
 		case fn, ok := <-d.queue:
@@ -844,16 +880,66 @@ runLoop:
 		case <-d.done:
 			d.setRunning(false)
 			CancelAllTimeouts()
-			break runLoop
+			break mainForLoop
 		}
 	}
-	cancel()  // notify threads to exit
-	wg.Wait() // wait for all threads to exit
+	cancel() // notify threads to exit
+	d.Destroy()
+	if p := recover(); p != nil {
+		panic(p)
+	}
+	for _, quitter := range d.quitters {
+		quitter()
+	}
+	return nil
+}
+
+func (d *CDisplay) MainFinish() {
 	if goProfile != nil {
 		log.DebugF("stopping profiling")
 		goProfile.Stop()
 	}
-	return nil
+	return
+}
+
+func (d *CDisplay) HasPendingEvents() (pending bool) {
+	if d.HasBufferedEvents() {
+		pending = true
+	} else if d.IsRunning() {
+		pending = true
+	}
+	return
+}
+
+func (d *CDisplay) HasBufferedEvents() (hasEvents bool) {
+	d.RLock()
+	hasEvents = len(d.buffer) > 0
+	d.RUnlock()
+	return
+}
+
+func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
+	d.Lock()
+	buffer := make([]interface{}, len(d.buffer))
+	for _, evt := range d.buffer {
+		buffer = append(buffer, evt)
+	}
+	d.buffer = make([]interface{}, 0)
+	d.Unlock()
+	stopped := false
+	for _, e := range buffer {
+		if evt, ok := e.(Event); ok {
+			if f := d.ProcessEvent(evt); f == enums.EVENT_STOP {
+				stopped = true
+			}
+		}
+	}
+	if stopped {
+		d.RequestDraw()
+		d.RequestShow()
+		return true
+	}
+	return false
 }
 
 const PropertyDisplayName Property = "display-name"
