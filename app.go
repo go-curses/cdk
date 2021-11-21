@@ -73,6 +73,7 @@ type App interface {
 	AddFlag(f cli.Flag)
 	AddCommand(c *cli.Command)
 	Run(args []string) error
+	CliActionFn(ctx *cli.Context) error
 }
 
 type CApp struct {
@@ -120,7 +121,7 @@ func (app *CApp) init() {
 		Version:     app.version,
 		Flags:       getAppCliFlags(),
 		Commands:    []*cli.Command{},
-		Action:      app.action,
+		Action:      app.CliActionFn,
 	}
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "version",
@@ -373,7 +374,7 @@ func (app *CApp) MainFinish() {
 	}
 }
 
-func (app *CApp) action(ctx *cli.Context) error {
+func (app *CApp) CliActionFn(ctx *cli.Context) error {
 	if !app.MainInit(ctx) {
 		return nil
 	}
