@@ -13,7 +13,7 @@ func main() {
 	env.Set("GO_CDK_LOG_FILE", "./appserver.log")
 	env.Set("GO_CDK_LOG_LEVEL", "debug")
 	cdk.Init()
-	as := cdk.NewAppServer(
+	as := cdk.NewApplicationServer(
 		"appserver",
 		"run an application server",
 		"",
@@ -22,10 +22,16 @@ func main() {
 		"",
 		clientStartup,
 		serverStartup,
-		"./examples/appserver/htpasswd",
 		"./examples/appserver/id_rsa",
 	)
-
+	as.ClearAuthHandlers()
+	if err := as.InstallAuthHandler(
+		cdk.NewServerAuthHtpasswdHandler(
+			"./examples/appserver/htpasswd",
+		),
+	); err != nil {
+		log.Error(err)
+	}
 	if err := as.Start(); err != nil {
 		panic(err)
 	}

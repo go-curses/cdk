@@ -20,7 +20,7 @@ import (
 	"github.com/go-curses/cdk/log"
 )
 
-type AppFn func(app App)
+type AppFn func(app Application)
 type DisplayManagerFn func(d Display)
 
 func WithApp(initFn DisplayInitFn, action AppFn) func() {

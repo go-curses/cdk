@@ -90,7 +90,7 @@ var (
 	}
 )
 
-func getAppCliFlags() (flags []cli.Flag) {
+func GetApplicationCliFlags() (flags []cli.Flag) {
 	if Build.Profiling {
 		flags = append(flags, AppCliProfileFlag, AppCliProfilePathFlag)
 	}

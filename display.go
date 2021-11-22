@@ -27,7 +27,6 @@ import (
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
 	"github.com/gofrs/uuid"
-	"github.com/jtolio/gls"
 )
 
 // display is really a wrapper around Screen
@@ -100,7 +99,7 @@ type Display interface {
 	GetWindowTopOverlay(id uuid.UUID) (window Window)
 	GetWindowOverlayRegion(windowId, overlayId uuid.UUID) (region ptypes.Region)
 	SetWindowOverlayRegion(windowId, overlayId uuid.UUID, region ptypes.Region)
-	App() *CApp
+	App() *CApplication
 	SetEventFocus(widget interface{}) error
 	GetEventFocus() (widget interface{})
 	GetPriorEvent() (event Event)
@@ -139,7 +138,7 @@ type CDisplay struct {
 	windows map[uuid.UUID]Window
 	overlay map[uuid.UUID][]Window
 
-	app        *CApp
+	app        *CApplication
 	ttyPath    string
 	ttyHandle  *os.File
 	screen     Screen
@@ -215,7 +214,7 @@ func (d *CDisplay) Init() (already bool) {
 	return false
 }
 
-func (d *CDisplay) App() *CApp {
+func (d *CDisplay) App() *CApplication {
 	return d.app
 }
 
@@ -818,7 +817,7 @@ screenRequestWorkerLoop:
 func (d *CDisplay) Run() (err error) {
 	ctx, _, wg := d.MainInit()
 	wg.Add(1)
-	gls.Go(func() {
+	Go(func() {
 		for d.HasPendingEvents() {
 			d.IterateBufferedEvents()
 			select {
@@ -841,7 +840,7 @@ func (d *CDisplay) MainInit() (ctx context.Context, cancel context.CancelFunc, w
 	ctx, cancel = context.WithCancel(context.Background())
 	wg = &sync.WaitGroup{}
 	wg.Add(1)
-	gls.Go(func() {
+	Go(func() {
 		if err := d.MainLoop(ctx, cancel, wg); err != nil {
 			d.LogErr(err)
 		}
@@ -857,17 +856,17 @@ func (d *CDisplay) MainLoop(ctx context.Context, cancel context.CancelFunc, wg *
 	}
 	d.setRunning(true)
 	wg.Add(1)
-	gls.Go(func() {
+	Go(func() {
 		d.pollEventWorker(ctx)
 		wg.Done()
 	})
 	wg.Add(1)
-	gls.Go(func() {
+	Go(func() {
 		d.processEventWorker(ctx)
 		wg.Done()
 	})
 	wg.Add(1)
-	gls.Go(func() {
+	Go(func() {
 		d.screenRequestWorker(ctx)
 		wg.Done()
 	})

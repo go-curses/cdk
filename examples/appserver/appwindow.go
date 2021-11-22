@@ -46,7 +46,7 @@ func (w *AppWindow) Init() (already bool) {
 
 func (w *AppWindow) draw(data []interface{}, argv ...interface{}) enums.EventFlag {
 	var err error
-	var ctx *cdk.AppContext
+	var ctx *cdk.CLocalContext
 	if surface, ok := argv[1].(memphis.Surface); ok {
 		theme := w.GetDisplay().DefaultTheme()
 		size := surface.GetSize()
@@ -66,7 +66,7 @@ func (w *AppWindow) draw(data []interface{}, argv ...interface{}) enums.EventFla
 			w.LogError("error getting local context: %v", err)
 			content += "(missing app context)"
 		} else {
-			if asc, ok := ctx.Data.(*cdk.CAppServer); ok {
+			if asc, ok := ctx.Data.(*cdk.CApplicationServer); ok {
 				content += fmt.Sprintf("listening on %s:%d\n", asc.GetListenAddress(), asc.GetListenPort())
 				clients := asc.GetClients()
 				numClients := len(clients)

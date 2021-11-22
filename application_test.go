@@ -42,7 +42,7 @@ func TestCdk(t *testing.T) {
 		})
 		// Convey("with no content", WithApp(
 		// 	TestingMakesNoContent,
-		// 	func(d App) {
+		// 	func(d Application) {
 		// 		// do tests here?
 		// 		So(d.Display(), ShouldNotBeNil)
 		// 	},

@@ -1,13 +1,18 @@
+// Copyright 2021  The CDK Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use file except in compliance with the License.
+// You may obtain a copy of the license at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cdk
-
-/*
-
-- essentially an SSH service
-- needs configurable authentication features, totp, password, ssh-key
-- htpasswd file support
-- uses `pty` to start displays
-
-*/
 
 import (
 	"fmt"
@@ -22,8 +27,6 @@ import (
 	"github.com/creack/pty"
 	"github.com/go-curses/cdk/env"
 	"github.com/gofrs/uuid"
-	"github.com/jtolio/gls"
-	"github.com/tg123/go-htpasswd"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/ssh"
 
@@ -32,23 +35,22 @@ import (
 	"github.com/go-curses/cdk/log"
 )
 
-type AppServer interface {
-	Start() (err error)
+type ApplicationServer interface {
+	Init()
+	GetClients() (clients []uuid.UUID)
+	GetClient(id uuid.UUID) (*CApplicationServerClient, error)
+	App() *CApplication
+	Display() *CDisplay
+	SetListenAddress(address string)
+	GetListenAddress() (address string)
+	SetListenPort(port int)
+	GetListenPort() (port int)
 	Stop() (err error)
+	Daemon() (err error)
+	Start() (err error)
 }
 
-type cAppServerClient struct {
-	id       uuid.UUID
-	conn     *ssh.ServerConn
-	channels <-chan ssh.NewChannel
-	requests <-chan *ssh.Request
-}
-
-func (asc *cAppServerClient) String() string {
-	return fmt.Sprintf("%s@%s", asc.conn.User(), asc.conn.RemoteAddr().String())
-}
-
-type CAppServer struct {
+type CApplicationServer struct {
 	name         string
 	usage        string
 	description  string
@@ -58,27 +60,27 @@ type CAppServer struct {
 	clientInitFn DisplayInitFn
 	serverInitFn DisplayInitFn
 
-	htpasswdPath   string
 	privateKeyPath string
 
 	listenAddress string
 	listenPort    int
 
-	app     *CApp
+	app     *CApplication
 	display *CDisplay
 
-	htpasswd    *htpasswd.File
-	config      *ssh.ServerConfig
-	listener    net.Listener
-	clients     map[uuid.UUID]*cAppServerClient
-	clientsLock *sync.RWMutex
+	handlers []ServerAuthHandler
+	config   *ssh.ServerConfig
+	listener net.Listener
+	clients  map[uuid.UUID]*CApplicationServerClient
 
 	initialized bool
 	daemonize   bool
+
+	sync.RWMutex
 }
 
-func NewAppServer(name, usage, description, version, tag, title string, clientInitFn DisplayInitFn, serverInitFn DisplayInitFn, htpasswdPath, privateKeyPath string) *CAppServer {
-	as := &CAppServer{
+func NewApplicationServer(name, usage, description, version, tag, title string, clientInitFn DisplayInitFn, serverInitFn DisplayInitFn, privateKeyPath string) *CApplicationServer {
+	as := &CApplicationServer{
 		name:           name,
 		usage:          usage,
 		description:    description,
@@ -89,19 +91,20 @@ func NewAppServer(name, usage, description, version, tag, title string, clientIn
 		serverInitFn:   serverInitFn,
 		listenAddress:  "0.0.0.0",
 		listenPort:     2200,
-		htpasswdPath:   htpasswdPath,
 		privateKeyPath: privateKeyPath,
 	}
 	as.Init()
 	return as
 }
 
-func (s *CAppServer) Init() {
+func (s *CApplicationServer) Init() {
 	if s.initialized {
 		return
 	}
-	s.clients = make(map[uuid.UUID]*cAppServerClient)
-	s.clientsLock = &sync.RWMutex{}
+	s.clients = make(map[uuid.UUID]*CApplicationServerClient)
+	s.handlers = []ServerAuthHandler{
+		NewDefaultServerAuthHandler(),
+	}
 	s.app = NewApp(s.name, s.usage, s.description, s.version, s.tag, s.title, "/dev/tty", s.serverInitFn)
 	s.app.runFn = s.runner
 	s.display = s.app.display
@@ -123,12 +126,6 @@ func (s *CAppServer) Init() {
 		DefaultText: fmt.Sprintf("%d", s.listenPort),
 	})
 	s.App().AddFlag(&cli.StringFlag{
-		Name:        "htpasswd",
-		Usage:       "sets the path to the htpasswd file",
-		Value:       s.htpasswdPath,
-		DefaultText: s.htpasswdPath,
-	})
-	s.App().AddFlag(&cli.StringFlag{
 		Name:        "id-rsa",
 		Usage:       "sets the path to the server id_rsa file",
 		Value:       s.privateKeyPath,
@@ -137,13 +134,13 @@ func (s *CAppServer) Init() {
 	s.initialized = true
 }
 
-func (s *CAppServer) newClient(conn *ssh.ServerConn, channels <-chan ssh.NewChannel, requests <-chan *ssh.Request) (asc *cAppServerClient, err error) {
+func (s *CApplicationServer) newClient(conn *ssh.ServerConn, channels <-chan ssh.NewChannel, requests <-chan *ssh.Request) (asc *CApplicationServerClient, err error) {
 	if id, err := uuid.NewV4(); err != nil {
 		return nil, err
 	} else {
-		s.clientsLock.Lock()
-		defer s.clientsLock.Unlock()
-		asc = &cAppServerClient{
+		s.Lock()
+		defer s.Unlock()
+		asc = &CApplicationServerClient{
 			id:       id,
 			conn:     conn,
 			channels: channels,
@@ -154,27 +151,27 @@ func (s *CAppServer) newClient(conn *ssh.ServerConn, channels <-chan ssh.NewChan
 	}
 }
 
-func (s *CAppServer) GetClients() (clients []uuid.UUID) {
-	s.clientsLock.RLock()
-	defer s.clientsLock.RUnlock()
+func (s *CApplicationServer) GetClients() (clients []uuid.UUID) {
+	s.RLock()
+	defer s.RUnlock()
 	for id, _ := range s.clients {
 		clients = append(clients, id)
 	}
 	return
 }
 
-func (s *CAppServer) GetClient(id uuid.UUID) (*cAppServerClient, error) {
-	s.clientsLock.RLock()
-	defer s.clientsLock.RUnlock()
+func (s *CApplicationServer) GetClient(id uuid.UUID) (*CApplicationServerClient, error) {
+	s.RLock()
+	defer s.RUnlock()
 	if asc, ok := s.clients[id]; ok {
 		return asc, nil
 	}
 	return nil, fmt.Errorf("client not found: %v", id)
 }
 
-func (s *CAppServer) freeClient(id uuid.UUID) (err error) {
-	s.clientsLock.Lock()
-	defer s.clientsLock.Unlock()
+func (s *CApplicationServer) freeClient(id uuid.UUID) (err error) {
+	s.Lock()
+	defer s.Unlock()
 	if _, ok := s.clients[id]; ok {
 		delete(s.clients, id)
 		return nil
@@ -182,56 +179,141 @@ func (s *CAppServer) freeClient(id uuid.UUID) (err error) {
 	return fmt.Errorf("client not found: %v", id)
 }
 
-func (s *CAppServer) App() *CApp {
-	return s.app
+func (s *CApplicationServer) App() (app *CApplication) {
+	s.RLock()
+	app = s.app
+	s.RUnlock()
+	return
 }
 
-func (s *CAppServer) Display() *CDisplay {
-	return s.display
+func (s *CApplicationServer) Display() (display *CDisplay) {
+	s.RLock()
+	display = s.display
+	s.RUnlock()
+	return
 }
 
-func (s *CAppServer) SetListenAddress(address string) {
+func (s *CApplicationServer) SetListenAddress(address string) {
+	s.Lock()
 	s.listenAddress = address
+	s.Unlock()
 }
 
-func (s *CAppServer) GetListenAddress() (address string) {
+func (s *CApplicationServer) GetListenAddress() (address string) {
+	s.RLock()
 	address = s.listenAddress
+	s.RUnlock()
 	return
 }
 
-func (s *CAppServer) SetListenPort(port int) {
+func (s *CApplicationServer) SetListenPort(port int) {
+	s.Lock()
 	s.listenPort = port
+	s.Unlock()
 }
 
-func (s *CAppServer) GetListenPort() (port int) {
+func (s *CApplicationServer) GetListenPort() (port int) {
+	s.RLock()
 	port = s.listenPort
+	s.RUnlock()
 	return
 }
 
-func (s *CAppServer) Stop() (err error) {
+func (s *CApplicationServer) Stop() (err error) {
+	s.Lock()
+	s.daemonize = false
 	if s.display != nil {
 		_ = s.display.AwaitCall(func(_ Display) error {
 			s.display.RequestSync()
 			return nil
 		})
+		s.Unlock()
+		return
 	}
+	s.Unlock()
 	return nil
 }
 
-func (s *CAppServer) Daemon() (err error) {
+func (s *CApplicationServer) Daemon() (err error) {
+	s.Lock()
 	s.daemonize = true
-	return s.app.Run(os.Args)
+	app := s.app
+	s.Unlock()
+	err = app.Run(os.Args)
+	return
 }
 
-func (s *CAppServer) Start() (err error) {
-	return s.app.Run(os.Args)
+func (s *CApplicationServer) Start() (err error) {
+	s.Lock()
+	s.daemonize = false
+	app := s.app
+	s.Unlock()
+	err = app.Run(os.Args)
+	return
 }
 
-func (s *CAppServer) runner(ctx *cli.Context) (err error) {
+func (s *CApplicationServer) ClearAuthHandlers() {
+	s.Lock()
+	handlers := s.handlers
+	s.Unlock()
+	for _, handler := range handlers {
+		if err := s.UnInstallAuthHandler(handler); err != nil {
+			log.Error(err)
+		}
+	}
+	s.Lock()
+	s.handlers = make([]ServerAuthHandler, 0)
+	s.Unlock()
+	return
+}
+
+func (s *CApplicationServer) InstallAuthHandler(handler ServerAuthHandler) (err error) {
+	s.Lock()
+	s.handlers = append(s.handlers, handler)
+	s.Unlock()
+	err = handler.Attach(s)
+	return
+}
+
+func (s *CApplicationServer) UnInstallAuthHandler(handler ServerAuthHandler) (err error) {
+	s.Lock()
+	index := -1
+	for idx, h := range s.handlers {
+		if h.ID() == handler.ID() {
+			index = idx
+			break
+		}
+	}
+	s.Unlock()
+	if index > -1 {
+		s.Lock()
+		s.handlers = append(s.handlers[:index], s.handlers[index+1:]...)
+		s.Unlock()
+		err = handler.Detach()
+	}
+	return
+}
+
+func (s *CApplicationServer) handlerHasArg(arg string) (has bool) {
+	s.RLock()
+	handlers := s.handlers
+	s.RUnlock()
+	if arg[:2] == "--" {
+		arg = arg[2:]
+	}
+	for _, h := range handlers {
+		if h.HasArgument(arg) {
+			has = true
+			break
+		}
+	}
+	return
+}
+
+func (s *CApplicationServer) runner(ctx *cli.Context) (err error) {
 	if !s.daemonize {
 		s.daemonize = ctx.Bool("daemon")
 	}
-	s.htpasswdPath = ctx.String("htpasswd")
 	s.privateKeyPath = ctx.String("id-rsa")
 	s.listenAddress = ctx.String("listen-address")
 	s.listenPort = ctx.Int("listen-port")
@@ -243,19 +325,34 @@ func (s *CAppServer) runner(ctx *cli.Context) (err error) {
 		case "--listen-address":
 		case "--listen-port":
 		case "--id-rsa":
-		case "--htpasswd":
 		default:
-			args = append(args, arg)
+			if !s.handlerHasArg(arg) {
+				args = append(args, arg)
+			}
 		}
 	}
 	os.Args = args
 
-	if s.htpasswd, err = htpasswd.New(s.htpasswdPath, htpasswd.DefaultSystems, nil); err != nil {
-		return fmt.Errorf("failed to load htpasswd file: %v", err)
+	var handler ServerAuthHandler
+	if len(s.handlers) > 0 {
+		handler = s.handlers[0]
+		for _, handler := range s.handlers {
+			if err := handler.Reload(ctx); err != nil {
+				log.Error(err)
+			}
+		}
 	}
 
-	s.config = &ssh.ServerConfig{
-		PasswordCallback: s.htpasswdAuth,
+	s.config = nil
+	if handler != nil {
+		if passwordHandler, ok := handler.(ServerAuthPasswordHandler); ok {
+			s.config = &ssh.ServerConfig{
+				PasswordCallback: passwordHandler.PasswordCallback,
+			}
+		}
+	}
+	if s.config == nil {
+		s.config = &ssh.ServerConfig{}
 	}
 
 	var privateBytes []byte
@@ -278,7 +375,7 @@ func (s *CAppServer) runner(ctx *cli.Context) (err error) {
 	done := make(chan bool, 1)
 
 	// Accept all connections
-	gls.Go(func() {
+	Go(func() {
 		log.InfoF("Listening on %s:%d", s.listenAddress, s.listenPort)
 	runnerListenerLoop:
 		for {
@@ -296,7 +393,7 @@ func (s *CAppServer) runner(ctx *cli.Context) (err error) {
 				log.ErrorF("Failed to handshake (%s)", err)
 				continue
 			}
-			var asc *cAppServerClient
+			var asc *CApplicationServerClient
 			if asc, err = s.newClient(conn, channels, requests); err != nil {
 				log.Error(err)
 				continue
@@ -305,7 +402,7 @@ func (s *CAppServer) runner(ctx *cli.Context) (err error) {
 			// Discard all global out-of-band Requests
 			// go ssh.DiscardRequests(requests)
 			// Accept all channels
-			gls.Go(func() { s.handleChannels(asc) })
+			Go(func() { s.handleChannels(asc) })
 
 			select {
 			case <-done:
@@ -329,8 +426,11 @@ func (s *CAppServer) runner(ctx *cli.Context) (err error) {
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
-	cdkContextManager.SetValues(
-		newGlsValuesWithContext(env.Get("USER", "nil"), "/dev/tty", s.app.Display(), s),
+	GoWithMainContext(
+		env.Get("USER", "nil"),
+		"/dev/tty",
+		s.app.Display(),
+		s,
 		func() {
 			err = s.app.Display().Run()
 			wg.Done()
@@ -340,14 +440,14 @@ func (s *CAppServer) runner(ctx *cli.Context) (err error) {
 	return err
 }
 
-func (s *CAppServer) handleChannels(asc *cAppServerClient) {
+func (s *CApplicationServer) handleChannels(asc *CApplicationServerClient) {
 	// Service the incoming channel in goroutine
 	for newChannel := range asc.channels {
-		gls.Go(func() { s.handleChannel(asc, newChannel) })
+		Go(func() { s.handleChannel(asc, newChannel) })
 	}
 }
 
-func (s *CAppServer) handleChannel(asc *cAppServerClient, channel ssh.NewChannel) {
+func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channel ssh.NewChannel) {
 	// Since we're handling a shell, we expect a
 	// channel type of "session". The also describes
 	// "x11", "direct-tcpip" and "forwarded-tcpip"
@@ -369,7 +469,7 @@ func (s *CAppServer) handleChannel(asc *cAppServerClient, channel ssh.NewChannel
 	if p, t, err = pty.Open(); err != nil {
 		panic(err)
 	}
-	app := &CApp{
+	app := &CApplication{
 		name:        s.name,
 		usage:       s.usage,
 		description: s.description,
@@ -437,9 +537,12 @@ func (s *CAppServer) handleChannel(asc *cAppServerClient, channel ssh.NewChannel
 	}()
 
 	// start display service
-	gls.Go(func() {
-		cdkContextManager.SetValues(
-			newGlsValuesWithContext(asc.conn.User(), asc.conn.RemoteAddr().String(), display, nil),
+	Go(func() {
+		GoWithMainContext(
+			asc.conn.User(),
+			asc.conn.RemoteAddr().String(),
+			display,
+			nil,
 			func() {
 				app.setDisplay(display)
 				if err := app.cli.Run(os.Args); err != nil {
@@ -451,7 +554,7 @@ func (s *CAppServer) handleChannel(asc *cAppServerClient, channel ssh.NewChannel
 	})
 
 	// Sessions have out-of-band requests such as "shell", "pty-req" and "env"
-	gls.Go(func() {
+	Go(func() {
 		for req := range requests {
 			switch req.Type {
 			case "exec":
@@ -498,11 +601,4 @@ func (s *CAppServer) handleChannel(asc *cAppServerClient, channel ssh.NewChannel
 			}
 		}
 	})
-}
-
-func (s *CAppServer) htpasswdAuth(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
-	if s.htpasswd.Match(c.User(), string(pass)) {
-		return nil, nil
-	}
-	return nil, fmt.Errorf("password rejected for %q", c.User())
 }

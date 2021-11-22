@@ -17,8 +17,9 @@ package cdk
 import (
 	"fmt"
 
-	"github.com/go-curses/cdk/log"
 	"github.com/jtolio/gls"
+
+	"github.com/go-curses/cdk/log"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 	cdkContextKey     = gls.GenSym()
 )
 
-type AppContext struct {
+type CLocalContext struct {
 	Display *CDisplay
 	Host    string
 	User    string
@@ -35,7 +36,7 @@ type AppContext struct {
 
 func newGlsValuesWithContext(user, host string, display *CDisplay, data interface{}) (values gls.Values) {
 	values = gls.Values{
-		cdkContextKey: &AppContext{
+		cdkContextKey: &CLocalContext{
 			Display: display,
 			Host:    host,
 			User:    user,
@@ -45,22 +46,65 @@ func newGlsValuesWithContext(user, host string, display *CDisplay, data interfac
 	return
 }
 
+func Go(fn func()) {
+	gls.Go(fn)
+}
+
+func GoWithMainContext(user, host string, display *CDisplay, data interface{}, fn func()) {
+	cdkContextManager.SetValues(
+		newGlsValuesWithContext(
+			user,
+			host,
+			display,
+			data,
+		),
+		fn,
+	)
+}
+
+func GoWithLocalContext(data interface{}, fn func()) {
+	if local, err := GetLocalContext(); err != nil {
+		log.Error(err)
+	} else if local != nil {
+		local.Data = data
+		cdkContextManager.SetValues(
+			gls.Values{
+				cdkContextKey: local,
+			},
+			fn,
+		)
+	} else {
+		log.ErrorDF(1, "missing local context")
+	}
+}
+
 func IsLocalContextValid() (valid bool) {
 	if v, ok := cdkContextManager.GetValue(cdkContextKey); ok {
-		_, valid = v.(*AppContext)
+		_, valid = v.(*CLocalContext)
 	}
 	return
 }
 
-func GetLocalContext() (ac *AppContext, err error) {
+func GetLocalContext() (ac *CLocalContext, err error) {
 	if v, ok := cdkContextManager.GetValue(cdkContextKey); ok {
-		if vd, vok := v.(*AppContext); vok {
+		if vd, vok := v.(*CLocalContext); vok {
 			ac = vd
 		} else {
-			err = fmt.Errorf("not an AppContext: %T", v)
+			err = fmt.Errorf("not a cdk.CLocalContext: %T", v)
 		}
 	} else {
 		err = fmt.Errorf("context not found for this goroutine")
+	}
+	return
+}
+
+func SetLocalContextData(data interface{}) (err error) {
+	var local *CLocalContext
+	if local, err = GetLocalContext(); err != nil {
+		local = nil
+		return
+	} else if local != nil {
+		local.Data = data
 	}
 	return
 }

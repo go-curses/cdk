@@ -46,7 +46,7 @@ const (
 )
 
 var (
-	cdkApps = make(map[uuid.UUID]*CApp)
+	cdkApps = make(map[uuid.UUID]*CApplication)
 
 	DefaultGoProfilePath = os.TempDir() + string(os.PathSeparator) + "cdk.pprof"
 	goProfile            interface{ Stop() }
@@ -58,7 +58,7 @@ type DisplayInitFn = func(d Display) error
 
 type AppMainFn func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
 
-type App interface {
+type Application interface {
 	GetContext() *cli.Context
 	Tag() string
 	Title() string
@@ -76,7 +76,7 @@ type App interface {
 	CliActionFn(ctx *cli.Context) error
 }
 
-type CApp struct {
+type CApplication struct {
 	id          uuid.UUID
 	name        string
 	usage       string
@@ -94,9 +94,9 @@ type CApp struct {
 	valid       bool
 }
 
-func NewApp(name, usage, description, version, tag, title, ttyPath string, initFn DisplayInitFn) *CApp {
+func NewApp(name, usage, description, version, tag, title, ttyPath string, initFn DisplayInitFn) *CApplication {
 	id, _ := uuid.NewV4()
-	app := &CApp{
+	app := &CApplication{
 		id:          id,
 		name:        name,
 		usage:       usage,
@@ -112,14 +112,14 @@ func NewApp(name, usage, description, version, tag, title, ttyPath string, initF
 	return app
 }
 
-func (app *CApp) init() {
+func (app *CApplication) init() {
 	app.dispLock = &sync.RWMutex{}
 	app.cli = &cli.App{
 		Name:        app.name,
 		Usage:       app.usage,
 		Description: app.description,
 		Version:     app.version,
-		Flags:       getAppCliFlags(),
+		Flags:       GetApplicationCliFlags(),
 		Commands:    []*cli.Command{},
 		Action:      app.CliActionFn,
 	}
@@ -138,7 +138,7 @@ func (app *CApp) init() {
 	return
 }
 
-func (app *CApp) SetupDisplay() {
+func (app *CApplication) SetupDisplay() {
 	if app.display == nil {
 		display := NewDisplay(app.title, app.ttyPath)
 		display.app = app
@@ -151,7 +151,7 @@ func (app *CApp) SetupDisplay() {
 	}
 }
 
-func (app *CApp) Destroy() {
+func (app *CApplication) Destroy() {
 	app.valid = false
 	delete(cdkApps, app.id)
 	if app.display != nil {
@@ -162,81 +162,99 @@ func (app *CApp) Destroy() {
 	app.cli = nil
 }
 
-func (app *CApp) GetContext() *cli.Context {
+func (app *CApplication) GetContext() *cli.Context {
 	return app.context
 }
 
-func (app *CApp) Tag() string {
+func (app *CApplication) Tag() string {
 	return app.tag
 }
 
-func (app *CApp) Title() string {
+func (app *CApplication) Title() string {
 	return app.title
 }
 
-func (app *CApp) Name() string {
+func (app *CApplication) Name() string {
 	return app.name
 }
 
-func (app *CApp) Usage() string {
+func (app *CApplication) Usage() string {
 	return app.usage
 }
 
-func (app *CApp) Description() string {
+func (app *CApplication) Description() string {
 	return app.description
 }
 
-func (app *CApp) Display() *CDisplay {
+func (app *CApplication) Display() *CDisplay {
 	app.dispLock.RLock()
 	defer app.dispLock.RUnlock()
 	return app.display
 }
 
-func (app *CApp) setDisplay(d *CDisplay) {
+func (app *CApplication) setDisplay(d *CDisplay) {
 	app.dispLock.Lock()
 	defer app.dispLock.Unlock()
 	app.display = d
 }
 
-func (app *CApp) CLI() *cli.App {
+func (app *CApplication) CLI() *cli.App {
 	return app.cli
 }
 
-func (app *CApp) Version() string {
+func (app *CApplication) Version() string {
 	return app.version
 }
 
-func (app *CApp) InitUI() error {
+func (app *CApplication) InitUI() error {
 	return app.initFn(app.Display())
 }
 
-func (app *CApp) AddFlag(flag cli.Flag) {
+func (app *CApplication) AddFlag(flag cli.Flag) {
 	app.cli.Flags = append(app.cli.Flags, flag)
 }
 
-func (app *CApp) AddFlags(flags []cli.Flag) {
+func (app *CApplication) RemoveFlag(flag cli.Flag) (removed bool) {
+	index := -1
+	for idx, f := range app.cli.Flags {
+		if f.String() == flag.String() {
+			index = idx
+			break
+		}
+	}
+	if index > -1 {
+		app.cli.Flags = append(app.cli.Flags[:index], app.cli.Flags[index+1:]...)
+		removed = true
+	}
+	return
+}
+
+func (app *CApplication) AddFlags(flags []cli.Flag) {
 	for _, f := range flags {
 		app.AddFlag(f)
 	}
 }
 
-func (app *CApp) AddCommand(command *cli.Command) {
+func (app *CApplication) AddCommand(command *cli.Command) {
 	app.cli.Commands = append(app.cli.Commands, command)
 }
 
-func (app *CApp) AddCommands(commands []*cli.Command) {
+func (app *CApplication) AddCommands(commands []*cli.Command) {
 	for _, c := range commands {
 		app.AddCommand(c)
 	}
 }
 
-func (app *CApp) Run(args []string) (err error) {
+func (app *CApplication) Run(args []string) (err error) {
 	app.SetupDisplay()
 	err = nil
 	var wg sync.WaitGroup
 	wg.Add(1)
-	cdkContextManager.SetValues(
-		newGlsValuesWithContext(env.Get("USER", "nil"), "localhost", app.display, nil),
+	GoWithMainContext(
+		env.Get("USER", "nil"),
+		"localhost",
+		app.display,
+		nil,
 		func() {
 			if app.cli.Commands != nil && len(app.cli.Commands) > 0 {
 				sort.Sort(cli.CommandsByName(app.cli.Commands))
@@ -253,7 +271,7 @@ func (app *CApp) Run(args []string) (err error) {
 	return err
 }
 
-func (app *CApp) MainInit(ctx *cli.Context) (ok bool) {
+func (app *CApplication) MainInit(ctx *cli.Context) (ok bool) {
 	if ctx == nil {
 		app.context = cli.NewContext(app.cli, nil, nil)
 	} else {
@@ -337,11 +355,14 @@ func (app *CApp) MainInit(ctx *cli.Context) (ok bool) {
 	return true
 }
 
-func (app *CApp) MainRun(fn AppMainFn) {
+func (app *CApplication) MainRun(fn AppMainFn) {
 	app.SetupDisplay()
 	var wg *sync.WaitGroup
-	cdkContextManager.SetValues(
-		newGlsValuesWithContext(env.Get("USER", "nil"), "localhost", app.display, nil),
+	GoWithMainContext(
+		env.Get("USER", "nil"),
+		"localhost",
+		app.display,
+		nil,
 		func() {
 			var ctx context.Context
 			var cancel context.CancelFunc
@@ -355,26 +376,26 @@ func (app *CApp) MainRun(fn AppMainFn) {
 	return
 }
 
-func (app *CApp) MainEventsPending() (pending bool) {
+func (app *CApplication) MainEventsPending() (pending bool) {
 	if d := app.Display(); d != nil {
 		pending = d.HasPendingEvents()
 	}
 	return
 }
 
-func (app *CApp) MainIterateEvents() {
+func (app *CApplication) MainIterateEvents() {
 	if d := app.Display(); d != nil {
 		d.IterateBufferedEvents()
 	}
 }
 
-func (app *CApp) MainFinish() {
+func (app *CApplication) MainFinish() {
 	if d := app.Display(); d != nil {
 		d.MainFinish()
 	}
 }
 
-func (app *CApp) CliActionFn(ctx *cli.Context) error {
+func (app *CApplication) CliActionFn(ctx *cli.Context) error {
 	if !app.MainInit(ctx) {
 		return nil
 	}
