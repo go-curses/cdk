@@ -25,7 +25,7 @@ type EnumFromString interface {
 	FromString(value string) (enum interface{}, err error)
 }
 
-/* Window type */
+//go:generate stringer -type WindowType
 type WindowType uint64
 
 const (
@@ -33,7 +33,7 @@ const (
 	WINDOW_POPUP
 )
 
-/* Wrap mode */
+//go:generate stringer -type WrapMode
 type WrapMode uint64
 
 const (
@@ -57,7 +57,7 @@ func (m WrapMode) FromString(value string) (enum interface{}, err error) {
 	return WRAP_NONE, fmt.Errorf("invalid WrapMode value: %v", value)
 }
 
-/* Drag result */
+//go:generate stringer -type DragResult
 type DragResult uint64
 
 const (
@@ -69,7 +69,7 @@ const (
 	DRAG_RESULT_ERROR
 )
 
-/* Dest defaults */
+//go:generate bitmasker -type DestDefaults
 type DestDefaults uint64
 
 const (
@@ -79,7 +79,7 @@ const (
 	DEST_DEFAULT_ALL DestDefaults = 0
 )
 
-/* Target flags */
+//go:generate bitmasker -type TargetFlags
 type TargetFlags uint64
 
 const (
@@ -89,7 +89,7 @@ const (
 	TARGET_OTHER_WIDGET
 )
 
-/* Object flags */
+//go:generate bitmasker -type ObjectFlags
 type ObjectFlags uint64
 
 const (
@@ -99,16 +99,15 @@ const (
 	RESERVED_2
 )
 
-// CEvent handling event flag type
+//go:generate stringer -type EventFlag
 type EventFlag int
 
-// CEvent handling event flags
 const (
 	EVENT_PASS EventFlag = iota // Allow other handlers to process
 	EVENT_STOP                  // Prevent further event handling
 )
 
-/* Signal flags */
+//go:generate bitmasker -type SignalFlags
 type SignalFlags uint64
 
 const (
@@ -123,7 +122,7 @@ const (
 	SIGNAL_DEPRECATED
 )
 
-/* Connect flags */
+//go:generate bitmasker -type ConnectFlags
 type ConnectFlags uint64
 
 const (
@@ -131,7 +130,7 @@ const (
 	CONNECT_SWAPPED ConnectFlags = 1 << iota
 )
 
-/* Signal match type */
+//go:generate bitmasker -type SignalMatchType
 type SignalMatchType uint64
 
 const (
@@ -143,7 +142,7 @@ const (
 	SIGNAL_MATCH_UNBLOCKED
 )
 
-/* Signal run type */
+//go:generate bitmasker -type SignalRunType
 type SignalRunType uint64
 
 const (
@@ -155,6 +154,7 @@ const (
 	RUN_NO_HOOKS   SignalRunType = SignalRunType(SIGNAL_NO_HOOKS)
 )
 
+//go:generate stringer -type HorizontalAlignment
 type HorizontalAlignment uint
 
 const (
@@ -163,6 +163,7 @@ const (
 	ALIGN_CENTER HorizontalAlignment = 2
 )
 
+//go:generate stringer -type VerticalAlignment
 type VerticalAlignment uint
 
 const (
@@ -171,7 +172,6 @@ const (
 	ALIGN_MIDDLE VerticalAlignment = 2
 )
 
-/* Resize mode */
 type ResizeMode uint64
 
 const (
@@ -180,7 +180,7 @@ const (
 	RESIZE_IMMEDIATE
 )
 
-/* Justification */
+//go:generate stringer -type Justification
 type Justification uint64
 
 const (
@@ -190,7 +190,7 @@ const (
 	JUSTIFY_FILL
 )
 
-/* Orientation */
+//go:generate stringer -type Orientation
 type Orientation uint64
 
 func (o Orientation) FromString(value string) (enum interface{}, err error) {
