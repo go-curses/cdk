@@ -23,6 +23,8 @@ help:
 	@echo "  unlocal     - remove go.mod local package replacements"
 	@echo
 	@echo "build targets:"
+	@echo "  deps        - install stringer and bitmasker tools"
+	@echo "  generate    - run go generate"
 	@echo "  examples    - builds all examples"
 	@echo "  build       - build test for main cdk package"
 	@echo "  dev         - build ${DEV_EXAMPLE} with profiling"
@@ -77,8 +79,6 @@ clean-logs:
 	@rm -rfv /tmp/*.cdk.pprof || true
 
 clean: clean-logs
-#	@echo "# cleaning go caches"
-#	@go clean -cache -modcache ./...   || true
 	@echo "# cleaning binaries"
 	@rm -fv go_build_*   || true
 	@rm -fv go_test_*    || true
@@ -87,6 +87,13 @@ clean: clean-logs
 			rm -fv $$tgt || true; \
 		fi; \
 	done
+
+deps:
+	@echo "# installing dependencies..."
+	@echo "#\tinstalling stringer"
+	@GO111MODULE=off go install golang.org/x/tools/cmd/stringer
+	@echo "#\tinstalling bitmasker"
+	@GO111MODULE=off go install github.com/go-curses/bitmasker
 
 generate:
 	@echo "# running go generating..."
