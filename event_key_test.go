@@ -45,7 +45,7 @@ func TestKey(t *testing.T) {
 		So(ek.Modifiers(), ShouldEqual, ModNone)
 		// escape
 		ek = NewEventKey(KeyRune, rune(KeyBEL), ModNone)
-		So(ek.Key(), ShouldEqual, KeyBEL)
+		So(ek.Key(), ShouldEqual, KeySmallG)
 		So(ek.Rune(), ShouldEqual, KeyBEL)
 		So(ek.Modifiers(), ShouldEqual, ModCtrl)
 	})
