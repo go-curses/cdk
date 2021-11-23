@@ -88,6 +88,10 @@ clean: clean-logs
 		fi; \
 	done
 
+generate:
+	@echo "# running go generating..."
+	@go generate ./...
+
 build: clean
 	@echo "# building cdk"
 	@go build -v
