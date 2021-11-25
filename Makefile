@@ -96,8 +96,8 @@ deps:
 	@GO111MODULE=off go install github.com/go-curses/bitmasker
 
 generate:
-	@echo "# running go generating..."
-	@go generate ./...
+	@echo "# generating go sources..."
+	@go generate -v ./...
 
 build: clean
 	@echo "# building cdk"
