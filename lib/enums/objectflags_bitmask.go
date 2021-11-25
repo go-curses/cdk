@@ -4,29 +4,9 @@ package enums
 
 import "strconv"
 
-// Has returns TRUE if the given flag is present in the bitmask
-func (i ObjectFlags) Has(m ObjectFlags) bool {
-	return i&m != 0
-}
-
-// Set returns the bitmask with the given flag set
-func (i ObjectFlags) Set(m ObjectFlags) ObjectFlags {
-	return i | m
-}
-
-// Clear returns the bitmask with the given flag removed
-func (i ObjectFlags) Clear(m ObjectFlags) ObjectFlags {
-	return i &^ m
-}
-
-// Toggle returns the bitmask with the given flag toggled
-func (i ObjectFlags) Toggle(m ObjectFlags) ObjectFlags {
-	return i ^ m
-}
-
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
-	// Re-run the stringer command to generate them again.
+	// Re-run the bitmasker command to generate them again.
 	var x [1]struct{}
 	_ = x[IN_DESTRUCTION-1]
 	_ = x[FLOATING-2]
@@ -44,16 +24,44 @@ var (
 	_ObjectFlags_index_0 = [...]uint8{0, 14, 22}
 )
 
-func (i ObjectFlags) String() string {
-	switch {
-	case 1 <= i && i <= 2:
-		i -= 1
-		return _ObjectFlags_name_0[_ObjectFlags_index_0[i]:_ObjectFlags_index_0[i+1]]
-	case i == 4:
-		return _ObjectFlags_name_1
-	case i == 8:
-		return _ObjectFlags_name_2
-	default:
+func (i ObjectFlags) String() (value string) {
+	update := func(t ObjectFlags, n string) {
+		if i.Has(t) {
+			if len(value) > 0 {
+				value += " | "
+			}
+			value += n
+		}
+	}
+	update(ObjectFlags(1), _ObjectFlags_name_0[_ObjectFlags_index_0[0]:_ObjectFlags_index_0[0+1]])
+	update(ObjectFlags(2), _ObjectFlags_name_0[_ObjectFlags_index_0[1]:_ObjectFlags_index_0[1+1]])
+	update(ObjectFlags(4), _ObjectFlags_name_1)
+	update(ObjectFlags(8), _ObjectFlags_name_2)
+	if value == "" {
 		return "ObjectFlags(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
+	return
+}
+
+// Has returns TRUE if the given flag is present in the bitmask
+func (i ObjectFlags) Has(m ObjectFlags) bool {
+	if i == m {
+		return true
+	}
+	return i&m != 0
+}
+
+// Set returns the bitmask with the given flag set
+func (i ObjectFlags) Set(m ObjectFlags) ObjectFlags {
+	return i | m
+}
+
+// Clear returns the bitmask with the given flag removed
+func (i ObjectFlags) Clear(m ObjectFlags) ObjectFlags {
+	return i &^ m
+}
+
+// Toggle returns the bitmask with the given flag toggled
+func (i ObjectFlags) Toggle(m ObjectFlags) ObjectFlags {
+	return i ^ m
 }

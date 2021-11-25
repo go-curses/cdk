@@ -4,8 +4,56 @@ package enums
 
 import "strconv"
 
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the bitmasker command to generate them again.
+	var x [1]struct{}
+	_ = x[SIGNAL_MATCH_ID-1]
+	_ = x[SIGNAL_MATCH_DETAIL-2]
+	_ = x[SIGNAL_MATCH_CLOSURE-4]
+	_ = x[SIGNAL_MATCH_FUNC-8]
+	_ = x[SIGNAL_MATCH_DATA-16]
+	_ = x[SIGNAL_MATCH_UNBLOCKED-32]
+}
+
+const (
+	_SignalMatchType_name_0 = "MATCHIDMATCHDETAIL"
+	_SignalMatchType_name_1 = "MATCHCLOSURE"
+	_SignalMatchType_name_2 = "MATCHFUNC"
+	_SignalMatchType_name_3 = "MATCHDATA"
+	_SignalMatchType_name_4 = "MATCHUNBLOCKED"
+)
+
+var (
+	_SignalMatchType_index_0 = [...]uint8{0, 7, 18}
+)
+
+func (i SignalMatchType) String() (value string) {
+	update := func(t SignalMatchType, n string) {
+		if i.Has(t) {
+			if len(value) > 0 {
+				value += " | "
+			}
+			value += n
+		}
+	}
+	update(SignalMatchType(1), _SignalMatchType_name_0[_SignalMatchType_index_0[0]:_SignalMatchType_index_0[0+1]])
+	update(SignalMatchType(2), _SignalMatchType_name_0[_SignalMatchType_index_0[1]:_SignalMatchType_index_0[1+1]])
+	update(SignalMatchType(4), _SignalMatchType_name_1)
+	update(SignalMatchType(8), _SignalMatchType_name_2)
+	update(SignalMatchType(16), _SignalMatchType_name_3)
+	update(SignalMatchType(32), _SignalMatchType_name_4)
+	if value == "" {
+		return "SignalMatchType(" + strconv.FormatInt(int64(i), 10) + ")"
+	}
+	return
+}
+
 // Has returns TRUE if the given flag is present in the bitmask
 func (i SignalMatchType) Has(m SignalMatchType) bool {
+	if i == m {
+		return true
+	}
 	return i&m != 0
 }
 
@@ -22,46 +70,4 @@ func (i SignalMatchType) Clear(m SignalMatchType) SignalMatchType {
 // Toggle returns the bitmask with the given flag toggled
 func (i SignalMatchType) Toggle(m SignalMatchType) SignalMatchType {
 	return i ^ m
-}
-
-func _() {
-	// An "invalid array index" compiler error signifies that the constant values have changed.
-	// Re-run the stringer command to generate them again.
-	var x [1]struct{}
-	_ = x[SIGNAL_MATCH_ID-1]
-	_ = x[SIGNAL_MATCH_DETAIL-2]
-	_ = x[SIGNAL_MATCH_CLOSURE-4]
-	_ = x[SIGNAL_MATCH_FUNC-8]
-	_ = x[SIGNAL_MATCH_DATA-16]
-	_ = x[SIGNAL_MATCH_UNBLOCKED-32]
-}
-
-const (
-	_SignalMatchType_name_0 = "SIGNAL_MATCH_IDSIGNAL_MATCH_DETAIL"
-	_SignalMatchType_name_1 = "SIGNAL_MATCH_CLOSURE"
-	_SignalMatchType_name_2 = "SIGNAL_MATCH_FUNC"
-	_SignalMatchType_name_3 = "SIGNAL_MATCH_DATA"
-	_SignalMatchType_name_4 = "SIGNAL_MATCH_UNBLOCKED"
-)
-
-var (
-	_SignalMatchType_index_0 = [...]uint8{0, 15, 34}
-)
-
-func (i SignalMatchType) String() string {
-	switch {
-	case 1 <= i && i <= 2:
-		i -= 1
-		return _SignalMatchType_name_0[_SignalMatchType_index_0[i]:_SignalMatchType_index_0[i+1]]
-	case i == 4:
-		return _SignalMatchType_name_1
-	case i == 8:
-		return _SignalMatchType_name_2
-	case i == 16:
-		return _SignalMatchType_name_3
-	case i == 32:
-		return _SignalMatchType_name_4
-	default:
-		return "SignalMatchType(" + strconv.FormatInt(int64(i), 10) + ")"
-	}
 }

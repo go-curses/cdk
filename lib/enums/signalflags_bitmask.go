@@ -4,8 +4,65 @@ package enums
 
 import "strconv"
 
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the bitmasker command to generate them again.
+	var x [1]struct{}
+	_ = x[SIGNAL_RUN_FIRST-1]
+	_ = x[SIGNAL_RUN_LAST-2]
+	_ = x[SIGNAL_RUN_CLEANUP-4]
+	_ = x[SIGNAL_NO_RECURSE-8]
+	_ = x[SIGNAL_DETAILED-16]
+	_ = x[SIGNAL_ACTION-32]
+	_ = x[SIGNAL_NO_HOOKS-64]
+	_ = x[SIGNAL_MUST_COLLECT-128]
+	_ = x[SIGNAL_DEPRECATED-256]
+}
+
+const (
+	_SignalFlags_name_0 = "RUNFIRSTRUNLAST"
+	_SignalFlags_name_1 = "RUNCLEANUP"
+	_SignalFlags_name_2 = "NORECURSE"
+	_SignalFlags_name_3 = "DETAILED"
+	_SignalFlags_name_4 = "ACTION"
+	_SignalFlags_name_5 = "NOHOOKS"
+	_SignalFlags_name_6 = "MUSTCOLLECT"
+	_SignalFlags_name_7 = "DEPRECATED"
+)
+
+var (
+	_SignalFlags_index_0 = [...]uint8{0, 8, 15}
+)
+
+func (i SignalFlags) String() (value string) {
+	update := func(t SignalFlags, n string) {
+		if i.Has(t) {
+			if len(value) > 0 {
+				value += " | "
+			}
+			value += n
+		}
+	}
+	update(SignalFlags(1), _SignalFlags_name_0[_SignalFlags_index_0[0]:_SignalFlags_index_0[0+1]])
+	update(SignalFlags(2), _SignalFlags_name_0[_SignalFlags_index_0[1]:_SignalFlags_index_0[1+1]])
+	update(SignalFlags(4), _SignalFlags_name_1)
+	update(SignalFlags(8), _SignalFlags_name_2)
+	update(SignalFlags(16), _SignalFlags_name_3)
+	update(SignalFlags(32), _SignalFlags_name_4)
+	update(SignalFlags(64), _SignalFlags_name_5)
+	update(SignalFlags(128), _SignalFlags_name_6)
+	update(SignalFlags(256), _SignalFlags_name_7)
+	if value == "" {
+		return "SignalFlags(" + strconv.FormatInt(int64(i), 10) + ")"
+	}
+	return
+}
+
 // Has returns TRUE if the given flag is present in the bitmask
 func (i SignalFlags) Has(m SignalFlags) bool {
+	if i == m {
+		return true
+	}
 	return i&m != 0
 }
 
@@ -22,58 +79,4 @@ func (i SignalFlags) Clear(m SignalFlags) SignalFlags {
 // Toggle returns the bitmask with the given flag toggled
 func (i SignalFlags) Toggle(m SignalFlags) SignalFlags {
 	return i ^ m
-}
-
-func _() {
-	// An "invalid array index" compiler error signifies that the constant values have changed.
-	// Re-run the stringer command to generate them again.
-	var x [1]struct{}
-	_ = x[SIGNAL_RUN_FIRST-1]
-	_ = x[SIGNAL_RUN_LAST-2]
-	_ = x[SIGNAL_RUN_CLEANUP-4]
-	_ = x[SIGNAL_NO_RECURSE-8]
-	_ = x[SIGNAL_DETAILED-16]
-	_ = x[SIGNAL_ACTION-32]
-	_ = x[SIGNAL_NO_HOOKS-64]
-	_ = x[SIGNAL_MUST_COLLECT-128]
-	_ = x[SIGNAL_DEPRECATED-256]
-}
-
-const (
-	_SignalFlags_name_0 = "SIGNAL_RUN_FIRSTSIGNAL_RUN_LAST"
-	_SignalFlags_name_1 = "SIGNAL_RUN_CLEANUP"
-	_SignalFlags_name_2 = "SIGNAL_NO_RECURSE"
-	_SignalFlags_name_3 = "SIGNAL_DETAILED"
-	_SignalFlags_name_4 = "SIGNAL_ACTION"
-	_SignalFlags_name_5 = "SIGNAL_NO_HOOKS"
-	_SignalFlags_name_6 = "SIGNAL_MUST_COLLECT"
-	_SignalFlags_name_7 = "SIGNAL_DEPRECATED"
-)
-
-var (
-	_SignalFlags_index_0 = [...]uint8{0, 16, 31}
-)
-
-func (i SignalFlags) String() string {
-	switch {
-	case 1 <= i && i <= 2:
-		i -= 1
-		return _SignalFlags_name_0[_SignalFlags_index_0[i]:_SignalFlags_index_0[i+1]]
-	case i == 4:
-		return _SignalFlags_name_1
-	case i == 8:
-		return _SignalFlags_name_2
-	case i == 16:
-		return _SignalFlags_name_3
-	case i == 32:
-		return _SignalFlags_name_4
-	case i == 64:
-		return _SignalFlags_name_5
-	case i == 128:
-		return _SignalFlags_name_6
-	case i == 256:
-		return _SignalFlags_name_7
-	default:
-		return "SignalFlags(" + strconv.FormatInt(int64(i), 10) + ")"
-	}
 }

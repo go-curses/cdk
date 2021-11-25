@@ -4,29 +4,9 @@ package enums
 
 import "strconv"
 
-// Has returns TRUE if the given flag is present in the bitmask
-func (i SignalRunType) Has(m SignalRunType) bool {
-	return i&m != 0
-}
-
-// Set returns the bitmask with the given flag set
-func (i SignalRunType) Set(m SignalRunType) SignalRunType {
-	return i | m
-}
-
-// Clear returns the bitmask with the given flag removed
-func (i SignalRunType) Clear(m SignalRunType) SignalRunType {
-	return i &^ m
-}
-
-// Toggle returns the bitmask with the given flag toggled
-func (i SignalRunType) Toggle(m SignalRunType) SignalRunType {
-	return i ^ m
-}
-
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
-	// Re-run the stringer command to generate them again.
+	// Re-run the bitmasker command to generate them again.
 	var x [1]struct{}
 	_ = x[RUN_FIRST-1]
 	_ = x[RUN_LAST-2]
@@ -47,18 +27,46 @@ var (
 	_SignalRunType_index_0 = [...]uint8{0, 9, 17, 25}
 )
 
-func (i SignalRunType) String() string {
-	switch {
-	case 1 <= i && i <= 3:
-		i -= 1
-		return _SignalRunType_name_0[_SignalRunType_index_0[i]:_SignalRunType_index_0[i+1]]
-	case i == 8:
-		return _SignalRunType_name_1
-	case i == 32:
-		return _SignalRunType_name_2
-	case i == 64:
-		return _SignalRunType_name_3
-	default:
+func (i SignalRunType) String() (value string) {
+	update := func(t SignalRunType, n string) {
+		if i.Has(t) {
+			if len(value) > 0 {
+				value += " | "
+			}
+			value += n
+		}
+	}
+	update(SignalRunType(1), _SignalRunType_name_0[_SignalRunType_index_0[0]:_SignalRunType_index_0[0+1]])
+	update(SignalRunType(2), _SignalRunType_name_0[_SignalRunType_index_0[1]:_SignalRunType_index_0[1+1]])
+	update(SignalRunType(3), _SignalRunType_name_0[_SignalRunType_index_0[2]:_SignalRunType_index_0[2+1]])
+	update(SignalRunType(8), _SignalRunType_name_1)
+	update(SignalRunType(32), _SignalRunType_name_2)
+	update(SignalRunType(64), _SignalRunType_name_3)
+	if value == "" {
 		return "SignalRunType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
+	return
+}
+
+// Has returns TRUE if the given flag is present in the bitmask
+func (i SignalRunType) Has(m SignalRunType) bool {
+	if i == m {
+		return true
+	}
+	return i&m != 0
+}
+
+// Set returns the bitmask with the given flag set
+func (i SignalRunType) Set(m SignalRunType) SignalRunType {
+	return i | m
+}
+
+// Clear returns the bitmask with the given flag removed
+func (i SignalRunType) Clear(m SignalRunType) SignalRunType {
+	return i &^ m
+}
+
+// Toggle returns the bitmask with the given flag toggled
+func (i SignalRunType) Toggle(m SignalRunType) SignalRunType {
+	return i ^ m
 }

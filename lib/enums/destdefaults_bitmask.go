@@ -4,8 +4,49 @@ package enums
 
 import "strconv"
 
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the bitmasker command to generate them again.
+	var x [1]struct{}
+	_ = x[DEST_DEFAULT_MOTION-1]
+	_ = x[DEST_DEFAULT_HIGHLIGHT-2]
+	_ = x[DEST_DEFAULT_DROP-4]
+	_ = x[DEST_DEFAULT_ALL-0]
+}
+
+const (
+	_DestDefaults_name_0 = "DEFAULTALLDEFAULTMOTIONDEFAULTHIGHLIGHT"
+	_DestDefaults_name_1 = "DEFAULTDROP"
+)
+
+var (
+	_DestDefaults_index_0 = [...]uint8{0, 10, 23, 39}
+)
+
+func (i DestDefaults) String() (value string) {
+	update := func(t DestDefaults, n string) {
+		if i.Has(t) {
+			if len(value) > 0 {
+				value += " | "
+			}
+			value += n
+		}
+	}
+	update(DestDefaults(0), _DestDefaults_name_0[_DestDefaults_index_0[0]:_DestDefaults_index_0[0+1]])
+	update(DestDefaults(1), _DestDefaults_name_0[_DestDefaults_index_0[1]:_DestDefaults_index_0[1+1]])
+	update(DestDefaults(2), _DestDefaults_name_0[_DestDefaults_index_0[2]:_DestDefaults_index_0[2+1]])
+	update(DestDefaults(4), _DestDefaults_name_1)
+	if value == "" {
+		return "DestDefaults(" + strconv.FormatInt(int64(i), 10) + ")"
+	}
+	return
+}
+
 // Has returns TRUE if the given flag is present in the bitmask
 func (i DestDefaults) Has(m DestDefaults) bool {
+	if i == m {
+		return true
+	}
 	return i&m != 0
 }
 
@@ -22,34 +63,4 @@ func (i DestDefaults) Clear(m DestDefaults) DestDefaults {
 // Toggle returns the bitmask with the given flag toggled
 func (i DestDefaults) Toggle(m DestDefaults) DestDefaults {
 	return i ^ m
-}
-
-func _() {
-	// An "invalid array index" compiler error signifies that the constant values have changed.
-	// Re-run the stringer command to generate them again.
-	var x [1]struct{}
-	_ = x[DEST_DEFAULT_MOTION-1]
-	_ = x[DEST_DEFAULT_HIGHLIGHT-2]
-	_ = x[DEST_DEFAULT_DROP-4]
-	_ = x[DEST_DEFAULT_ALL-0]
-}
-
-const (
-	_DestDefaults_name_0 = "DEST_DEFAULT_ALLDEST_DEFAULT_MOTIONDEST_DEFAULT_HIGHLIGHT"
-	_DestDefaults_name_1 = "DEST_DEFAULT_DROP"
-)
-
-var (
-	_DestDefaults_index_0 = [...]uint8{0, 16, 35, 57}
-)
-
-func (i DestDefaults) String() string {
-	switch {
-	case i <= 2:
-		return _DestDefaults_name_0[_DestDefaults_index_0[i]:_DestDefaults_index_0[i+1]]
-	case i == 4:
-		return _DestDefaults_name_1
-	default:
-		return "DestDefaults(" + strconv.FormatInt(int64(i), 10) + ")"
-	}
 }

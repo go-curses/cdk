@@ -4,8 +4,50 @@ package enums
 
 import "strconv"
 
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the bitmasker command to generate them again.
+	var x [1]struct{}
+	_ = x[TARGET_SAME_APP-1]
+	_ = x[TARGET_SAME_WIDGET-2]
+	_ = x[TARGET_OTHER_APP-4]
+	_ = x[TARGET_OTHER_WIDGET-8]
+}
+
+const (
+	_TargetFlags_name_0 = "SAMEAPPSAMEWIDGET"
+	_TargetFlags_name_1 = "OTHERAPP"
+	_TargetFlags_name_2 = "OTHERWIDGET"
+)
+
+var (
+	_TargetFlags_index_0 = [...]uint8{0, 7, 17}
+)
+
+func (i TargetFlags) String() (value string) {
+	update := func(t TargetFlags, n string) {
+		if i.Has(t) {
+			if len(value) > 0 {
+				value += " | "
+			}
+			value += n
+		}
+	}
+	update(TargetFlags(1), _TargetFlags_name_0[_TargetFlags_index_0[0]:_TargetFlags_index_0[0+1]])
+	update(TargetFlags(2), _TargetFlags_name_0[_TargetFlags_index_0[1]:_TargetFlags_index_0[1+1]])
+	update(TargetFlags(4), _TargetFlags_name_1)
+	update(TargetFlags(8), _TargetFlags_name_2)
+	if value == "" {
+		return "TargetFlags(" + strconv.FormatInt(int64(i), 10) + ")"
+	}
+	return
+}
+
 // Has returns TRUE if the given flag is present in the bitmask
 func (i TargetFlags) Has(m TargetFlags) bool {
+	if i == m {
+		return true
+	}
 	return i&m != 0
 }
 
@@ -22,38 +64,4 @@ func (i TargetFlags) Clear(m TargetFlags) TargetFlags {
 // Toggle returns the bitmask with the given flag toggled
 func (i TargetFlags) Toggle(m TargetFlags) TargetFlags {
 	return i ^ m
-}
-
-func _() {
-	// An "invalid array index" compiler error signifies that the constant values have changed.
-	// Re-run the stringer command to generate them again.
-	var x [1]struct{}
-	_ = x[TARGET_SAME_APP-1]
-	_ = x[TARGET_SAME_WIDGET-2]
-	_ = x[TARGET_OTHER_APP-4]
-	_ = x[TARGET_OTHER_WIDGET-8]
-}
-
-const (
-	_TargetFlags_name_0 = "TARGET_SAME_APPTARGET_SAME_WIDGET"
-	_TargetFlags_name_1 = "TARGET_OTHER_APP"
-	_TargetFlags_name_2 = "TARGET_OTHER_WIDGET"
-)
-
-var (
-	_TargetFlags_index_0 = [...]uint8{0, 15, 33}
-)
-
-func (i TargetFlags) String() string {
-	switch {
-	case 1 <= i && i <= 2:
-		i -= 1
-		return _TargetFlags_name_0[_TargetFlags_index_0[i]:_TargetFlags_index_0[i+1]]
-	case i == 4:
-		return _TargetFlags_name_1
-	case i == 8:
-		return _TargetFlags_name_2
-	default:
-		return "TargetFlags(" + strconv.FormatInt(int64(i), 10) + ")"
-	}
 }
