@@ -8,7 +8,7 @@ require (
 	github.com/gdamore/encoding v1.0.0
 	github.com/go-curses/term v1.2.1
 	github.com/go-curses/terminfo v1.0.0
-	github.com/gofrs/uuid v4.1.0+incompatible
+	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/gopherjs/gopherjs v0.0.0-20211111143520-d0d5ecc1a356 // indirect
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackdoe/go-gpmctl v0.0.0-20200317085308-34b4a75160c2
@@ -26,7 +26,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
-	golang.org/x/sys v0.0.0-20211123173158-ef496fb156ab
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7
 )
