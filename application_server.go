@@ -35,12 +35,20 @@ import (
 	"github.com/go-curses/cdk/log"
 )
 
+const TypeApplicationServer CTypeTag = "cdk-application-server"
+
+func init() {
+	_ = TypesManager.AddType(TypeApplicationServer, nil)
+}
+
 type ApplicationServer interface {
-	Init()
+	Object
+
+	Init() (already bool)
 	GetClients() (clients []uuid.UUID)
 	GetClient(id uuid.UUID) (*CApplicationServerClient, error)
-	App() *CApplication
-	Display() *CDisplay
+	App() (app *CApplication)
+	Display() (display *CDisplay)
 	SetListenAddress(address string)
 	GetListenAddress() (address string)
 	SetListenPort(port int)
@@ -48,9 +56,14 @@ type ApplicationServer interface {
 	Stop() (err error)
 	Daemon() (err error)
 	Start() (err error)
+	ClearAuthHandlers()
+	InstallAuthHandler(handler ServerAuthHandler) (err error)
+	UnInstallAuthHandler(handler ServerAuthHandler) (err error)
 }
 
 type CApplicationServer struct {
+	CObject
+
 	name         string
 	usage        string
 	description  string
@@ -73,10 +86,7 @@ type CApplicationServer struct {
 	listener net.Listener
 	clients  map[uuid.UUID]*CApplicationServerClient
 
-	initialized bool
-	daemonize   bool
-
-	sync.RWMutex
+	daemonize bool
 }
 
 func NewApplicationServer(name, usage, description, version, tag, title string, clientInitFn DisplayInitFn, serverInitFn DisplayInitFn, privateKeyPath string) *CApplicationServer {
@@ -97,15 +107,16 @@ func NewApplicationServer(name, usage, description, version, tag, title string, 
 	return as
 }
 
-func (s *CApplicationServer) Init() {
-	if s.initialized {
-		return
+func (s *CApplicationServer) Init() (already bool) {
+	if s.InitTypeItem(TypeApplicationServer, s) {
+		return true
 	}
+	s.CObject.Init()
 	s.clients = make(map[uuid.UUID]*CApplicationServerClient)
 	s.handlers = []ServerAuthHandler{
 		NewDefaultServerAuthHandler(),
 	}
-	s.app = NewApp(s.name, s.usage, s.description, s.version, s.tag, s.title, "/dev/tty", s.serverInitFn)
+	s.app = NewApplication(s.name, s.usage, s.description, s.version, s.tag, s.title, "/dev/tty", s.serverInitFn)
 	s.app.runFn = s.runner
 	s.display = s.app.display
 	s.App().AddFlag(&cli.BoolFlag{
@@ -131,7 +142,7 @@ func (s *CApplicationServer) Init() {
 		Value:       s.privateKeyPath,
 		DefaultText: s.privateKeyPath,
 	})
-	s.initialized = true
+	return false
 }
 
 func (s *CApplicationServer) newClient(conn *ssh.ServerConn, channels <-chan ssh.NewChannel, requests <-chan *ssh.Request) (asc *CApplicationServerClient, err error) {
@@ -469,17 +480,16 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 	if p, t, err = pty.Open(); err != nil {
 		panic(err)
 	}
-	app := &CApplication{
-		name:        s.name,
-		usage:       s.usage,
-		description: s.description,
-		version:     s.version,
-		tag:         s.tag,
-		title:       s.title,
-		ttyPath:     "",
-		initFn:      s.clientInitFn,
-	}
-	app.init()
+	app := NewApplication(
+		s.name,
+		s.usage,
+		s.description,
+		s.version,
+		s.tag,
+		s.title,
+		"",
+		s.clientInitFn,
+	)
 	display := NewDisplayWithHandle("display-service", t)
 	display.app = app
 	username := env.Get("USER", "nil")
