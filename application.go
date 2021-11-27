@@ -35,6 +35,12 @@ import (
 	"github.com/go-curses/cdk/log"
 )
 
+const TypeApplication CTypeTag = "cdk-application"
+
+func init() {
+	_ = TypesManager.AddType(TypeApplication, nil)
+}
+
 type ScreenStateReq uint64
 
 const (
@@ -59,6 +65,10 @@ type DisplayInitFn = func(d Display) error
 type AppMainFn func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
 
 type Application interface {
+	Object
+
+	SetupDisplay()
+	Destroy()
 	GetContext() *cli.Context
 	Tag() string
 	Title() string
@@ -68,15 +78,24 @@ type Application interface {
 	Display() *CDisplay
 	CLI() *cli.App
 	Version() string
-	SetupDisplay()
 	InitUI() error
-	AddFlag(f cli.Flag)
-	AddCommand(c *cli.Command)
-	Run(args []string) error
+	AddFlag(flag cli.Flag)
+	RemoveFlag(flag cli.Flag) (removed bool)
+	AddFlags(flags []cli.Flag)
+	AddCommand(command *cli.Command)
+	AddCommands(commands []*cli.Command)
+	Run(args []string) (err error)
+	MainInit(ctx *cli.Context) (ok bool)
+	MainRun(fn AppMainFn)
+	MainEventsPending() (pending bool)
+	MainIterateEvents()
+	MainFinish()
 	CliActionFn(ctx *cli.Context) error
 }
 
 type CApplication struct {
+	CObject
+
 	id          uuid.UUID
 	name        string
 	usage       string
@@ -94,7 +113,7 @@ type CApplication struct {
 	valid       bool
 }
 
-func NewApp(name, usage, description, version, tag, title, ttyPath string, initFn DisplayInitFn) *CApplication {
+func NewApplication(name, usage, description, version, tag, title, ttyPath string, initFn DisplayInitFn) *CApplication {
 	id, _ := uuid.NewV4()
 	app := &CApplication{
 		id:          id,
@@ -108,11 +127,15 @@ func NewApp(name, usage, description, version, tag, title, ttyPath string, initF
 		initFn:      initFn,
 		runFn:       nil,
 	}
-	app.init()
+	app.Init()
 	return app
 }
 
-func (app *CApplication) init() {
+func (app *CApplication) Init() (already bool) {
+	if app.InitTypeItem(TypeApplicationServer, app) {
+		return true
+	}
+	app.CObject.Init()
 	app.dispLock = &sync.RWMutex{}
 	app.cli = &cli.App{
 		Name:        app.name,
@@ -134,8 +157,7 @@ func (app *CApplication) init() {
 		Usage:   "display command-line usage information",
 	}
 	cdkApps[app.id] = app
-	app.valid = true
-	return
+	return false
 }
 
 func (app *CApplication) SetupDisplay() {
