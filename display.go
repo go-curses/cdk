@@ -100,8 +100,8 @@ type Display interface {
 	GetWindowOverlayRegion(windowId, overlayId uuid.UUID) (region ptypes.Region)
 	SetWindowOverlayRegion(windowId, overlayId uuid.UUID, region ptypes.Region)
 	App() *CApplication
-	SetEventFocus(widget interface{}) error
-	GetEventFocus() (widget interface{})
+	SetEventFocus(widget Object) error
+	GetEventFocus() (widget Object)
 	GetPriorEvent() (event Event)
 	ProcessEvent(evt Event) enums.EventFlag
 	DrawScreen() enums.EventFlag
@@ -143,7 +143,7 @@ type CDisplay struct {
 	ttyHandle  *os.File
 	screen     Screen
 	captured   bool
-	eventFocus interface{}
+	eventFocus Object
 	priorEvent Event
 	quitters   map[string]func()
 
@@ -484,9 +484,9 @@ func (d *CDisplay) getOverlay(windowId uuid.UUID) (overlay Window) {
 	return
 }
 
-func (d *CDisplay) SetEventFocus(widget interface{}) error {
+func (d *CDisplay) SetEventFocus(widget Object) error {
 	if widget != nil {
-		if _, ok := widget.(Sensitive); !ok {
+		if _, ok := widget.Self().(Sensitive); !ok {
 			return fmt.Errorf("widget does not implement Sensitive: %v (%T)", widget, widget)
 		}
 	}
@@ -496,7 +496,7 @@ func (d *CDisplay) SetEventFocus(widget interface{}) error {
 	return nil
 }
 
-func (d *CDisplay) GetEventFocus() (widget interface{}) {
+func (d *CDisplay) GetEventFocus() (widget Object) {
 	widget = d.eventFocus
 	return
 }
@@ -518,7 +518,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		d.eventMutex.Unlock()
 	}()
 	if d.eventFocus != nil {
-		if sensitive, ok := d.eventFocus.(Sensitive); ok {
+		if sensitive, ok := d.eventFocus.Self().(Sensitive); ok {
 			return sensitive.ProcessEvent(evt)
 		}
 		d.LogError("event focus does not implement Sensitive: %v (%T)", d.eventFocus, d.eventFocus)
