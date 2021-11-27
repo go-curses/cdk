@@ -23,7 +23,7 @@ import (
 func TestCdk(t *testing.T) {
 	Convey("Making a new app instance", t, func() {
 		Convey("validating factory", func() {
-			app := NewApp(
+			app := NewApplication(
 				"AppName", "AppUsage",
 				"AppDesc", "v0.0.0",
 				"app-tag", "AppTitle",
