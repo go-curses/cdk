@@ -80,8 +80,9 @@ clean-logs:
 
 clean: clean-logs
 	@echo "# cleaning binaries"
-	@rm -fv go_build_*   || true
-	@rm -fv go_test_*    || true
+	@rm -fv go_build_*    || true
+	@rm -fv go_test_*     || true
+	@rm -fv demoplugin.so || true
 	@for tgt in `ls examples`; do \
 		if [ -d examples/$$tgt ]; then \
 			rm -fv $$tgt || true; \
@@ -103,7 +104,37 @@ build: clean
 	@echo "# building cdk"
 	@go build -v
 
-debug-examples: clean
+debug-examples-demoplugin:
+	@echo "# building debug demoplugin..."
+	@if [ -d examples/pluginworld/demoplugin ]; then \
+		cd examples/pluginworld/demoplugin; \
+		( go build -v \
+			-buildmode=plugin \
+			-ldflags="\
+					-X 'main.IncludeProfiling=true' \
+					-X 'main.IncludeLogFile=true'   \
+					-X 'main.IncludeLogLevel=true'  \
+					" \
+			-gcflags=all="-N -l" \
+			-o ../../../demoplugin.so \
+			2>&1 \
+		) > ../../../demoplugin.build.log; \
+		cd -; \
+	fi
+
+examples-demoplugin:
+	@echo "# building demoplugin..."
+	@if [ -d examples/pluginworld/demoplugin ]; then \
+			cd examples/pluginworld/demoplugin; \
+			( go build -v \
+				-buildmode=plugin \
+				-o ../../../demoplugin.so \
+				2>&1 \
+			) > ../../../demoplugin.build.log; \
+			cd -; \
+		fi
+
+debug-examples: clean debug-examples-demoplugin
 	@echo "# building debug versions of all examples..."
 	@for name in `ls examples`; do \
 		if [ -d examples/$$name ]; then \
@@ -111,10 +142,10 @@ debug-examples: clean
 			echo -n "#\tbuilding $$name... "; \
 			( go build -v \
 				-ldflags="\
--X 'main.IncludeProfiling=true' \
--X 'main.IncludeLogFile=true' \
--X 'main.IncludeLogLevel=true' \
-" \
+				-X 'main.IncludeProfiling=true' \
+				-X 'main.IncludeLogFile=true' \
+				-X 'main.IncludeLogLevel=true' \
+				" \
 				-gcflags=all="-N -l" \
 				-o ../../$$name 2>&1 \
 			) > ../../$$name.build.log; \
@@ -125,7 +156,7 @@ debug-examples: clean
 		fi; \
 	done
 
-examples: clean
+examples: clean examples-demoplugin
 	@echo "# building all examples..."
 	@for name in `ls examples`; do \
 		if [ -d examples/$$name ]; then \
