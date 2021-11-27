@@ -54,7 +54,7 @@ func init() {
 }
 
 func main() {
-	app := cdk.NewApp(
+	app := cdk.NewApplication(
 		"mainworld",
 		"An example CDK application",
 		"Main World is an example CDK application",
