@@ -26,7 +26,7 @@ type DisplayManagerFn func(d Display)
 func WithApp(initFn DisplayInitFn, action AppFn) func() {
 	return func() {
 
-		app := NewApp(
+		app := NewApplication(
 			"AppName", "AppUsage",
 			"AppDesc", "v0.0.0",
 			"app-tag", "AppTitle",
