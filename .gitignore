@@ -126,3 +126,7 @@ go_test_*
 !examples/appserver/
 /mainworld
 !examples/mainworld/
+/pluginworld
+!examples/pluginworld/
+/demoplugin.so
+!examples/pluginworld/demoplugin
