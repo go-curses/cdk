@@ -20,9 +20,9 @@ import (
 )
 
 // EventPaste is used to mark the start and end of a bracketed paste.
-// An event with .MainInit() true will be sent to mark the start.
+// An event with .Start() true will be sent to mark the start.
 // Then a number of keys will be sent to indicate that the content
-// is pasted in.  At the end, an event with .MainInit() false will be sent.
+// is pasted in.  At the end, an event with .Start() false will be sent.
 type EventPaste struct {
 	start bool
 	t     time.Time
@@ -33,7 +33,7 @@ func (ev *EventPaste) When() time.Time {
 	return ev.t
 }
 
-// MainInit returns true if this is the start of a paste.
+// Start returns true if this is the start of a paste.
 func (ev *EventPaste) Start() bool {
 	return ev.start
 }
