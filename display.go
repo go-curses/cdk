@@ -122,6 +122,7 @@ type CDisplay struct {
 	ttyHandle  *os.File
 	screen     Screen
 	captured   bool
+	started    bool
 	eventFocus Object
 	priorEvent Event
 
@@ -166,6 +167,7 @@ func (d *CDisplay) Init() (already bool) {
 	d.CObject.Init()
 
 	d.captured = false
+	d.started = false
 	d.running = false
 	d.runLock = &sync.RWMutex{}
 	d.done = make(chan bool)
@@ -789,32 +791,41 @@ processEventWorkerLoop:
 
 func (d *CDisplay) screenRequestWorker(ctx context.Context) {
 	// this happens in its own go thread
-	startupCompleted := false
-	d.Connect(SignalStartupComplete, "display-screen-request-worker-startup-complete-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
-		startupCompleted = true
-		_ = d.Disconnect(SignalStartupComplete, "display-screen-request-worker-startup-complete-handler")
-		return enums.EVENT_PASS
-	})
 screenRequestWorkerLoop:
 	for d.IsRunning() {
 		switch <-d.requests {
 		case displayDrawRequest:
-			if startupCompleted && d.screen != nil {
+			d.RLock()
+			if d.started && d.screen != nil {
+				d.RUnlock()
 				d.DrawScreen()
+			} else {
+				d.RUnlock()
 			}
 		case displayShowRequest:
-			if startupCompleted && d.screen != nil {
+			d.RLock()
+			if d.started && d.screen != nil {
+				d.RUnlock()
 				d.screen.Show()
+			} else {
+				d.RUnlock()
 			}
 		case displaySyncRequest:
-			if startupCompleted && d.screen != nil {
+			d.RLock()
+			if d.started && d.screen != nil {
+				d.RUnlock()
 				d.screen.Sync()
+			} else {
+				d.RUnlock()
 			}
 		case displayFuncRequest:
 			// one displayFuncRequest per d.queue fn
-			if fn, ok := <-d.queue; ok {
-				if err := fn(d); err != nil {
-					log.ErrorF("async/await handler error: %v", err)
+			qlen := len(d.queue)
+			for i := 0; i < qlen; i++ {
+				if fn, ok := <-d.queue; ok {
+					if err := fn(d); err != nil {
+						log.ErrorF("async/await handler error: %v", err)
+					}
 				}
 			}
 		case displayQuitRequest:
@@ -863,6 +874,13 @@ func (d *CDisplay) Startup() (ctx context.Context, cancel context.CancelFunc, wg
 		d.LogErr(err)
 		return
 	}
+	d.Connect(SignalStartupComplete, "display-screen-startup-complete-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		d.Lock()
+		d.started = true
+		d.Unlock()
+		_ = d.Disconnect(SignalStartupComplete, "display-screen-startup-complete-handler")
+		return enums.EVENT_PASS
+	})
 	d.setRunning(true)
 	ctx, cancel = context.WithCancel(context.Background())
 	wg = &sync.WaitGroup{}
