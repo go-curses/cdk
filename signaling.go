@@ -33,9 +33,12 @@ func init() {
 type Signaling interface {
 	TypeItem
 
+	Init() (already bool)
+	Handled(signal Signal, handle string) (found bool)
 	Connect(signal Signal, handle string, c SignalListenerFn, data ...interface{})
 	Disconnect(signal Signal, handle string) error
 	Emit(signal Signal, argv ...interface{}) enums.EventFlag
+	HasListeners(signal Signal) (has bool)
 	StopSignal(signal Signal)
 	IsSignalStopped(signal Signal) bool
 	PassSignal(signal Signal)
@@ -43,7 +46,7 @@ type Signaling interface {
 	ResumeSignal(signal Signal)
 	Freeze()
 	Thaw()
-	IsFrozen() bool
+	IsFrozen() (frozen bool)
 }
 
 type CSignaling struct {
