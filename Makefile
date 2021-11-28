@@ -45,14 +45,14 @@ test: vet
 		echo "# testing cdk: $$tgt ..."; \
 		cd $$tgt; \
 		go test -v ./...; \
-		cd ..; \
+		cd - > /dev/null; \
 	done
 	@for tgt in `ls examples`; do \
 		if [ -d examples/$$tgt ]; then \
 			echo "# testing cdk example: $$tgt ..."; \
 			cd examples/$$tgt; \
 			go test -v ./...; \
-			cd ../..; \
+			cd - > /dev/null; \
 		fi; \
 	done
 	@for tgt in `ls lib`; do \
@@ -60,7 +60,7 @@ test: vet
 			echo "# testing cdk lib: $$tgt ..."; \
 			cd lib/$$tgt; \
 			go test -v ./...; \
-			cd ../..; \
+			cd - > /dev/null; \
 		fi; \
 	done
 
@@ -105,7 +105,7 @@ build: clean
 	@go build -v
 
 debug-examples-demoplugin:
-	@echo "# building debug demoplugin..."
+	@echo -n "# building debug demoplugin..."
 	@if [ -d examples/pluginworld/demoplugin ]; then \
 		cd examples/pluginworld/demoplugin; \
 		( go build -v \
@@ -116,23 +116,27 @@ debug-examples-demoplugin:
 					-X 'main.IncludeLogLevel=true'  \
 					" \
 			-gcflags=all="-N -l" \
-			-o ../../../demoplugin.so \
-			2>&1 \
+			-o ../../../demoplugin.so 2>&1 \
 		) > ../../../demoplugin.build.log; \
-		cd -; \
+		cd - > /dev/null; \
+		[ -f demoplugin.so ] \
+			&& echo "done." \
+			|| echo "failed.\n>\tsee ./demoplugin.build.log for errors"; \
 	fi
 
 examples-demoplugin:
-	@echo "# building demoplugin..."
+	@echo -n "# building demoplugin..."
 	@if [ -d examples/pluginworld/demoplugin ]; then \
-			cd examples/pluginworld/demoplugin; \
-			( go build -v \
-				-buildmode=plugin \
-				-o ../../../demoplugin.so \
-				2>&1 \
-			) > ../../../demoplugin.build.log; \
-			cd -; \
-		fi
+		cd examples/pluginworld/demoplugin; \
+		( go build -v \
+			-buildmode=plugin \
+			-o ../../../demoplugin.so 2>&1 \
+		) > ../../../demoplugin.build.log; \
+		cd - > /dev/null; \
+		[ -f demoplugin.so ] \
+			&& echo "done." \
+			|| echo "failed.\n>\tsee ./demoplugin.build.log for errors"; \
+	fi
 
 debug-examples: clean debug-examples-demoplugin
 	@echo "# building debug versions of all examples..."
@@ -149,7 +153,7 @@ debug-examples: clean debug-examples-demoplugin
 				-gcflags=all="-N -l" \
 				-o ../../$$name 2>&1 \
 			) > ../../$$name.build.log; \
-			cd ../..; \
+			cd - > /dev/null; \
 			[ -f $$name ] \
 				&& echo "done." \
 				|| echo "failed.\n>\tsee ./$$name.build.log for errors"; \
@@ -163,7 +167,7 @@ examples: clean examples-demoplugin
 			cd examples/$$name/; \
 			echo -n "#\tbuilding $$name... "; \
 			( go build -v -o ../../$$name 2>&1 ) > ../../$$name.build.log; \
-			cd ../..; \
+			cd - > /dev/null; \
 			[ -f $$name ] \
 				&& echo "done." \
 				|| echo "failed.\n>\tsee ./$$name.build.log for errors"; \
@@ -207,7 +211,7 @@ dev: clean
 				-ldflags="-X 'main.IncludeProfiling=true'" \
 				-gcflags=all="-N -l" \
 			2>&1 ) > ../../${DEV_EXAMPLE}.build.log; \
-		cd ../..; \
+		cd - > /dev/null; \
 		[ -f ${DEV_EXAMPLE} ] \
 			&& echo "done." \
 			|| echo "failed.\n>\tsee ./${DEV_EXAMPLE}.build.log for errors"; \
