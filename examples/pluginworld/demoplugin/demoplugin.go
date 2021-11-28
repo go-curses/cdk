@@ -62,7 +62,9 @@ func init() {
 		"demoplugin",
 		"Demo Plugin",
 		"/dev/tty",
-		func(d cdk.Display) error {
+	)
+	CdkApp.Connect(cdk.SignalStartup, "demoplugin-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		if app, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
 			log.DebugF("initFn hit")
 			d.CaptureCtrlC()
 			w := cdk.NewWindow("Demo Plugin", d)
@@ -113,10 +115,13 @@ func init() {
 				d.RequestShow()         // flag buffer for immediate show
 				return enums.EVENT_PASS // keep looping every second
 			})
-			d.AddQuitHandler("helloworld", func() {
+			d.Connect(cdk.SignalShutdown, "helloworld-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
 				fmt.Printf("Quitting helloworld normally.\n")
+				return enums.EVENT_PASS
 			})
-			return nil
-		},
-	)
+			app.NotifyStartupComplete()
+			return enums.EVENT_PASS
+		}
+		return enums.EVENT_STOP
+	})
 }

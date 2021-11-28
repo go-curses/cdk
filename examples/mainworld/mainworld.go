@@ -62,7 +62,9 @@ func main() {
 		"mainworld",
 		"Main World",
 		"/dev/tty",
-		func(d cdk.Display) error {
+	)
+	app.Connect(cdk.SignalStartup, "mainworld-startup", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		if _, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
 			log.DebugF("initFn hit")
 			d.CaptureCtrlC()
 			w := &MainWindow{}
@@ -74,15 +76,16 @@ func main() {
 				d.RequestShow()         // flag buffer for immediate show
 				return enums.EVENT_PASS // keep looping every second
 			})
-			d.AddQuitHandler("mainworld-quitter", func() {
-				fmt.Printf("Quitting mainworld normally.\n")
-			})
-			return nil
-		},
-	)
+			app.NotifyStartupComplete()
+			return enums.EVENT_PASS
+		}
+		return enums.EVENT_STOP
+	})
+	app.Connect(cdk.SignalShutdown, "mainworld-quitter", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+		fmt.Printf("Quitting mainworld normally.\n")
+		return enums.EVENT_PASS
+	})
 	cdk.Init()
-	appCli := app.CLI()
-	appCli.Setup()
 	if app.MainInit(nil) {
 		app.MainRun(func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
 			for app.MainEventsPending() {

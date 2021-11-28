@@ -37,42 +37,50 @@ func main() {
 	}
 }
 
-func clientStartup(d cdk.Display) error {
-	log.DebugF("initFn hit")
-	d.CaptureCtrlC()
-	w := &AppWindow{}
-	w.Init()
-	w.SetTitle("Client-Side")
-	d.SetActiveWindow(w)
-	// draw the screen every second so the time displayed is now
-	cdk.AddTimeout(time.Second, func() enums.EventFlag {
-		d.RequestDraw()         // redraw the window, is buffered
-		d.RequestShow()         // flag buffer for immediate show
-		return enums.EVENT_PASS // keep looping every second
-	})
-	// this happens on the server-side?
-	d.AddQuitHandler("appwindow", func() {
-		log.DebugF("clientStartup - exited normally.\n")
-	})
-	return nil
+func clientStartup(data []interface{}, argv ...interface{}) enums.EventFlag {
+	if app, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
+		log.DebugF("initFn hit")
+		d.CaptureCtrlC()
+		w := &AppWindow{}
+		w.Init()
+		w.SetTitle("Client-Side")
+		d.SetActiveWindow(w)
+		// draw the screen every second so the time displayed is now
+		cdk.AddTimeout(time.Second, func() enums.EventFlag {
+			d.RequestDraw()         // redraw the window, is buffered
+			d.RequestShow()         // flag buffer for immediate show
+			return enums.EVENT_PASS // keep looping every second
+		})
+		d.Connect(cdk.SignalShutdown, "appserver-client-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+			log.DebugF("clientStartup - exited normally.\n")
+			return enums.EVENT_PASS
+		})
+		app.NotifyStartupComplete()
+		return enums.EVENT_PASS
+	}
+	return enums.EVENT_STOP
 }
 
-func serverStartup(d cdk.Display) error {
-	log.DebugF("initFn hit")
-	d.CaptureCtrlC()
-	w := &AppWindow{}
-	w.Init()
-	w.SetTitle("Server-Side")
-	d.SetActiveWindow(w)
-	// draw the screen every second so the time displayed is now
-	cdk.AddTimeout(time.Second, func() enums.EventFlag {
-		d.RequestDraw()         // redraw the window, is buffered
-		d.RequestShow()         // flag buffer for immediate show
-		return enums.EVENT_PASS // keep looping every second
-	})
-	// this happens on the server-side?
-	d.AddQuitHandler("appwindow", func() {
-		log.DebugF("serverStartup - exited normally.\n")
-	})
-	return nil
+func serverStartup(data []interface{}, argv ...interface{}) enums.EventFlag {
+	if app, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
+		log.DebugF("initFn hit")
+		d.CaptureCtrlC()
+		w := &AppWindow{}
+		w.Init()
+		w.SetTitle("Server-Side")
+		d.SetActiveWindow(w)
+		// draw the screen every second so the time displayed is now
+		cdk.AddTimeout(time.Second, func() enums.EventFlag {
+			d.RequestDraw()         // redraw the window, is buffered
+			d.RequestShow()         // flag buffer for immediate show
+			return enums.EVENT_PASS // keep looping every second
+		})
+		d.Connect(cdk.SignalShutdown, "appserver-server-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+			log.DebugF("serverStartup - exited normally.\n")
+			return enums.EVENT_PASS
+		})
+		app.NotifyStartupComplete()
+		return enums.EVENT_PASS
+	}
+	return enums.EVENT_STOP
 }

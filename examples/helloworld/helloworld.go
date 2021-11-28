@@ -61,24 +61,29 @@ func main() {
 		"helloworld",
 		"Hello World",
 		"/dev/tty",
-		func(d cdk.Display) error {
+	)
+	app.Connect(cdk.SignalStartup, "helloworld-init-ui-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		if _, display, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
 			log.DebugF("initFn hit")
-			d.CaptureCtrlC()
+			display.CaptureCtrlC()
 			w := &HelloWindow{}
 			w.Init()
-			d.SetActiveWindow(w)
+			display.SetActiveWindow(w)
 			// draw the screen every second so the time displayed is now
 			cdk.AddTimeout(time.Second, func() enums.EventFlag {
-				d.RequestDraw()         // redraw the window, is buffered
-				d.RequestShow()         // flag buffer for immediate show
+				display.RequestDraw()   // redraw the window, is buffered
+				display.RequestShow()   // flag buffer for immediate show
 				return enums.EVENT_PASS // keep looping every second
 			})
-			d.AddQuitHandler("helloworld", func() {
-				fmt.Printf("Quitting helloworld normally.\n")
-			})
-			return nil
-		},
-	)
+			app.NotifyStartupComplete()
+			return enums.EVENT_PASS // allow the startup to actually complete
+		}
+		return enums.EVENT_STOP // only STOP in case of fatal error
+	})
+	app.Connect(cdk.SignalShutdown, "helloworld-shutdown-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		fmt.Printf("Quitting helloworld normally.\n")
+		return enums.EVENT_PASS
+	})
 	if err := app.Run(os.Args); err != nil {
 		fmt.Println(err)
 	}
