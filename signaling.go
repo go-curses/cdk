@@ -162,6 +162,15 @@ func (o *CSignaling) Emit(signal Signal, argv ...interface{}) enums.EventFlag {
 	return enums.EVENT_PASS
 }
 
+// HasListeners returns true if there are one or more listeners connected to the
+// given Signal.
+func (o *CSignaling) HasListeners(signal Signal) (has bool) {
+	if listeners, ok := o.listeners[signal]; ok {
+		has = len(listeners) > 0
+	}
+	return
+}
+
 // StopSignal disables propagation of the given signal with an EVENT_STOP
 //
 // Locking: write
