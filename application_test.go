@@ -28,8 +28,8 @@ func TestCdk(t *testing.T) {
 				"AppDesc", "v0.0.0",
 				"app-tag", "AppTitle",
 				OffscreenTtyPath,
-				TestingMakesNoContent,
 			)
+			// app.Connect(SignalStartup, "test-cdk-handler", TestingMakesNoContent)
 			So(app, ShouldNotBeNil)
 			So(app.Name(), ShouldEqual, "AppName")
 			So(app.Usage(), ShouldEqual, "AppUsage")

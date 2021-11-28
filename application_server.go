@@ -26,6 +26,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/go-curses/cdk/env"
+	"github.com/go-curses/cdk/lib/enums"
 	"github.com/gofrs/uuid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/ssh"
@@ -70,8 +71,8 @@ type CApplicationServer struct {
 	version      string
 	tag          string
 	title        string
-	clientInitFn DisplayInitFn
-	serverInitFn DisplayInitFn
+	clientInitFn SignalListenerFn
+	serverInitFn SignalListenerFn
 
 	privateKeyPath string
 
@@ -89,7 +90,7 @@ type CApplicationServer struct {
 	daemonize bool
 }
 
-func NewApplicationServer(name, usage, description, version, tag, title string, clientInitFn DisplayInitFn, serverInitFn DisplayInitFn, privateKeyPath string) *CApplicationServer {
+func NewApplicationServer(name, usage, description, version, tag, title string, clientInitFn SignalListenerFn, serverInitFn SignalListenerFn, privateKeyPath string) *CApplicationServer {
 	as := &CApplicationServer{
 		name:           name,
 		usage:          usage,
@@ -116,7 +117,10 @@ func (s *CApplicationServer) Init() (already bool) {
 	s.handlers = []ServerAuthHandler{
 		NewDefaultServerAuthHandler(),
 	}
-	s.app = NewApplication(s.name, s.usage, s.description, s.version, s.tag, s.title, "/dev/tty", s.serverInitFn)
+	s.app = NewApplication(s.name, s.usage, s.description, s.version, s.tag, s.title, "/dev/tty")
+	s.app.Connect(SignalStartup, "application-server-startup--server", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		return s.serverInitFn(data, argv...)
+	})
 	s.app.runFn = s.runner
 	s.display = s.app.display
 	s.App().AddFlag(&cli.BoolFlag{
@@ -437,13 +441,24 @@ func (s *CApplicationServer) runner(ctx *cli.Context) (err error) {
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
+	display := s.app.Display()
 	GoWithMainContext(
 		env.Get("USER", "nil"),
 		"/dev/tty",
-		s.app.Display(),
-		s,
+		display,
+		s.Self(),
 		func() {
-			err = s.app.Display().Run()
+			s.app.display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+				if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
+					if f := s.app.Emit(SignalStartup, s.app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
+						s.app.LogInfo("application startup signal listener requested EVENT_STOP")
+						display.RequestQuit()
+					}
+					return enums.EVENT_PASS
+				}
+				return enums.EVENT_STOP
+			})
+			err = display.Run()
 			wg.Done()
 		},
 	)
@@ -488,8 +503,10 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 		s.tag,
 		s.title,
 		"",
-		s.clientInitFn,
 	)
+	app.Connect(SignalStartup, "application-server-startup--client", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		return s.clientInitFn(data, argv...)
+	})
 	display := NewDisplayWithHandle("display-service", t)
 	display.app = app
 	username := env.Get("USER", "nil")
@@ -499,9 +516,10 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 	_ = display.SetStringProperty(PropertyDisplayHost, asc.conn.RemoteAddr().String())
 	var wg sync.WaitGroup
 	wg.Add(1)
-	display.AddQuitHandler("exit-handler", func() {
+	display.Connect(SignalShutdown, "exit-handler", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
 		log.DebugF("exiting client connection: %s", asc.String())
 		wg.Done()
+		return enums.EVENT_PASS
 	})
 	shutdown := func() {
 		if display.IsRunning() {
@@ -514,17 +532,15 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 		} else {
 			log.InfoF("received exit-status response: %v, on connection: %s", ok, asc.String())
 		}
+		_ = t.Close() // expected file already closed, guarding
+		if err := p.Close(); err != nil {
+			log.ErrorF("error closing pty: %v", err)
+		}
 		if err := connection.Close(); err != nil {
 			log.ErrorF("error closing ssh channel: %v", err)
 		}
 		if err := asc.conn.Close(); err != nil {
 			log.ErrorF("error closing ssh connection: %v", err)
-		}
-		if err := t.Close(); err != nil {
-			log.ErrorF("error closing tty: %v", err)
-		}
-		if err := p.Close(); err != nil {
-			log.ErrorF("error closing pty: %v", err)
 		}
 		if err := s.freeClient(asc.id); err != nil {
 			log.ErrorF("error freeing app client: %v", err)
@@ -552,9 +568,19 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 			asc.conn.User(),
 			asc.conn.RemoteAddr().String(),
 			display,
-			nil,
+			app.Self(),
 			func() {
 				app.setDisplay(display)
+				display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+					if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
+						if f := app.Emit(SignalStartup, app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
+							app.LogInfo("application startup signal listener requested EVENT_STOP")
+							display.RequestQuit()
+						}
+						return enums.EVENT_PASS
+					}
+					return enums.EVENT_STOP
+				})
 				if err := app.cli.Run(os.Args); err != nil {
 					log.Error(err)
 				}

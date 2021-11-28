@@ -29,6 +29,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/go-curses/cdk/env"
+	"github.com/go-curses/cdk/lib/enums"
 	cfsorter "github.com/go-curses/cdk/lib/flag_sorter"
 	cpaths "github.com/go-curses/cdk/lib/paths"
 	cstrings "github.com/go-curses/cdk/lib/strings"
@@ -41,16 +42,6 @@ func init() {
 	_ = TypesManager.AddType(TypeApplication, nil)
 }
 
-type ScreenStateReq uint64
-
-const (
-	NullRequest ScreenStateReq = 1 << iota
-	DrawRequest
-	ShowRequest
-	SyncRequest
-	QuitRequest
-)
-
 var (
 	cdkApps = make(map[uuid.UUID]*CApplication)
 
@@ -58,35 +49,31 @@ var (
 	goProfile            interface{ Stop() }
 )
 
-type goProfileFn = func(p *profile.Profile)
-
-type DisplayInitFn = func(d Display) error
-
-type AppMainFn func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
-
 type Application interface {
 	Object
 
+	Init() (already bool)
 	SetupDisplay()
 	Destroy()
+	CLI() *cli.App
 	GetContext() *cli.Context
 	Tag() string
 	Title() string
 	Name() string
 	Usage() string
 	Description() string
-	Display() *CDisplay
-	CLI() *cli.App
 	Version() string
-	InitUI() error
+	Reconfigure(name, usage, description, version, tag, title, ttyPath string)
 	AddFlag(flag cli.Flag)
 	RemoveFlag(flag cli.Flag) (removed bool)
 	AddFlags(flags []cli.Flag)
 	AddCommand(command *cli.Command)
 	AddCommands(commands []*cli.Command)
+	Display() *CDisplay
+	NotifyStartupComplete()
 	Run(args []string) (err error)
-	MainInit(ctx *cli.Context) (ok bool)
-	MainRun(fn AppMainFn)
+	MainInit(argv ...interface{}) (ok bool)
+	MainRun(runner ApplicationMain)
 	MainEventsPending() (pending bool)
 	MainIterateEvents()
 	MainFinish()
@@ -108,12 +95,12 @@ type CApplication struct {
 	dispLock    *sync.RWMutex
 	context     *cli.Context
 	cli         *cli.App
-	initFn      DisplayInitFn
-	runFn       func(ctx *cli.Context) error
+	runFn       ApplicationRunFn
 	valid       bool
+	started     bool
 }
 
-func NewApplication(name, usage, description, version, tag, title, ttyPath string, initFn DisplayInitFn) *CApplication {
+func NewApplication(name, usage, description, version, tag, title, ttyPath string) *CApplication {
 	id, _ := uuid.NewV4()
 	app := &CApplication{
 		id:          id,
@@ -124,7 +111,6 @@ func NewApplication(name, usage, description, version, tag, title, ttyPath strin
 		tag:         tag,
 		title:       title,
 		ttyPath:     ttyPath,
-		initFn:      initFn,
 		runFn:       nil,
 	}
 	app.Init()
@@ -136,6 +122,7 @@ func (app *CApplication) Init() (already bool) {
 		return true
 	}
 	app.CObject.Init()
+	app.started = false
 	app.dispLock = &sync.RWMutex{}
 	app.cli = &cli.App{
 		Name:        app.name,
@@ -174,6 +161,7 @@ func (app *CApplication) SetupDisplay() {
 }
 
 func (app *CApplication) Destroy() {
+	app.started = false
 	app.valid = false
 	delete(cdkApps, app.id)
 	if app.display != nil {
@@ -184,52 +172,73 @@ func (app *CApplication) Destroy() {
 	app.cli = nil
 }
 
+func (app *CApplication) CLI() *cli.App {
+	app.RLock()
+	defer app.RUnlock()
+	return app.cli
+}
+
 func (app *CApplication) GetContext() *cli.Context {
+	app.RLock()
+	defer app.RUnlock()
 	return app.context
 }
 
 func (app *CApplication) Tag() string {
+	app.RLock()
+	defer app.RUnlock()
 	return app.tag
 }
 
 func (app *CApplication) Title() string {
+	app.RLock()
+	defer app.RUnlock()
 	return app.title
 }
 
 func (app *CApplication) Name() string {
+	app.RLock()
+	defer app.RUnlock()
 	return app.name
 }
 
 func (app *CApplication) Usage() string {
+	app.RLock()
+	defer app.RUnlock()
 	return app.usage
 }
 
 func (app *CApplication) Description() string {
+	app.RLock()
+	defer app.RUnlock()
 	return app.description
 }
 
-func (app *CApplication) Display() *CDisplay {
-	app.dispLock.RLock()
-	defer app.dispLock.RUnlock()
-	return app.display
-}
-
-func (app *CApplication) setDisplay(d *CDisplay) {
-	app.dispLock.Lock()
-	defer app.dispLock.Unlock()
-	app.display = d
-}
-
-func (app *CApplication) CLI() *cli.App {
-	return app.cli
-}
-
 func (app *CApplication) Version() string {
+	app.RLock()
+	defer app.RUnlock()
 	return app.version
 }
 
-func (app *CApplication) InitUI() error {
-	return app.initFn(app.Display())
+func (app *CApplication) Reconfigure(name, usage, description, version, tag, title, ttyPath string) {
+	if f := app.Emit(SignalReconfigure, name, usage, description, version, tag, title, ttyPath); f == enums.EVENT_PASS {
+		app.Lock()
+		app.name = name
+		app.usage = usage
+		app.description = description
+		app.version = version
+		app.tag = tag
+		app.title = title
+		app.ttyPath = ttyPath
+		if app.cli != nil {
+			app.cli.Name = name
+			app.cli.Usage = usage
+			app.cli.Description = description
+			app.cli.Version = version
+		}
+		app.Unlock()
+		app.Emit(SignalChanged, name, usage, description, version, tag, title, ttyPath)
+	}
 }
 
 func (app *CApplication) AddFlag(flag cli.Flag) {
@@ -267,8 +276,35 @@ func (app *CApplication) AddCommands(commands []*cli.Command) {
 	}
 }
 
+func (app *CApplication) Display() *CDisplay {
+	app.dispLock.RLock()
+	defer app.dispLock.RUnlock()
+	return app.display
+}
+
+func (app *CApplication) setDisplay(d *CDisplay) {
+	app.dispLock.Lock()
+	defer app.dispLock.Unlock()
+	app.display = d
+}
+
+func (app *CApplication) NotifyStartupComplete() {
+	if !app.started {
+		app.started = true
+		if f := app.Emit(SignalNotifyStartupComplete); f == enums.EVENT_STOP {
+			app.LogInfo("application notify startup complete listener requested EVENT_STOP")
+			app.display.RequestQuit()
+			return
+		}
+		app.display.StartupComplete()
+	}
+}
+
 func (app *CApplication) Run(args []string) (err error) {
 	app.SetupDisplay()
+	app.display.Connect(SignalShutdown, "applicaton-display-shutdown-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		return app.Emit(SignalShutdown)
+	})
 	err = nil
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -276,7 +312,7 @@ func (app *CApplication) Run(args []string) (err error) {
 		env.Get("USER", "nil"),
 		"localhost",
 		app.display,
-		nil,
+		app.Self(),
 		func() {
 			if app.cli.Commands != nil && len(app.cli.Commands) > 0 {
 				sort.Sort(cli.CommandsByName(app.cli.Commands))
@@ -293,18 +329,52 @@ func (app *CApplication) Run(args []string) (err error) {
 	return err
 }
 
-func (app *CApplication) MainInit(ctx *cli.Context) (ok bool) {
-	if ctx == nil {
-		app.context = cli.NewContext(app.cli, nil, nil)
-	} else {
-		app.context = ctx
+// MainInit is used to initialize the Application based on the CLI arguments
+// given at runtime. `argv` can be one of the following cases:
+//  nil/empty     use only the environment variables, if any are set
+//  *cli.Context  do not parse anything, just use existing context
+//  ...string     parse the given strings as if it were os.Args
+func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
+	handled := false
+	argc := len(argv)
+	if argc > 1 {
+		var args []string
+		for _, arg := range argv {
+			if v, ok := arg.(string); ok {
+				args = append(args, v)
+			}
+		}
+		app.cli.Action = func(ctx *cli.Context) error {
+			app.context = ctx
+			handled = true
+			return nil
+		}
+		if err := app.cli.Run(args); err != nil {
+			app.LogErr(err)
+			return false
+		}
+	} else if argc == 1 {
+		if ctx, ok := argv[0].(*cli.Context); ok {
+			app.context = ctx
+			handled = true
+		}
+	}
+	if !handled {
+		app.cli.Action = func(ctx *cli.Context) error {
+			app.context = ctx
+			return nil
+		}
+		if err := app.cli.Run([]string{app.name}); err != nil {
+			app.LogErr(err)
+			return false
+		}
 	}
 	if Build.LogLevel {
-		if v := ctx.String("cdk-log-level"); !cstrings.IsEmpty(v) {
+		if v := app.context.String("cdk-log-level"); !cstrings.IsEmpty(v) {
 			env.Set("GO_CDK_LOG_LEVEL", v)
 		}
 		if Build.LogLevels {
-			if ctx.Bool("ctk-log-levels") {
+			if app.context.Bool("ctk-log-levels") {
 				for i := len(log.LogLevels) - 1; i >= 0; i-- {
 					fmt.Printf("%s\n", log.LogLevels[i])
 				}
@@ -313,24 +383,24 @@ func (app *CApplication) MainInit(ctx *cli.Context) (ok bool) {
 		}
 	}
 	if Build.LogFile {
-		if v := ctx.String("cdk-log-file"); !cstrings.IsEmpty(v) {
+		if v := app.context.String("cdk-log-file"); !cstrings.IsEmpty(v) {
 			env.Set("GO_CDK_LOG_OUTPUT", "file")
 			env.Set("GO_CDK_LOG_FILE", v)
 		}
 	}
 	if Build.LogTimestamps {
-		if v := ctx.String("cdk-log-timestamps"); !cstrings.IsEmpty(v) && cstrings.IsBoolean(v) {
+		if v := app.context.String("cdk-log-timestamps"); !cstrings.IsEmpty(v) && cstrings.IsBoolean(v) {
 			env.Set("GO_CDK_LOG_TIMESTAMPS", v)
 		}
 	}
 	if Build.LogTimestampFormat {
-		if v := ctx.String("cdk-log-timestamp-format"); !cstrings.IsEmpty(v) {
+		if v := app.context.String("cdk-log-timestamp-format"); !cstrings.IsEmpty(v) {
 			env.Set("GO_CDK_LOG_TIMESTAMP_FORMAT", v)
 		}
 	}
 	profilePath := DefaultGoProfilePath
 	if Build.Profiling {
-		if v := ctx.String("cdk-profile-path"); !cstrings.IsEmpty(v) {
+		if v := app.context.String("cdk-profile-path"); !cstrings.IsEmpty(v) {
 			if !cpaths.IsDir(v) {
 				if err := cpaths.MakeDir(v, 0770); err != nil {
 					log.Fatal(err)
@@ -344,7 +414,7 @@ func (app *CApplication) MainInit(ctx *cli.Context) (ok bool) {
 		panic(err)
 	}
 	if Build.Profiling {
-		if v := ctx.String("cdk-profile"); !cstrings.IsEmpty(v) {
+		if v := app.context.String("cdk-profile"); !cstrings.IsEmpty(v) {
 			v = strings.ToLower(v)
 			var p goProfileFn
 			env.Set("GO_CDK_PROFILE", v)
@@ -377,20 +447,27 @@ func (app *CApplication) MainInit(ctx *cli.Context) (ok bool) {
 	return true
 }
 
-func (app *CApplication) MainRun(fn AppMainFn) {
+func (app *CApplication) MainRun(runner ApplicationMain) {
 	app.SetupDisplay()
+	display := app.Display()
 	var wg *sync.WaitGroup
 	GoWithMainContext(
 		env.Get("USER", "nil"),
 		"localhost",
-		app.display,
-		nil,
+		display,
+		app.Self(),
 		func() {
 			var ctx context.Context
 			var cancel context.CancelFunc
-			ctx, cancel, wg = app.Display().MainInit()
+			ctx, cancel, wg = display.Startup()
 			wg.Add(1)
-			fn(ctx, cancel, wg)
+			if f := app.Emit(SignalStartup, app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
+				app.LogInfo("application startup signal listener requested EVENT_STOP")
+				app.display.RequestQuit()
+			}
+			if runner != nil {
+				runner(ctx, cancel, wg)
+			}
 			wg.Done()
 		},
 	)
@@ -415,14 +492,63 @@ func (app *CApplication) MainFinish() {
 	if d := app.Display(); d != nil {
 		d.MainFinish()
 	}
+	app.Emit(SignalShutdown)
 }
 
 func (app *CApplication) CliActionFn(ctx *cli.Context) error {
 	if !app.MainInit(ctx) {
 		return nil
 	}
+	app.display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
+			if f := app.Emit(SignalStartup, app.Self(), app.display, ctx, cancel, wg); f == enums.EVENT_STOP {
+				app.LogInfo("application startup signal listener requested EVENT_STOP")
+				app.display.RequestQuit()
+			}
+			return enums.EVENT_PASS
+		}
+		return enums.EVENT_STOP
+	})
 	if app.runFn != nil {
 		return app.runFn(ctx)
 	}
 	return app.Display().Run()
+}
+
+const SignalReconfigure Signal = "reconfigure"
+
+const SignalChanged Signal = "changed"
+
+const SignalStartup Signal = "startup"
+
+const SignalActivate Signal = "activate"
+
+const SignalShutdown Signal = "shutdown"
+
+const SignalNotifyStartupComplete Signal = "notify-startup-complete"
+
+type goProfileFn = func(p *profile.Profile)
+
+type ApplicationMain func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
+type ApplicationRunFn = func(ctx *cli.Context) error
+
+func ApplicationSignalStartupArgv(argv ...interface{}) (app Application, display Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, ok bool) {
+	if len(argv) == 5 {
+		if app, ok = argv[0].(Application); ok {
+			if display, ok = argv[1].(Display); ok {
+				if ctx, ok = argv[2].(context.Context); ok {
+					if cancel, ok = argv[3].(context.CancelFunc); ok {
+						if wg, ok = argv[4].(*sync.WaitGroup); ok {
+							return
+						}
+						cancel = nil
+					}
+					ctx = nil
+				}
+				display = nil
+			}
+			app = nil
+		}
+	}
+	return
 }
