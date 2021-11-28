@@ -17,13 +17,14 @@ package cdk
 import (
 	"testing"
 
+	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/log"
 )
 
 type AppFn func(app Application)
 type DisplayManagerFn func(d Display)
 
-func WithApp(initFn DisplayInitFn, action AppFn) func() {
+func WithApp(initFn SignalListenerFn, action AppFn) func() {
 	return func() {
 
 		app := NewApplication(
@@ -31,8 +32,8 @@ func WithApp(initFn DisplayInitFn, action AppFn) func() {
 			"AppDesc", "v0.0.0",
 			"app-tag", "AppTitle",
 			OffscreenTtyPath,
-			initFn,
 		)
+		app.Connect(SignalStartup, "testing-withapp-init-fn-handler", initFn)
 		defer func() {
 			if app != nil {
 				app.Destroy()
@@ -40,8 +41,8 @@ func WithApp(initFn DisplayInitFn, action AppFn) func() {
 			app = nil
 		}()
 		app.SetupDisplay()
-		if err := app.InitUI(); err != nil {
-			log.Error(err)
+		if f := app.Emit(SignalStartup); f == enums.EVENT_STOP {
+			log.ErrorF("withapp startup listeners requested EVENT_STOP")
 		} else {
 			action(app)
 		}
@@ -57,8 +58,8 @@ func WithDisplayManager(action DisplayManagerFn) func() {
 	}
 }
 
-func TestingMakesNoContent(d Display) error {
-	return nil
+func TestingMakesNoContent(_ []interface{}, _ ...interface{}) enums.EventFlag {
+	return enums.EVENT_PASS
 }
 
 func TestingMakesActiveWindow(d Display) error {
