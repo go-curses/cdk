@@ -109,6 +109,16 @@ func SetLocalContextData(data interface{}) (err error) {
 	return
 }
 
+// GetLocalContextData returns the default data for the current app context
+func GetLocalContextData() (data interface{}) {
+	if ac, err := GetLocalContext(); err != nil {
+		log.ErrorDF(1, "app context error: %v", err)
+	} else {
+		data = ac.Data
+	}
+	return
+}
+
 // GetDefaultDisplay returns the default display for the current app context
 func GetDefaultDisplay() (dm *CDisplay) {
 	if ac, err := GetLocalContext(); err == nil {
