@@ -70,6 +70,7 @@ type Application interface {
 	AddCommand(command *cli.Command)
 	AddCommands(commands []*cli.Command)
 	Display() *CDisplay
+	SetDisplay(d *CDisplay) (err error)
 	NotifyStartupComplete()
 	Run(args []string) (err error)
 	MainInit(argv ...interface{}) (ok bool)
@@ -77,7 +78,7 @@ type Application interface {
 	MainEventsPending() (pending bool)
 	MainIterateEvents()
 	MainFinish()
-	CliActionFn(ctx *cli.Context) error
+	CliActionFn(ctx *cli.Context) (err error)
 }
 
 type CApplication struct {
@@ -92,7 +93,6 @@ type CApplication struct {
 	title       string
 	ttyPath     string
 	display     *CDisplay
-	dispLock    *sync.RWMutex
 	context     *cli.Context
 	cli         *cli.App
 	runFn       ApplicationRunFn
@@ -123,7 +123,6 @@ func (app *CApplication) Init() (already bool) {
 	}
 	app.CObject.Init()
 	app.started = false
-	app.dispLock = &sync.RWMutex{}
 	app.cli = &cli.App{
 		Name:        app.name,
 		Usage:       app.usage,
@@ -156,7 +155,9 @@ func (app *CApplication) SetupDisplay() {
 		_ = display.SetStringProperty(PropertyDisplayName, app.name)
 		_ = display.SetStringProperty(PropertyDisplayUser, username)
 		_ = display.SetStringProperty(PropertyDisplayHost, "/dev/tty")
-		app.display = display
+		if err := app.SetDisplay(display); err != nil {
+			app.LogErr(err)
+		}
 	}
 }
 
@@ -277,15 +278,50 @@ func (app *CApplication) AddCommands(commands []*cli.Command) {
 }
 
 func (app *CApplication) Display() *CDisplay {
-	app.dispLock.RLock()
-	defer app.dispLock.RUnlock()
+	app.RLock()
+	defer app.RUnlock()
 	return app.display
 }
 
-func (app *CApplication) setDisplay(d *CDisplay) {
-	app.dispLock.Lock()
-	defer app.dispLock.Unlock()
+func (app *CApplication) SetDisplay(d *CDisplay) (err error) {
+	app.RLock()
+	if display := app.display; display != nil {
+		app.RUnlock()
+		if display.IsRunning() {
+			return fmt.Errorf("cannot change a running Display")
+		}
+		_ = display.Disconnect(SignalDisplayStartup, ApplicationDisplayStartupHandle)
+		_ = display.Disconnect(SignalDisplayShutdown, ApplicationDisplayShutdownHandle)
+	} else {
+		app.RUnlock()
+	}
+	app.Lock()
 	app.display = d
+	app.Unlock()
+	app.display.Connect(
+		SignalDisplayStartup,
+		ApplicationDisplayStartupHandle,
+		func(data []interface{}, argv ...interface{}) enums.EventFlag {
+			_ = app.display.Disconnect(SignalDisplayStartup, ApplicationDisplayStartupHandle)
+			if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
+				if f := app.Emit(SignalStartup, app.Self(), app.display, ctx, cancel, wg); f == enums.EVENT_STOP {
+					app.LogInfo("application startup signal listener requested EVENT_STOP")
+					app.display.RequestQuit()
+				}
+				return enums.EVENT_PASS
+			}
+			return enums.EVENT_STOP
+		},
+	)
+	app.display.Connect(
+		SignalDisplayShutdown,
+		ApplicationDisplayShutdownHandle,
+		func(data []interface{}, argv ...interface{}) enums.EventFlag {
+			_ = app.display.Disconnect(SignalDisplayShutdown, ApplicationDisplayShutdownHandle)
+			return app.Emit(SignalShutdown)
+		},
+	)
+	return
 }
 
 func (app *CApplication) NotifyStartupComplete() {
@@ -302,9 +338,6 @@ func (app *CApplication) NotifyStartupComplete() {
 
 func (app *CApplication) Run(args []string) (err error) {
 	app.SetupDisplay()
-	app.display.Connect(SignalShutdown, "applicaton-display-shutdown-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
-		return app.Emit(SignalShutdown)
-	})
 	err = nil
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -330,7 +363,9 @@ func (app *CApplication) Run(args []string) (err error) {
 }
 
 // MainInit is used to initialize the Application based on the CLI arguments
-// given at runtime. `argv` can be one of the following cases:
+// given at runtime.
+//
+// `argv` can be one of the following cases:
 //  nil/empty     use only the environment variables, if any are set
 //  *cli.Context  do not parse anything, just use existing context
 //  ...string     parse the given strings as if it were os.Args
@@ -492,23 +527,12 @@ func (app *CApplication) MainFinish() {
 	if d := app.Display(); d != nil {
 		d.MainFinish()
 	}
-	app.Emit(SignalShutdown)
 }
 
-func (app *CApplication) CliActionFn(ctx *cli.Context) error {
+func (app *CApplication) CliActionFn(ctx *cli.Context) (err error) {
 	if !app.MainInit(ctx) {
 		return nil
 	}
-	app.display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
-		if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
-			if f := app.Emit(SignalStartup, app.Self(), app.display, ctx, cancel, wg); f == enums.EVENT_STOP {
-				app.LogInfo("application startup signal listener requested EVENT_STOP")
-				app.display.RequestQuit()
-			}
-			return enums.EVENT_PASS
-		}
-		return enums.EVENT_STOP
-	})
 	if app.runFn != nil {
 		return app.runFn(ctx)
 	}
@@ -526,6 +550,10 @@ const SignalActivate Signal = "activate"
 const SignalShutdown Signal = "shutdown"
 
 const SignalNotifyStartupComplete Signal = "notify-startup-complete"
+
+const ApplicationDisplayStartupHandle = "application-display-startup-handler"
+
+const ApplicationDisplayShutdownHandle = "application-display-shutdown-handler"
 
 type goProfileFn = func(p *profile.Profile)
 
