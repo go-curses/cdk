@@ -206,7 +206,6 @@ func getLogPrefix(depth int) string {
 		if i := strings.LastIndex(fullName, "."); i > -1 {
 			funcName = fullName[i+1:]
 		}
-		funcName = cstrings.PadLeft(funcName, " ", 12)
 		packName := fullName
 		if i := strings.Index(fullName, "."); i > -1 {
 			packName = fullName[:i+1]
