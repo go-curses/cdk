@@ -36,6 +36,8 @@ import (
 	"github.com/go-curses/cdk/log"
 )
 
+// TODO: cleanup clients when server RequestQuit
+
 const TypeApplicationServer CTypeTag = "cdk-application-server"
 
 func init() {
@@ -448,10 +450,11 @@ func (s *CApplicationServer) runner(ctx *cli.Context) (err error) {
 		display,
 		s.Self(),
 		func() {
-			s.app.display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+			display.Connect(SignalDisplayStartup, ApplicationServerDisplayStartupHandle, func(data []interface{}, argv ...interface{}) enums.EventFlag {
+				_ = display.Disconnect(SignalDisplayStartup, ApplicationServerDisplayStartupHandle)
 				if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
 					if f := s.app.Emit(SignalStartup, s.app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
-						s.app.LogInfo("application startup signal listener requested EVENT_STOP")
+						s.app.LogInfo("application server display startup signal listener requested EVENT_STOP")
 						display.RequestQuit()
 					}
 					return enums.EVENT_PASS
@@ -570,7 +573,11 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 			display,
 			app.Self(),
 			func() {
-				app.setDisplay(display)
+				if err := app.SetDisplay(display); err != nil {
+					log.Error(err)
+					once.Do(shutdown)
+					return
+				}
 				display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
 					if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
 						if f := app.Emit(SignalStartup, app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
@@ -638,3 +645,5 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 		}
 	})
 }
+
+const ApplicationServerDisplayStartupHandle = "application-server-display-startup-handler"
