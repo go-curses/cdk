@@ -182,10 +182,10 @@ func (o *CTypeItem) ObjectName() string {
 	o.itemLock.RLock()
 	tt, n := o.typeTag, o.name
 	o.itemLock.RUnlock()
-	if len(o.name) > 0 {
-		return fmt.Sprintf("%v-%v#%v", tt, o.ObjectID(), n)
+	if len(n) > 0 {
+		return fmt.Sprintf("%v.%v#%v", tt, o.ObjectID(), n)
 	}
-	return fmt.Sprintf("%v-%v", n, o.ObjectID())
+	return fmt.Sprintf("%v.%v", tt, o.ObjectID())
 }
 
 func (o *CTypeItem) DestroyObject() (err error) {
@@ -202,13 +202,7 @@ func (o *CTypeItem) DestroyObject() (err error) {
 }
 
 func (o *CTypeItem) LogTag() string {
-	o.itemLock.RLock()
-	tt, n := o.typeTag, o.name
-	o.itemLock.RUnlock()
-	if len(o.name) > 0 {
-		return fmt.Sprintf("[%v.%v.%v]", tt, o.ObjectID(), n)
-	}
-	return fmt.Sprintf("[%v.%v]", tt, o.ObjectID())
+	return fmt.Sprintf("[%v]", o.ObjectName())
 }
 
 func (o *CTypeItem) LogTrace(format string, argv ...interface{}) {
