@@ -874,11 +874,11 @@ func (d *CDisplay) Startup() (ctx context.Context, cancel context.CancelFunc, wg
 		d.LogErr(err)
 		return
 	}
-	d.Connect(SignalStartupComplete, "display-screen-startup-complete-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+	d.Connect(SignalStartupComplete, DisplayStartupCompleteHandle, func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		_ = d.Disconnect(SignalStartupComplete, DisplayStartupCompleteHandle)
 		d.Lock()
 		d.started = true
 		d.Unlock()
-		_ = d.Disconnect(SignalStartupComplete, "display-screen-startup-complete-handler")
 		return enums.EVENT_PASS
 	})
 	d.setRunning(true)
@@ -899,7 +899,7 @@ func (d *CDisplay) Startup() (ctx context.Context, cancel context.CancelFunc, wg
 // AwaitCallMain, screen event transmitter and shutdown mechanics. When
 // RequestQuit is called, the main loop exits, cancels all threads, destroys the
 // display object, recovers from any go panics and finally emits a
-// SignalShutdown.
+// SignalDisplayShutdown.
 func (d *CDisplay) Main(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) (err error) {
 	wg.Add(1)
 	Go(func() {
@@ -942,15 +942,33 @@ mainForLoop:
 		case <-d.done:
 			d.setRunning(false)
 			CancelAllTimeouts()
+			cancel() // notify threads to exit
+			// guarantee main calls
+			mlen := len(d.mains)
+			for i := 0; i < mlen; i++ {
+				if fn, ok := <-d.mains; ok {
+					if err := fn(d); err != nil {
+						log.Error(err)
+					}
+				}
+			}
+			// guarantee ui calls
+			qlen := len(d.queue)
+			for i := 0; i < qlen; i++ {
+				if fn, ok := <-d.queue; ok {
+					if err := fn(d); err != nil {
+						log.ErrorF("async/await handler error: %v", err)
+					}
+				}
+			}
 			break mainForLoop
 		}
 	}
-	cancel() // notify threads to exit
 	d.Destroy()
 	if p := recover(); p != nil {
 		panic(p)
 	}
-	d.Emit(SignalShutdown)
+	d.Emit(SignalDisplayShutdown)
 	return nil
 }
 
@@ -1054,12 +1072,17 @@ const (
 	SignalSetEventFocus   Signal = "set-event-focus"
 	SignalStartupComplete Signal = "startup-complete"
 	SignalDisplayStartup  Signal = "display-startup"
+	SignalDisplayShutdown Signal = "display-shutdown"
 )
 
 const (
 	PropertyDisplayName Property = "display-name"
 	PropertyDisplayUser Property = "display-user"
 	PropertyDisplayHost Property = "display-host"
+)
+
+const (
+	DisplayStartupCompleteHandle = "display-screen-startup-complete-handler"
 )
 
 type DisplayCallbackFn = func(d Display) error
