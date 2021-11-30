@@ -126,7 +126,6 @@ type CDisplay struct {
 	eventFocus Object
 	priorEvent Event
 
-	runLock  *sync.RWMutex
 	running  bool
 	closing  sync.Once
 	done     chan bool
@@ -138,6 +137,7 @@ type CDisplay struct {
 	requests chan displayRequest
 	compress bool
 
+	runLock    *sync.RWMutex
 	eventMutex *sync.Mutex
 	drawMutex  *sync.Mutex
 }
@@ -169,7 +169,6 @@ func (d *CDisplay) Init() (already bool) {
 	d.captured = false
 	d.started = false
 	d.running = false
-	d.runLock = &sync.RWMutex{}
 	d.done = make(chan bool)
 	d.queue = make(chan DisplayCallbackFn, DisplayCallCapacity)
 	d.mains = make(chan DisplayCallbackFn, DisplayCallCapacity)
@@ -186,6 +185,7 @@ func (d *CDisplay) Init() (already bool) {
 	d.active = uuid.Nil
 	d.SetTheme(paint.DefaultColorTheme)
 
+	d.runLock = &sync.RWMutex{}
 	d.eventMutex = &sync.Mutex{}
 	d.drawMutex = &sync.Mutex{}
 	return false
@@ -321,8 +321,11 @@ func (d *CDisplay) ReleaseCtrlC() {
 }
 
 func (d *CDisplay) DefaultTheme() paint.Theme {
-	if d.screen != nil {
-		if d.screen.Colors() <= 0 {
+	d.RLock()
+	screen := d.screen
+	d.RUnlock()
+	if screen != nil {
+		if screen.Colors() <= 0 {
 			return paint.DefaultMonoTheme
 		}
 	}
@@ -330,6 +333,8 @@ func (d *CDisplay) DefaultTheme() paint.Theme {
 }
 
 func (d *CDisplay) ActiveWindow() Window {
+	d.RLock()
+	defer d.RUnlock()
 	if w, ok := d.windows[d.active]; ok {
 		return w
 	}
@@ -337,10 +342,16 @@ func (d *CDisplay) ActiveWindow() Window {
 }
 
 func (d *CDisplay) SetActiveWindow(w Window) {
+	d.RLock()
 	if _, ok := d.windows[w.ObjectID()]; !ok {
+		d.RUnlock()
 		d.AddWindow(w)
+	} else {
+		d.RUnlock()
 	}
+	d.Lock()
 	d.active = w.ObjectID()
+	d.Unlock()
 }
 
 func (d *CDisplay) AddWindow(w Window) {
@@ -350,19 +361,25 @@ func (d *CDisplay) AddWindow(w Window) {
 	}
 	w.SetDisplay(d)
 	size := ptypes.MakeRectangle(0, 0)
+	d.RLock()
 	if d.screen != nil {
 		size = ptypes.MakeRectangle(d.screen.Size())
 	}
+	d.RUnlock()
 	if s, err := memphis.GetSurface(w.ObjectID()); err != nil {
 		w.LogErr(err)
 	} else {
 		s.Resize(size, d.GetTheme().Content.Normal)
 	}
+	d.Lock()
 	d.windows[w.ObjectID()] = w
 	d.overlay[w.ObjectID()] = nil
+	d.Unlock()
 }
 
 func (d *CDisplay) RemoveWindow(wid uuid.UUID) {
+	d.Lock()
+	defer d.Unlock()
 	if _, ok := d.windows[wid]; ok {
 		delete(d.windows, wid)
 	}
@@ -372,6 +389,7 @@ func (d *CDisplay) RemoveWindow(wid uuid.UUID) {
 }
 
 func (d *CDisplay) AddWindowOverlay(pid uuid.UUID, overlay Window, region ptypes.Region) {
+	d.Lock()
 	if _, ok := d.overlay[pid]; !ok {
 		d.overlay[pid] = make([]Window, 0)
 	}
@@ -379,9 +397,11 @@ func (d *CDisplay) AddWindowOverlay(pid uuid.UUID, overlay Window, region ptypes
 		overlay.LogErr(err)
 	}
 	d.overlay[pid] = append(d.overlay[pid], overlay)
+	d.Unlock()
 }
 
 func (d *CDisplay) RemoveWindowOverlay(pid, oid uuid.UUID) {
+	d.Lock()
 	if wc, ok := d.overlay[pid]; ok {
 		var revised []Window
 		for _, oc := range wc {
@@ -391,9 +411,12 @@ func (d *CDisplay) RemoveWindowOverlay(pid, oid uuid.UUID) {
 		}
 		d.overlay[pid] = revised
 	}
+	d.Unlock()
 }
 
 func (d *CDisplay) GetWindows() (windows []Window) {
+	d.RLock()
+	defer d.RUnlock()
 	for _, w := range d.windows {
 		windows = append(windows, w)
 	}
@@ -401,6 +424,8 @@ func (d *CDisplay) GetWindows() (windows []Window) {
 }
 
 func (d *CDisplay) GetWindowOverlays(id uuid.UUID) (windows []Window) {
+	d.RLock()
+	defer d.RUnlock()
 	if overlays, ok := d.overlay[id]; ok {
 		for _, overlay := range overlays {
 			windows = append(windows, overlay)
@@ -410,6 +435,8 @@ func (d *CDisplay) GetWindowOverlays(id uuid.UUID) (windows []Window) {
 }
 
 func (d *CDisplay) GetWindowTopOverlay(id uuid.UUID) (window Window) {
+	d.RLock()
+	defer d.RUnlock()
 	if overlays, ok := d.overlay[id]; ok {
 		if last := len(overlays) - 1; last > -1 {
 			window = overlays[last]
@@ -419,6 +446,8 @@ func (d *CDisplay) GetWindowTopOverlay(id uuid.UUID) (window Window) {
 }
 
 func (d *CDisplay) GetWindowOverlayRegion(windowId, overlayId uuid.UUID) (region ptypes.Region) {
+	d.RLock()
+	defer d.RUnlock()
 	if overlays, ok := d.overlay[windowId]; ok {
 		for _, overlay := range overlays {
 			if overlay.ObjectID() == overlayId {
@@ -439,6 +468,8 @@ func (d *CDisplay) GetWindowOverlayRegion(windowId, overlayId uuid.UUID) (region
 }
 
 func (d *CDisplay) SetWindowOverlayRegion(windowId, overlayId uuid.UUID, region ptypes.Region) {
+	d.Lock()
+	defer d.Unlock()
 	if overlays, ok := d.overlay[windowId]; ok {
 		for _, overlay := range overlays {
 			if overlay.ObjectID() == overlayId {
@@ -454,6 +485,8 @@ func (d *CDisplay) SetWindowOverlayRegion(windowId, overlayId uuid.UUID, region 
 }
 
 func (d *CDisplay) getOverlay(windowId uuid.UUID) (overlay Window) {
+	d.RLock()
+	defer d.RUnlock()
 	if overlays, ok := d.overlay[windowId]; ok {
 		if last := len(overlays) - 1; last > -1 {
 			overlay = overlays[last]
@@ -463,23 +496,32 @@ func (d *CDisplay) getOverlay(windowId uuid.UUID) (overlay Window) {
 }
 
 func (d *CDisplay) SetEventFocus(widget Object) error {
+	d.Lock()
 	if widget != nil {
 		if _, ok := widget.Self().(Sensitive); !ok {
+			d.Unlock()
 			return fmt.Errorf("widget does not implement Sensitive: %v (%T)", widget, widget)
 		}
 	}
+	d.Unlock()
 	if f := d.Emit(SignalSetEventFocus); f == enums.EVENT_PASS {
+		d.Lock()
 		d.eventFocus = widget
+		d.Unlock()
 	}
 	return nil
 }
 
 func (d *CDisplay) GetEventFocus() (widget Object) {
+	d.RLock()
+	defer d.RUnlock()
 	widget = d.eventFocus
 	return
 }
 
 func (d *CDisplay) GetPriorEvent() (event Event) {
+	d.RLock()
+	defer d.RUnlock()
 	return d.priorEvent
 }
 
@@ -494,7 +536,9 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 	}
 	defer func() {
+		d.Lock()
 		d.priorEvent = evt
+		d.Unlock()
 		d.eventMutex.Unlock()
 	}()
 	if d.eventFocus != nil {
@@ -581,10 +625,13 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 func (d *CDisplay) DrawScreen() enums.EventFlag {
 	d.drawMutex.Lock()
 	defer d.drawMutex.Unlock()
+	d.RLock()
 	if !d.captured || d.screen == nil {
+		d.RUnlock()
 		d.LogError("display not captured or is otherwise missing")
 		return enums.EVENT_PASS
 	}
+	d.RUnlock()
 	if aw := d.ActiveWindow(); aw != nil {
 		if ac, err := memphis.GetSurface(aw.ObjectID()); err == nil {
 			if f := aw.Draw(); f == enums.EVENT_STOP {
