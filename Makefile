@@ -28,6 +28,8 @@ help:
 	@echo "  examples    - builds all examples"
 	@echo "  build       - build test for main cdk package"
 	@echo "  dev         - build ${DEV_EXAMPLE} with profiling"
+	@echo "  *.so        - build a pluginworld shared object file"
+	@echo "  *           - build only the given example (by name)"
 	@echo
 	@echo "run targets:"
 	@echo "  run         - run the dev build (sanely handle crashes)"
@@ -80,9 +82,10 @@ clean-logs:
 
 clean: clean-logs
 	@echo "# cleaning binaries"
-	@rm -fv go_build_*    || true
-	@rm -fv go_test_*     || true
-	@rm -fv demoplugin.so || true
+	@rm -fv go_build_* || true
+	@rm -fv go_test_*  || true
+	@rm -fv *.so       || true
+	@rm -fv demoplugin || true
 	@for tgt in `ls examples`; do \
 		if [ -d examples/$$tgt ]; then \
 			rm -fv $$tgt || true; \
@@ -104,69 +107,22 @@ build: clean
 	@echo "# building cdk"
 	@go build -v
 
-debug-examples-demoplugin:
-	@echo -n "# building debug demoplugin..."
-	@if [ -d examples/pluginworld/demoplugin ]; then \
-		cd examples/pluginworld/demoplugin; \
-		( go build -v \
-			-buildmode=plugin \
-			-ldflags="\
-					-X 'main.IncludeProfiling=true' \
-					-X 'main.IncludeLogFile=true'   \
-					-X 'main.IncludeLogLevel=true'  \
-					" \
-			-gcflags=all="-N -l" \
-			-o ../../../demoplugin.so 2>&1 \
-		) > ../../../demoplugin.build.log; \
-		cd - > /dev/null; \
-		[ -f demoplugin.so ] \
-			&& echo "done." \
-			|| echo "failed.\n>\tsee ./demoplugin.build.log for errors"; \
-	fi
-
-examples-demoplugin:
-	@echo -n "# building demoplugin..."
-	@if [ -d examples/pluginworld/demoplugin ]; then \
-		cd examples/pluginworld/demoplugin; \
-		( go build -v \
-			-buildmode=plugin \
-			-o ../../../demoplugin.so 2>&1 \
-		) > ../../../demoplugin.build.log; \
-		cd - > /dev/null; \
-		[ -f demoplugin.so ] \
-			&& echo "done." \
-			|| echo "failed.\n>\tsee ./demoplugin.build.log for errors"; \
-	fi
-
-debug-examples: clean debug-examples-demoplugin
-	@echo "# building debug versions of all examples..."
-	@for name in `ls examples`; do \
-		if [ -d examples/$$name ]; then \
-			cd examples/$$name/; \
-			echo -n "#\tbuilding $$name... "; \
-			( go build -v \
-				-ldflags="\
-				-X 'main.IncludeProfiling=true' \
-				-X 'main.IncludeLogFile=true' \
-				-X 'main.IncludeLogLevel=true' \
-				" \
-				-gcflags=all="-N -l" \
-				-o ../../$$name 2>&1 \
-			) > ../../$$name.build.log; \
-			cd - > /dev/null; \
-			[ -f $$name ] \
-				&& echo "done." \
-				|| echo "failed.\n>\tsee ./$$name.build.log for errors"; \
-		fi; \
-	done
-
-examples: clean examples-demoplugin
+examples: clean demoplugin.so demoplugin
 	@echo "# building all examples..."
 	@for name in `ls examples`; do \
 		if [ -d examples/$$name ]; then \
 			cd examples/$$name/; \
 			echo -n "#\tbuilding $$name... "; \
-			( go build -v -o ../../$$name 2>&1 ) > ../../$$name.build.log; \
+			( go build -v \
+					-trimpath \
+					-gcflags=all="-N -l" \
+					-ldflags="\
+-X 'main.IncludeProfiling=true' \
+-X 'main.IncludeLogFile=true'   \
+-X 'main.IncludeLogLevel=true'  \
+" \
+					-o ../../$$name 2>&1 \
+			) > ../../$$name.build.log; \
 			cd - > /dev/null; \
 			[ -f $$name ] \
 				&& echo "done." \
@@ -208,7 +164,13 @@ dev: clean
 		echo -n "# building: ${DEV_EXAMPLE} [dev]... "; \
 		cd examples/${DEV_EXAMPLE}; \
 		( go build -v -o ../../${DEV_EXAMPLE} \
-				-ldflags="-X 'main.IncludeProfiling=true'" \
+				-trimpath \
+				-gcflags=all="-N -l" \
+				-ldflags="\
+-X 'main.IncludeProfiling=true' \
+-X 'main.IncludeLogFile=true'   \
+-X 'main.IncludeLogLevel=true'  \
+" \
 				-gcflags=all="-N -l" \
 			2>&1 ) > ../../${DEV_EXAMPLE}.build.log; \
 		cd - > /dev/null; \
@@ -279,22 +241,73 @@ profile.mem: dev
 				echo "# missing /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof"; \
 			fi ; \
 		fi
-%:
-	@if [ -f $@ -o -f $@.build.log ]; \
+
+%.so: PLUGNAME=$(basename $@)
+%.so:
+	@if [ -d examples/pluginworld/$(PLUGNAME) ]; \
 	then \
-		echo -n "# cleaning $@... "; \
-		rm -f $@ $@.build.log; \
-		echo "done."; \
-	fi; \
-	if [ -d examples/$@ ]; \
+		echo -n "# building plugin $(PLUGNAME)... "; \
+		cd examples/pluginworld/$(PLUGNAME); \
+		( go build -v \
+				-buildmode=plugin \
+				-trimpath \
+				-gcflags=all="-N -l" \
+				-ldflags="\
+-X 'main.IncludeProfiling=true' \
+-X 'main.IncludeLogFile=true'   \
+-X 'main.IncludeLogLevel=true'  \
+" \
+				-o ../../../$@ \
+			2>&1 ) > ../../../$(PLUGNAME).build.log; \
+		cd - > /dev/null; \
+		if [ -f $@ ]; \
+		then \
+			echo "done."; \
+		else \
+			echo "fail.\n#\tsee ./$(PLUGNAME).build.log"; \
+		fi; \
+	else \
+		echo "not a plugin: $@"; \
+		false; \
+	fi
+
+%:
+	@if [ -d examples/$@ ]; \
 	then \
 		echo -n "# building example $@... "; \
 		cd examples/$@; \
 		( go build -v \
-				-tags "`echo "example-$@" | perl -pe 's/-/_/g'`" \
+				-trimpath \
+				-gcflags=all="-N -l" \
+				-ldflags="\
+-X 'main.IncludeProfiling=true' \
+-X 'main.IncludeLogFile=true'   \
+-X 'main.IncludeLogLevel=true'  \
+" \
 				-o ../../$@ \
 			2>&1 ) > ../../$@.build.log; \
-		cd ../..; \
+		cd - > /dev/null; \
+		if [ -f $@ ]; \
+		then \
+			echo "done."; \
+		else \
+			echo "fail.\n#\tsee ./$@.build.log"; \
+		fi; \
+	elif [ -d examples/pluginworld/$@ ]; \
+	then \
+		echo -n "# building example pluginworld/$@... "; \
+		cd examples/pluginworld/$@; \
+		( go build -v \
+				-trimpath \
+				-gcflags=all="-N -l" \
+				-ldflags="\
+-X 'main.IncludeProfiling=true' \
+-X 'main.IncludeLogFile=true'   \
+-X 'main.IncludeLogLevel=true'  \
+" \
+				-o ../../../$@ \
+			2>&1 ) > ../../../$@.build.log; \
+		cd - > /dev/null; \
 		if [ -f $@ ]; \
 		then \
 			echo "done."; \
