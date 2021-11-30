@@ -82,6 +82,9 @@ func (o *CObject) GetName() (name string) {
 	if name, err = o.GetStringProperty(PropertyName); err != nil {
 		return ""
 	}
+	if name == "" {
+		name = o.CTypeItem.GetName()
+	}
 	return
 }
 
