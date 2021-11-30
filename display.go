@@ -332,6 +332,26 @@ func (d *CDisplay) DefaultTheme() paint.Theme {
 	return paint.DefaultColorTheme
 }
 
+func (d *CDisplay) ResizeWindows() {
+	d.RLock()
+	if d.screen == nil {
+		d.RUnlock()
+		return
+	}
+	windows := d.windows
+	w, h := d.screen.Size()
+	d.RUnlock()
+	for _, window := range windows {
+		size := ptypes.MakeRectangle(w, h)
+		if s, err := memphis.GetSurface(window.ObjectID()); err != nil {
+			d.LogErr(err)
+		} else {
+			s.Resize(size, d.GetTheme().Content.Normal)
+		}
+		_ = window.ProcessEvent(NewEventResize(w, h))
+	}
+}
+
 func (d *CDisplay) ActiveWindow() Window {
 	d.RLock()
 	defer d.RUnlock()
@@ -352,6 +372,7 @@ func (d *CDisplay) SetActiveWindow(w Window) {
 	d.Lock()
 	d.active = w.ObjectID()
 	d.Unlock()
+	d.ResizeWindows()
 }
 
 func (d *CDisplay) AddWindow(w Window) {
