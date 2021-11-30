@@ -37,7 +37,7 @@ var (
 )
 
 const (
-	TypeDisplayManager CTypeTag = "cdk-display-manager"
+	TypeDisplayManager CTypeTag = "cdk-display"
 )
 
 func init() {
