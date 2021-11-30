@@ -519,31 +519,29 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 	_ = display.SetStringProperty(PropertyDisplayHost, asc.conn.RemoteAddr().String())
 	var wg sync.WaitGroup
 	wg.Add(1)
-	display.Connect(SignalShutdown, "exit-handler", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+	app.Connect(SignalShutdown, "exit-handler", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
 		log.DebugF("exiting client connection: %s", asc.String())
 		wg.Done()
 		return enums.EVENT_PASS
 	})
 	shutdown := func() {
-		if display.IsRunning() {
-			log.DebugF("handleChannel, requesting quit on display")
-			display.RequestQuit()
-		}
-		wg.Wait()
+		log.DebugF("handleChannel, requesting quit on display")
+		display.RequestQuit()
+		wg.Wait() // hold until shutdown signal is received
 		if ok, err := connection.SendRequest("exit-status", true, []byte{0, 0, 0, 0}); err != nil {
 			log.ErrorF("error sending exit-status channel request")
 		} else {
 			log.InfoF("received exit-status response: %v, on connection: %s", ok, asc.String())
-		}
-		_ = t.Close() // expected file already closed, guarding
-		if err := p.Close(); err != nil {
-			log.ErrorF("error closing pty: %v", err)
 		}
 		if err := connection.Close(); err != nil {
 			log.ErrorF("error closing ssh channel: %v", err)
 		}
 		if err := asc.conn.Close(); err != nil {
 			log.ErrorF("error closing ssh connection: %v", err)
+		}
+		_ = t.Close() // expected file already closed, guarding
+		if err := p.Close(); err != nil {
+			log.ErrorF("error closing pty: %v", err)
 		}
 		if err := s.freeClient(asc.id); err != nil {
 			log.ErrorF("error freeing app client: %v", err)
@@ -583,6 +581,7 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 						if f := app.Emit(SignalStartup, app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
 							app.LogInfo("application startup signal listener requested EVENT_STOP")
 							display.RequestQuit()
+							return enums.EVENT_STOP
 						}
 						return enums.EVENT_PASS
 					}
