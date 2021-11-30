@@ -128,5 +128,6 @@ go_test_*
 !examples/mainworld/
 /pluginworld
 !examples/pluginworld/
+/demoplugin
 /demoplugin.so
 !examples/pluginworld/demoplugin
