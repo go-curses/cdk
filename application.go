@@ -337,6 +337,10 @@ func (app *CApplication) NotifyStartupComplete() {
 }
 
 func (app *CApplication) Run(args []string) (err error) {
+	if f := app.Emit(SignalPrepareStartup); f == enums.EVENT_STOP {
+		app.LogDebug("application run SignalPrepareStartup requested EVENT_STOP")
+		return
+	}
 	app.SetupDisplay()
 	err = nil
 	var wg sync.WaitGroup
@@ -542,6 +546,8 @@ func (app *CApplication) CliActionFn(ctx *cli.Context) (err error) {
 const SignalReconfigure Signal = "reconfigure"
 
 const SignalChanged Signal = "changed"
+
+const SignalPrepareStartup Signal = "prepare-startup"
 
 const SignalStartup Signal = "startup"
 
