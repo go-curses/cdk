@@ -63,29 +63,31 @@ func main() {
 		"Main World",
 		"/dev/tty",
 	)
-	app.Connect(cdk.SignalStartup, "mainworld-startup", func(data []interface{}, argv ...interface{}) enums.EventFlag {
-		if _, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
-			log.DebugF("initFn hit")
-			d.CaptureCtrlC()
-			w := &MainWindow{}
-			w.Init()
-			d.SetActiveWindow(w)
-			// draw the screen every second so the time displayed is now
-			cdk.AddTimeout(time.Second, func() enums.EventFlag {
-				d.RequestDraw()         // redraw the window, is buffered
-				d.RequestShow()         // flag buffer for immediate show
-				return enums.EVENT_PASS // keep looping every second
-			})
-			app.NotifyStartupComplete()
-			return enums.EVENT_PASS
-		}
-		return enums.EVENT_STOP
-	})
+	app.Connect(
+		cdk.SignalStartup,
+		"mainworld-startup",
+		cdk.WithArgvApplicationSignalStartup(
+			func(app cdk.Application, display cdk.Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) enums.EventFlag {
+				log.DebugF("Startup hit")
+				display.CaptureCtrlC()
+				w := &MainWindow{}
+				w.Init()
+				display.SetActiveWindow(w)
+				// draw the screen every second so the time displayed is now
+				cdk.AddTimeout(time.Second, func() enums.EventFlag {
+					display.RequestDraw()   // redraw the window, is buffered
+					display.RequestShow()   // flag buffer for immediate show
+					return enums.EVENT_PASS // keep looping every second
+				})
+				app.NotifyStartupComplete()
+				return enums.EVENT_PASS
+			},
+		),
+	)
 	app.Connect(cdk.SignalShutdown, "mainworld-quitter", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
 		fmt.Printf("Quitting mainworld normally.\n")
 		return enums.EVENT_PASS
 	})
-	cdk.Init()
 	if app.MainInit(nil) {
 		app.MainRun(func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
 			for app.MainEventsPending() {

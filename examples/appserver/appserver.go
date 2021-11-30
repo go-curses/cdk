@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"sync"
 	"time"
 
 	"github.com/go-curses/cdk"
@@ -20,8 +22,8 @@ func main() {
 		"",
 		"",
 		"",
-		clientStartup,
-		serverStartup,
+		cdk.WithArgvApplicationSignalStartup(clientStartup),
+		cdk.WithArgvApplicationSignalStartup(serverStartup),
 		"./examples/appserver/id_rsa",
 	)
 	as.ClearAuthHandlers()
@@ -37,50 +39,44 @@ func main() {
 	}
 }
 
-func clientStartup(data []interface{}, argv ...interface{}) enums.EventFlag {
-	if app, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
-		log.DebugF("initFn hit")
-		d.CaptureCtrlC()
-		w := &AppWindow{}
-		w.Init()
-		w.SetTitle("Client-Side")
-		d.SetActiveWindow(w)
-		// draw the screen every second so the time displayed is now
-		cdk.AddTimeout(time.Second, func() enums.EventFlag {
-			d.RequestDraw()         // redraw the window, is buffered
-			d.RequestShow()         // flag buffer for immediate show
-			return enums.EVENT_PASS // keep looping every second
-		})
-		d.Connect(cdk.SignalShutdown, "appserver-client-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
-			log.DebugF("clientStartup - exited normally.\n")
-			return enums.EVENT_PASS
-		})
-		app.NotifyStartupComplete()
+func clientStartup(app cdk.Application, display cdk.Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) enums.EventFlag {
+	log.DebugF("initFn hit")
+	display.CaptureCtrlC()
+	w := &AppWindow{}
+	w.Init()
+	w.SetTitle("Client-Side")
+	display.SetActiveWindow(w)
+	// draw the screen every second so the time displayed is now
+	cdk.AddTimeout(time.Second, func() enums.EventFlag {
+		display.RequestDraw()   // redraw the window, is buffered
+		display.RequestShow()   // flag buffer for immediate show
+		return enums.EVENT_PASS // keep looping every second
+	})
+	display.Connect(cdk.SignalShutdown, "appserver-client-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+		log.DebugF("clientStartup - exited normally.\n")
 		return enums.EVENT_PASS
-	}
-	return enums.EVENT_STOP
+	})
+	app.NotifyStartupComplete()
+	return enums.EVENT_PASS
 }
 
-func serverStartup(data []interface{}, argv ...interface{}) enums.EventFlag {
-	if app, d, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
-		log.DebugF("initFn hit")
-		d.CaptureCtrlC()
-		w := &AppWindow{}
-		w.Init()
-		w.SetTitle("Server-Side")
-		d.SetActiveWindow(w)
-		// draw the screen every second so the time displayed is now
-		cdk.AddTimeout(time.Second, func() enums.EventFlag {
-			d.RequestDraw()         // redraw the window, is buffered
-			d.RequestShow()         // flag buffer for immediate show
-			return enums.EVENT_PASS // keep looping every second
-		})
-		d.Connect(cdk.SignalShutdown, "appserver-server-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
-			log.DebugF("serverStartup - exited normally.\n")
-			return enums.EVENT_PASS
-		})
-		app.NotifyStartupComplete()
+func serverStartup(app cdk.Application, display cdk.Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) enums.EventFlag {
+	log.DebugF("initFn hit")
+	display.CaptureCtrlC()
+	w := &AppWindow{}
+	w.Init()
+	w.SetTitle("Server-Side")
+	display.SetActiveWindow(w)
+	// draw the screen every second so the time displayed is now
+	cdk.AddTimeout(time.Second, func() enums.EventFlag {
+		display.RequestDraw()   // redraw the window, is buffered
+		display.RequestShow()   // flag buffer for immediate show
+		return enums.EVENT_PASS // keep looping every second
+	})
+	display.Connect(cdk.SignalShutdown, "appserver-server-shutdown", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+		log.DebugF("serverStartup - exited normally.\n")
 		return enums.EVENT_PASS
-	}
-	return enums.EVENT_STOP
+	})
+	app.NotifyStartupComplete()
+	return enums.EVENT_PASS
 }

@@ -15,8 +15,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-curses/cdk"
@@ -62,24 +64,27 @@ func main() {
 		"Hello World",
 		"/dev/tty",
 	)
-	app.Connect(cdk.SignalStartup, "helloworld-init-ui-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
-		if _, display, _, _, _, ok := cdk.ApplicationSignalStartupArgv(argv...); ok {
-			log.DebugF("initFn hit")
-			display.CaptureCtrlC()
-			w := &HelloWindow{}
-			w.Init()
-			display.SetActiveWindow(w)
-			// draw the screen every second so the time displayed is now
-			cdk.AddTimeout(time.Second, func() enums.EventFlag {
-				display.RequestDraw()   // redraw the window, is buffered
-				display.RequestShow()   // flag buffer for immediate show
-				return enums.EVENT_PASS // keep looping every second
-			})
-			app.NotifyStartupComplete()
-			return enums.EVENT_PASS // allow the startup to actually complete
-		}
-		return enums.EVENT_STOP // only STOP in case of fatal error
-	})
+	app.Connect(
+		cdk.SignalStartup,
+		"helloworld-init-ui-handler",
+		cdk.WithArgvApplicationSignalStartup(
+			func(app cdk.Application, display cdk.Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) enums.EventFlag {
+				log.DebugF("initFn hit")
+				display.CaptureCtrlC()
+				w := &HelloWindow{}
+				w.Init()
+				display.SetActiveWindow(w)
+				// draw the screen every second so the time displayed is now
+				cdk.AddTimeout(time.Second, func() enums.EventFlag {
+					display.RequestDraw()   // redraw the window, is buffered
+					display.RequestShow()   // flag buffer for immediate show
+					return enums.EVENT_PASS // keep looping every second
+				})
+				app.NotifyStartupComplete()
+				return enums.EVENT_PASS // allow the startup to actually complete
+			},
+		),
+	)
 	app.Connect(cdk.SignalShutdown, "helloworld-shutdown-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
 		fmt.Printf("Quitting helloworld normally.\n")
 		return enums.EVENT_PASS
