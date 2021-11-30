@@ -564,9 +564,44 @@ const ApplicationDisplayShutdownHandle = "application-display-shutdown-handler"
 type goProfileFn = func(p *profile.Profile)
 
 type ApplicationMain func(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
+
 type ApplicationRunFn = func(ctx *cli.Context) error
 
-func ApplicationSignalStartupArgv(argv ...interface{}) (app Application, display Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, ok bool) {
+type ApplicationInitFn = func(app Application)
+
+type ApplicationStartupFn = func(
+	app Application,
+	display Display,
+	ctx context.Context,
+	cancel context.CancelFunc,
+	wg *sync.WaitGroup,
+) enums.EventFlag
+
+type ApplicationShutdownFn = func() enums.EventFlag
+
+func WithArgvApplicationSignalStartup(startupFn ApplicationStartupFn) SignalListenerFn {
+	return func(_ []interface{}, argv ...interface{}) enums.EventFlag {
+		if app, display, ctx, cancel, wg, ok := ArgvApplicationSignalStartup(argv...); ok {
+			return startupFn(app, display, ctx, cancel, wg)
+		}
+		return enums.EVENT_STOP
+	}
+}
+
+func WithArgvNoneWithFlagsSignal(fn func() enums.EventFlag) SignalListenerFn {
+	return func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+		return fn()
+	}
+}
+
+func WithArgvNoneSignal(fn func(), eventFlag enums.EventFlag) SignalListenerFn {
+	return func(_ []interface{}, _ ...interface{}) enums.EventFlag {
+		fn()
+		return eventFlag
+	}
+}
+
+func ArgvApplicationSignalStartup(argv ...interface{}) (app Application, display Display, ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, ok bool) {
 	if len(argv) == 5 {
 		if app, ok = argv[0].(Application); ok {
 			if display, ok = argv[1].(Display); ok {
