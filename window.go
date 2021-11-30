@@ -85,31 +85,43 @@ func (w *CWindow) Destroy() {
 
 func (w *CWindow) SetTitle(title string) {
 	if f := w.Emit(SignalSetTitle, w, title); f == enums.EVENT_PASS {
+		w.Lock()
 		w.title = title
+		w.Unlock()
 	}
 }
 
 func (w *CWindow) GetTitle() string {
+	w.RLock()
+	defer w.RUnlock()
 	return w.title
 }
 
 func (w *CWindow) GetDisplay() Display {
+	w.RLock()
+	defer w.RUnlock()
 	return w.display
 }
 
 func (w *CWindow) SetDisplay(d Display) {
 	if f := w.Emit(SignalSetDisplay, w, d); f == enums.EVENT_PASS {
+		w.Lock()
 		w.display = d
+		w.Unlock()
 	}
 }
 
 func (w *CWindow) Draw() enums.EventFlag {
-	if surface, err := memphis.GetSurface(w.ObjectID()); err != nil {
+	w.Lock()
+	var err error
+	var surface *memphis.CSurface
+	if surface, err = memphis.GetSurface(w.ObjectID()); err != nil {
+		w.Unlock()
 		w.LogErr(err)
-	} else {
-		return w.Emit(SignalDraw, w, surface)
+		return enums.EVENT_PASS
 	}
-	return enums.EVENT_PASS
+	w.Unlock()
+	return w.Emit(SignalDraw, w, surface)
 }
 
 func (w *CWindow) ProcessEvent(evt Event) enums.EventFlag {
