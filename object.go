@@ -38,8 +38,6 @@ type Object interface {
 	SetName(name string)
 	GetTheme() (theme paint.Theme)
 	SetTheme(theme paint.Theme)
-	GetThemeRequest() (theme paint.Theme)
-	SetThemeRequest(theme paint.Theme)
 }
 
 type CObject struct {
@@ -106,21 +104,6 @@ func (o *CObject) GetTheme() (theme paint.Theme) {
 
 func (o *CObject) SetTheme(theme paint.Theme) {
 	if err := o.SetThemeProperty(PropertyTheme, theme); err != nil {
-		o.LogErr(err)
-	}
-}
-
-func (o *CObject) GetThemeRequest() (theme paint.Theme) {
-	var err error
-	if theme, err = o.GetThemeProperty(PropertyThemeRequest); err != nil {
-		o.LogErr(err)
-		theme = o.GetTheme()
-	}
-	return
-}
-
-func (o *CObject) SetThemeRequest(theme paint.Theme) {
-	if err := o.SetThemeProperty(PropertyThemeRequest, theme); err != nil {
 		o.LogErr(err)
 	}
 }
