@@ -33,7 +33,7 @@ func GetSurface(id uuid.UUID) (*CSurface, error) {
 	return nil, fmt.Errorf("surface not found: %v", id)
 }
 
-func DelSurface(id uuid.UUID) {
+func RemoveSurface(id uuid.UUID) {
 	surfacesLock.Lock()
 	defer surfacesLock.Unlock()
 	if _, ok := surfaces[id]; ok {
