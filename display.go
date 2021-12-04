@@ -26,7 +26,6 @@ import (
 	"github.com/go-curses/cdk/lib/ptypes"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
-	"github.com/gofrs/uuid"
 )
 
 var (
@@ -69,15 +68,9 @@ type Display interface {
 	DefaultTheme() paint.Theme
 	ActiveWindow() Window
 	SetActiveWindow(w Window)
-	AddWindow(w Window)
-	RemoveWindow(wid uuid.UUID)
-	AddWindowOverlay(pid uuid.UUID, overlay Window, region ptypes.Region)
-	RemoveWindowOverlay(pid, oid uuid.UUID)
+	MapWindow(w Window)
+	UnmapWindow(w Window)
 	GetWindows() (windows []Window)
-	GetWindowOverlays(id uuid.UUID) (windows []Window)
-	GetWindowTopOverlay(id uuid.UUID) (window Window)
-	GetWindowOverlayRegion(windowId, overlayId uuid.UUID) (region ptypes.Region)
-	SetWindowOverlayRegion(windowId, overlayId uuid.UUID, region ptypes.Region)
 	SetEventFocus(widget Object) error
 	GetEventFocus() (widget Object)
 	GetPriorEvent() (event Event)
@@ -111,11 +104,7 @@ type CDisplay struct {
 
 	captureCtrlC bool
 
-	active uuid.UUID
-	// windows map[uuid.UUID]*cWindowCanvas
-	// overlay map[uuid.UUID][]*cWindowCanvas
-	windows map[uuid.UUID]Window
-	overlay map[uuid.UUID][]Window
+	windows []Window
 
 	app        *CApplication
 	ttyPath    string
@@ -180,14 +169,16 @@ func (d *CDisplay) Init() (already bool) {
 
 	d.priorEvent = nil
 	d.eventFocus = nil
-	d.windows = make(map[uuid.UUID]Window)
-	d.overlay = make(map[uuid.UUID][]Window)
-	d.active = uuid.Nil
+	d.windows = make([]Window, 0)
 	d.SetTheme(paint.DefaultColorTheme)
 
 	d.runLock = &sync.RWMutex{}
 	d.eventMutex = &sync.Mutex{}
 	d.drawMutex = &sync.Mutex{}
+
+	if err := memphis.RegisterSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), ptypes.MakeRectangle(0, 0), paint.DefaultColorStyle); err != nil {
+		d.LogErr(err)
+	}
 	return false
 }
 
@@ -332,7 +323,7 @@ func (d *CDisplay) DefaultTheme() paint.Theme {
 	return paint.DefaultColorTheme
 }
 
-func (d *CDisplay) ResizeWindows() {
+func (d *CDisplay) resizeWindows() {
 	d.RLock()
 	if d.screen == nil {
 		d.RUnlock()
@@ -340,44 +331,67 @@ func (d *CDisplay) ResizeWindows() {
 	}
 	windows := d.windows
 	w, h := d.screen.Size()
+	size := ptypes.MakeRectangle(w, h)
 	d.RUnlock()
+	d.Lock()
+	if surface, err := memphis.GetSurface(d.ObjectID()); err != nil {
+		d.LogErr(err)
+	} else {
+		surface.Resize(size, d.GetTheme().Content.Normal)
+	}
+	d.Unlock()
 	for _, window := range windows {
-		size := ptypes.MakeRectangle(w, h)
+		d.Lock()
 		if s, err := memphis.GetSurface(window.ObjectID()); err != nil {
 			d.LogErr(err)
 		} else {
 			s.Resize(size, d.GetTheme().Content.Normal)
 		}
-		_ = window.ProcessEvent(NewEventResize(w, h))
+		d.Unlock()
 	}
+}
+
+func (d *CDisplay) findWindow(w Window) (index int) {
+	d.RLock()
+	index = -1
+	for idx, window := range d.windows {
+		if w.ObjectID() == window.ObjectID() {
+			index = idx
+			break
+		}
+	}
+	d.RUnlock()
+	return
 }
 
 func (d *CDisplay) ActiveWindow() Window {
 	d.RLock()
 	defer d.RUnlock()
-	if w, ok := d.windows[d.active]; ok {
-		return w
+	if len(d.windows) > 0 {
+		return d.windows[0]
 	}
 	return nil
 }
 
 func (d *CDisplay) SetActiveWindow(w Window) {
-	d.RLock()
-	if _, ok := d.windows[w.ObjectID()]; !ok {
-		d.RUnlock()
-		d.AddWindow(w)
+	exists := d.findWindow(w)
+	if exists > -1 {
+		d.Lock()
+		existing := d.windows[exists]
+		d.windows = append(d.windows[:exists], d.windows[exists+1:]...)
+		d.windows = append([]Window{existing}, d.windows...)
+		d.Unlock()
 	} else {
-		d.RUnlock()
+		d.MapWindow(w)
+		d.Lock()
+		d.windows = append([]Window{w}, d.windows...)
+		d.Unlock()
 	}
-	d.Lock()
-	d.active = w.ObjectID()
-	d.Unlock()
-	d.ResizeWindows()
 }
 
-func (d *CDisplay) AddWindow(w Window) {
-	if _, ok := d.windows[w.ObjectID()]; ok {
-		d.LogWarn("window already added to display: %v", w.ObjectName())
+func (d *CDisplay) MapWindow(w Window) {
+	if d.findWindow(w) > -1 {
+		d.LogWarn("window already mapped to display: %v", w.ObjectName())
 		return
 	}
 	w.SetDisplay(d)
@@ -393,46 +407,18 @@ func (d *CDisplay) AddWindow(w Window) {
 		s.Resize(size, d.GetTheme().Content.Normal)
 	}
 	d.Lock()
-	d.windows[w.ObjectID()] = w
-	d.overlay[w.ObjectID()] = nil
+	d.windows = append(d.windows, w)
 	d.Unlock()
+	w.Emit(SignalMapped, d)
 }
 
-func (d *CDisplay) RemoveWindow(wid uuid.UUID) {
-	d.Lock()
-	defer d.Unlock()
-	if _, ok := d.windows[wid]; ok {
-		delete(d.windows, wid)
+func (d *CDisplay) UnmapWindow(w Window) {
+	if idx := d.findWindow(w); idx > -1 {
+		d.Lock()
+		d.windows = append(d.windows[:idx], d.windows[idx+1:]...)
+		d.Unlock()
+		w.Emit(SignalUnmapped, d)
 	}
-	if _, ok := d.overlay[wid]; ok {
-		delete(d.overlay, wid)
-	}
-}
-
-func (d *CDisplay) AddWindowOverlay(pid uuid.UUID, overlay Window, region ptypes.Region) {
-	d.Lock()
-	if _, ok := d.overlay[pid]; !ok {
-		d.overlay[pid] = make([]Window, 0)
-	}
-	if err := memphis.ConfigureSurface(overlay.ObjectID(), region.Origin(), region.Size(), d.GetTheme().Content.Normal); err != nil {
-		overlay.LogErr(err)
-	}
-	d.overlay[pid] = append(d.overlay[pid], overlay)
-	d.Unlock()
-}
-
-func (d *CDisplay) RemoveWindowOverlay(pid, oid uuid.UUID) {
-	d.Lock()
-	if wc, ok := d.overlay[pid]; ok {
-		var revised []Window
-		for _, oc := range wc {
-			if oc.ObjectID() != oid {
-				revised = append(revised, oc)
-			}
-		}
-		d.overlay[pid] = revised
-	}
-	d.Unlock()
 }
 
 func (d *CDisplay) GetWindows() (windows []Window) {
@@ -440,78 +426,6 @@ func (d *CDisplay) GetWindows() (windows []Window) {
 	defer d.RUnlock()
 	for _, w := range d.windows {
 		windows = append(windows, w)
-	}
-	return
-}
-
-func (d *CDisplay) GetWindowOverlays(id uuid.UUID) (windows []Window) {
-	d.RLock()
-	defer d.RUnlock()
-	if overlays, ok := d.overlay[id]; ok {
-		for _, overlay := range overlays {
-			windows = append(windows, overlay)
-		}
-	}
-	return
-}
-
-func (d *CDisplay) GetWindowTopOverlay(id uuid.UUID) (window Window) {
-	d.RLock()
-	defer d.RUnlock()
-	if overlays, ok := d.overlay[id]; ok {
-		if last := len(overlays) - 1; last > -1 {
-			window = overlays[last]
-		}
-	}
-	return
-}
-
-func (d *CDisplay) GetWindowOverlayRegion(windowId, overlayId uuid.UUID) (region ptypes.Region) {
-	d.RLock()
-	defer d.RUnlock()
-	if overlays, ok := d.overlay[windowId]; ok {
-		for _, overlay := range overlays {
-			if overlay.ObjectID() == overlayId {
-				if s, err := memphis.GetSurface(overlay.ObjectID()); err != nil {
-					overlay.LogErr(err)
-				} else {
-					origin := s.GetOrigin()
-					size := s.GetSize()
-					region = ptypes.MakeRegion(origin.X, origin.Y, size.W, size.H)
-				}
-				break
-			}
-		}
-	} else {
-		d.LogError("window not found: %v", windowId)
-	}
-	return
-}
-
-func (d *CDisplay) SetWindowOverlayRegion(windowId, overlayId uuid.UUID, region ptypes.Region) {
-	d.Lock()
-	defer d.Unlock()
-	if overlays, ok := d.overlay[windowId]; ok {
-		for _, overlay := range overlays {
-			if overlay.ObjectID() == overlayId {
-				if err := memphis.ConfigureSurface(overlay.ObjectID(), region.Origin(), region.Size(), d.GetTheme().Content.Normal); err != nil {
-					overlay.LogErr(err)
-				}
-				break
-			}
-		}
-	} else {
-		d.LogError("window not found: %v", windowId)
-	}
-}
-
-func (d *CDisplay) getOverlay(windowId uuid.UUID) (overlay Window) {
-	d.RLock()
-	defer d.RUnlock()
-	if overlays, ok := d.overlay[windowId]; ok {
-		if last := len(overlays) - 1; last > -1 {
-			overlay = overlays[last]
-		}
 	}
 	return
 }
@@ -550,12 +464,6 @@ func (d *CDisplay) GetPriorEvent() (event Event) {
 // those events to the active window
 func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	d.eventMutex.Lock()
-	var overlayWindow Window
-	if w := d.ActiveWindow(); w != nil {
-		if overlay := d.getOverlay(w.ObjectID()); overlay != nil {
-			overlayWindow = overlay
-		}
-	}
 	defer func() {
 		d.Lock()
 		d.priorEvent = evt
@@ -568,21 +476,6 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 		d.LogError("event focus does not implement Sensitive: %v (%T)", d.eventFocus, d.eventFocus)
 		return enums.EVENT_PASS
-	} else if overlayWindow != nil {
-		switch e := evt.(type) {
-		case *EventResize:
-			if w := d.ActiveWindow(); w != nil {
-				if ac, err := memphis.GetSurface(w.ObjectID()); err != nil {
-					alloc := ptypes.MakeRectangle(d.screen.Size())
-					ac.Resize(alloc, d.GetTheme().Content.Normal)
-					if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
-						d.RequestDraw()
-						d.RequestSync()
-					}
-				}
-			}
-		}
-		return overlayWindow.ProcessEvent(evt)
 	}
 	switch e := evt.(type) {
 	case *EventError:
@@ -619,18 +512,17 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 		return d.Emit(SignalEventMouse, d, e)
 	case *EventResize:
-		if aw := d.ActiveWindow(); aw != nil {
-			if ac, err := memphis.GetSurface(aw.ObjectID()); err != nil {
-				aw.LogErr(err)
-			} else {
-				alloc := ptypes.MakeRectangle(d.screen.Size())
-				ac.Resize(alloc, d.GetTheme().Content.Normal)
-				if f := aw.ProcessEvent(evt); f == enums.EVENT_STOP {
-					d.RequestDraw()
-					d.RequestSync()
-					return enums.EVENT_STOP
-				}
+		// all windows get resize event
+		d.resizeWindows()
+		stopped := false
+		for _, window := range d.GetWindows() {
+			if f := window.ProcessEvent(evt); f == enums.EVENT_STOP {
+				stopped = true
 			}
+		}
+		if stopped {
+			d.RequestDraw()
+			d.RequestShow()
 		}
 		return d.Emit(SignalEventResize, d, e)
 	}
@@ -653,32 +545,25 @@ func (d *CDisplay) DrawScreen() enums.EventFlag {
 		return enums.EVENT_PASS
 	}
 	d.RUnlock()
-	if aw := d.ActiveWindow(); aw != nil {
-		if ac, err := memphis.GetSurface(aw.ObjectID()); err == nil {
-			if f := aw.Draw(); f == enums.EVENT_STOP {
-				if overlays, ok := d.overlay[aw.ObjectID()]; ok {
-					for _, overlay := range overlays {
-						if of := overlay.Draw(); of == enums.EVENT_STOP {
-							if s, err := memphis.GetSurface(overlay.ObjectID()); err != nil {
-								overlay.LogErr(err)
-							} else {
-								if err := ac.CompositeSurface(s); err != nil {
-									d.LogErr(err)
-								}
-							}
-						}
+	windows := d.GetWindows()
+	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
+		for i := len(windows) - 1; i > 0; i-- {
+			if wsurface, err := memphis.GetSurface(windows[i].ObjectID()); err == nil {
+				if f := windows[i].Draw(); f == enums.EVENT_STOP {
+					if err := surface.CompositeSurface(wsurface); err != nil {
+						d.LogErr(err)
 					}
 				}
-				if err := ac.Render(d.screen); err != nil {
-					d.LogErr(err)
-				}
-				return enums.EVENT_STOP
+			} else {
+				d.LogError("missing surface for window: %v", windows[i].ObjectID())
 			}
-		} else {
-			d.LogError("missing surface for active window: %v", aw.ObjectID())
 		}
+		if err := surface.Render(d.screen); err != nil {
+			d.LogErr(err)
+		}
+		return enums.EVENT_STOP
 	} else {
-		d.LogError("active window not found")
+		d.LogError("missing surface for display: %v", d.ObjectID())
 	}
 	return enums.EVENT_PASS
 }
@@ -1141,6 +1026,8 @@ const (
 	SignalStartupComplete Signal = "startup-complete"
 	SignalDisplayStartup  Signal = "display-startup"
 	SignalDisplayShutdown Signal = "display-shutdown"
+	SignalMapped          Signal = "mapped"
+	SignalUnmapped        Signal = "unmapped"
 )
 
 const (
