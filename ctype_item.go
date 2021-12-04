@@ -57,21 +57,19 @@ type CTypeItem struct {
 	valid    bool
 	self     interface{}
 
-	itemLock  *sync.RWMutex
-	lockStack []string
+	itemLock *sync.RWMutex
 	sync.RWMutex
 }
 
 func NewTypeItem(tag CTypeTag, name string) TypeItem {
 	return &CTypeItem{
-		id:        uuid.Nil,
-		typeTag:   tag,
-		name:      name,
-		ancestry:  make([]TypeTag, 0),
-		valid:     false,
-		self:      nil,
-		itemLock:  &sync.RWMutex{},
-		lockStack: make([]string, 0),
+		id:       uuid.Nil,
+		typeTag:  tag,
+		name:     name,
+		ancestry: make([]TypeTag, 0),
+		valid:    false,
+		self:     nil,
+		itemLock: &sync.RWMutex{},
 	}
 }
 
