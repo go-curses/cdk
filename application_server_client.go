@@ -22,10 +22,11 @@ import (
 )
 
 type CApplicationServerClient struct {
-	id       uuid.UUID
-	conn     *ssh.ServerConn
-	channels <-chan ssh.NewChannel
-	requests <-chan *ssh.Request
+	id          uuid.UUID
+	conn        *ssh.ServerConn
+	channels    <-chan ssh.NewChannel
+	requests    <-chan *ssh.Request
+	application Application
 }
 
 func (asc *CApplicationServerClient) String() string {

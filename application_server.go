@@ -158,10 +158,11 @@ func (s *CApplicationServer) newClient(conn *ssh.ServerConn, channels <-chan ssh
 		s.Lock()
 		defer s.Unlock()
 		asc = &CApplicationServerClient{
-			id:       id,
-			conn:     conn,
-			channels: channels,
-			requests: requests,
+			id:          id,
+			conn:        conn,
+			channels:    channels,
+			requests:    requests,
+			application: nil,
 		}
 		s.clients[id] = asc
 		return asc, nil
@@ -391,6 +392,19 @@ func (s *CApplicationServer) runner(ctx *cli.Context) (err error) {
 
 	done := make(chan bool, 1)
 
+	s.app.Display().Connect(SignalDisplayShutdown, "application-server-display-shutdown-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
+		s.LogInfo("display shutting down")
+		for _, client := range s.clients {
+			if client.application != nil {
+				if display := client.application.Display(); display != nil {
+					s.LogInfo("shutting down client: %v", client.id)
+					display.RequestQuit()
+				}
+			}
+		}
+		return enums.EVENT_PASS
+	})
+
 	// Accept all connections
 	Go(func() {
 		log.InfoF("Listening on %s:%d", s.listenAddress, s.listenPort)
@@ -507,6 +521,7 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 		s.title,
 		"",
 	)
+	asc.application = app
 	app.Connect(SignalStartup, "application-server-startup--client", func(data []interface{}, argv ...interface{}) enums.EventFlag {
 		return s.clientInitFn(data, argv...)
 	})
