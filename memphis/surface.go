@@ -26,11 +26,6 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-type Renderer interface {
-	GetContent(x, y int) (mainc rune, combc []rune, style paint.Style, width int)
-	SetContent(x int, y int, mainc rune, combc []rune, style paint.Style)
-}
-
 // a Surface is the primary means of drawing to the terminal display within CDK
 type Surface interface {
 	String() string
