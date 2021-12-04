@@ -326,13 +326,15 @@ func (app *CApplication) SetDisplay(d *CDisplay) (err error) {
 
 func (app *CApplication) NotifyStartupComplete() {
 	if !app.started {
-		app.started = true
-		if f := app.Emit(SignalNotifyStartupComplete); f == enums.EVENT_STOP {
-			app.LogInfo("application notify startup complete listener requested EVENT_STOP")
-			app.display.RequestQuit()
-			return
+		app.started = app.display != nil
+		if app.started {
+			if f := app.Emit(SignalNotifyStartupComplete); f == enums.EVENT_STOP {
+				app.LogInfo("application notify startup complete listener requested EVENT_STOP")
+				app.display.RequestQuit()
+				return
+			}
+			app.display.StartupComplete()
 		}
-		app.display.StartupComplete()
 	}
 }
 
