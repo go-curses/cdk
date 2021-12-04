@@ -28,6 +28,7 @@ import (
 
 // a Surface is the primary means of drawing to the terminal display within CDK
 type Surface interface {
+	GetStyle() (style paint.Style)
 	String() string
 	Resize(size ptypes.Rectangle, style paint.Style)
 	GetContent(x, y int) (textCell TextCell)
@@ -38,6 +39,8 @@ type Surface interface {
 	GetSize() ptypes.Rectangle
 	Width() (width int)
 	Height() (height int)
+	GetRegion() (region ptypes.Region)
+	SetRegion(region ptypes.Region)
 	Equals(onlyDirty bool, v *CSurface) bool
 	CompositeSurface(v *CSurface) error
 	Composite(id uuid.UUID) (err error)
@@ -136,6 +139,21 @@ func (c *CSurface) Width() (width int) {
 // convenience method to get just the height of the canvas
 func (c *CSurface) Height() (height int) {
 	return c.size.H
+}
+
+// GetRegion returns the origin and size as a Region type.
+func (c *CSurface) GetRegion() (region ptypes.Region) {
+	origin := c.GetOrigin()
+	size := c.GetSize()
+	region = ptypes.MakeRegion(origin.X, origin.Y, size.W, size.H)
+	return
+}
+
+// SetRegion is a convenience method wrapping SetOrigin and Resize, using the
+// given Region for the values. The existing Style is used for the Resize call.
+func (c *CSurface) SetRegion(region ptypes.Region) {
+	c.SetOrigin(region.Origin())
+	c.Resize(region.Size(), c.GetStyle())
 }
 
 // returns true if the given canvas is painted the same as this one, can compare
