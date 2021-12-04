@@ -43,7 +43,7 @@ type MetaData interface {
 	ListBuildableProperties() (properties []Property)
 	SetProperties(properties map[Property]string) (err error)
 	IsProperty(name Property) bool
-	IsBuildableProperty(name Property) bool
+	IsBuildableProperty(name Property) (buildable bool)
 	GetProperty(name Property) *CProperty
 	SetPropertyFromString(name Property, value string) error
 	SetProperty(name Property, value interface{}) error
@@ -53,6 +53,7 @@ type MetaData interface {
 	SetStringProperty(name Property, value string) error
 	GetIntProperty(name Property) (value int, err error)
 	SetIntProperty(name Property, value int) error
+	GetFloat64Property(name Property) (value float64, err error)
 	GetFloatProperty(name Property) (value float64, err error)
 	SetFloatProperty(name Property, value float64) error
 	GetColorProperty(name Property) (value paint.Color, err error)

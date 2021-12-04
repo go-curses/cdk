@@ -36,12 +36,12 @@ func init() {
 type Window interface {
 	Object
 
-	GetTitle() string
+	Init() bool
+	Destroy()
 	SetTitle(title string)
-
+	GetTitle() string
 	GetDisplay() Display
 	SetDisplay(d Display)
-
 	Draw() enums.EventFlag
 	ProcessEvent(evt Event) enums.EventFlag
 }
