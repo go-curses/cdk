@@ -64,7 +64,7 @@ func TestingMakesNoContent(_ []interface{}, _ ...interface{}) enums.EventFlag {
 
 func TestingMakesActiveWindow(d Display) error {
 	w := NewOffscreenWindow(d.GetTitle())
-	d.SetActiveWindow(w)
+	d.FocusWindow(w)
 	return nil
 }
 

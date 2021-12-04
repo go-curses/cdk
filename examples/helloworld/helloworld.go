@@ -73,7 +73,7 @@ func main() {
 				display.CaptureCtrlC()
 				w := &HelloWindow{}
 				w.Init()
-				display.SetActiveWindow(w)
+				display.FocusWindow(w)
 				// draw the screen every second so the time displayed is now
 				cdk.AddTimeout(time.Second, func() enums.EventFlag {
 					display.RequestDraw()   // redraw the window, is buffered

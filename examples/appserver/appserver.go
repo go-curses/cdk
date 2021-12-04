@@ -45,7 +45,7 @@ func clientStartup(app cdk.Application, display cdk.Display, ctx context.Context
 	w := &AppWindow{}
 	w.Init()
 	w.SetTitle("Client-Side")
-	display.SetActiveWindow(w)
+	display.FocusWindow(w)
 	// draw the screen every second so the time displayed is now
 	cdk.AddTimeout(time.Second, func() enums.EventFlag {
 		display.RequestDraw()   // redraw the window, is buffered
@@ -66,7 +66,7 @@ func serverStartup(app cdk.Application, display cdk.Display, ctx context.Context
 	w := &AppWindow{}
 	w.Init()
 	w.SetTitle("Server-Side")
-	display.SetActiveWindow(w)
+	display.FocusWindow(w)
 	// draw the screen every second so the time displayed is now
 	cdk.AddTimeout(time.Second, func() enums.EventFlag {
 		display.RequestDraw()   // redraw the window, is buffered
