@@ -79,7 +79,7 @@ func (w *CWindow) Init() bool {
 }
 
 func (w *CWindow) Destroy() {
-	memphis.DelSurface(w.ObjectID())
+	memphis.RemoveSurface(w.ObjectID())
 	w.CObject.Destroy()
 }
 
