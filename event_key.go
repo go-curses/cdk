@@ -62,6 +62,10 @@ func (ev *EventKey) Rune() rune {
 	return ev.ch
 }
 
+func (ev *EventKey) RuneAsKey() Key {
+	return Key(ev.ch)
+}
+
 // Key returns a virtual key code.  We use this to identify specific key
 // codes, such as KeyEnter, etc.  Most control and function keys are reported
 // with unique Key values.  Normal alphanumeric and punctuation keys will
@@ -69,6 +73,10 @@ func (ev *EventKey) Rune() rune {
 // using the Rune() function.
 func (ev *EventKey) Key() Key {
 	return ev.key
+}
+
+func (ev *EventKey) KeyAsRune() rune {
+	return rune(ev.key)
 }
 
 // Modifiers returns the modifiers that were present with the key press.  Note
