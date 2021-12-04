@@ -66,16 +66,20 @@ type Display interface {
 	CaptureCtrlC()
 	ReleaseCtrlC()
 	DefaultTheme() paint.Theme
-	ActiveWindow() Window
-	SetActiveWindow(w Window)
+	FocusedWindow() Window
+	FocusWindow(w Window)
+	FocusNextWindow()
+	FocusPreviousWindow()
 	MapWindow(w Window)
+	MapWindowWithRegion(w Window, region ptypes.Region)
 	UnmapWindow(w Window)
+	IsMappedWindow(w Window) (mapped bool)
 	GetWindows() (windows []Window)
+	GetWindowAtPoint(point ptypes.Point2I) (window Window)
 	SetEventFocus(widget Object) error
 	GetEventFocus() (widget Object)
 	GetPriorEvent() (event Event)
 	ProcessEvent(evt Event) enums.EventFlag
-	DrawScreen() enums.EventFlag
 	RequestDraw()
 	RequestShow()
 	RequestSync()
@@ -351,7 +355,7 @@ func (d *CDisplay) resizeWindows() {
 	}
 }
 
-func (d *CDisplay) findWindow(w Window) (index int) {
+func (d *CDisplay) findMappedWindowIndex(w Window) (index int) {
 	d.RLock()
 	index = -1
 	for idx, window := range d.windows {
@@ -364,7 +368,7 @@ func (d *CDisplay) findWindow(w Window) (index int) {
 	return
 }
 
-func (d *CDisplay) ActiveWindow() Window {
+func (d *CDisplay) FocusedWindow() Window {
 	d.RLock()
 	defer d.RUnlock()
 	if len(d.windows) > 0 {
@@ -373,52 +377,91 @@ func (d *CDisplay) ActiveWindow() Window {
 	return nil
 }
 
-func (d *CDisplay) SetActiveWindow(w Window) {
-	exists := d.findWindow(w)
-	if exists > -1 {
+func (d *CDisplay) FocusWindow(w Window) {
+	mappedWindowIndex := d.findMappedWindowIndex(w)
+	if mappedWindowIndex > -1 {
 		d.Lock()
-		existing := d.windows[exists]
-		d.windows = append(d.windows[:exists], d.windows[exists+1:]...)
+		existing := d.windows[mappedWindowIndex]
+		d.windows = append(d.windows[:mappedWindowIndex], d.windows[mappedWindowIndex+1:]...)
 		d.windows = append([]Window{existing}, d.windows...)
 		d.Unlock()
 	} else {
 		d.MapWindow(w)
-		d.Lock()
-		d.windows = append([]Window{w}, d.windows...)
-		d.Unlock()
+	}
+	d.Emit(SignalFocusedWindow, d, w)
+}
+
+func (d *CDisplay) FocusNextWindow() {
+	windows := d.GetWindows()
+	numWindows := len(windows)
+	if numWindows > 1 {
+		if f := d.Emit(SignalFocusNextWindow, d, windows[1]); f == enums.EVENT_PASS {
+			d.FocusWindow(windows[1])
+			return
+		}
+	}
+}
+
+func (d *CDisplay) FocusPreviousWindow() {
+	windows := d.GetWindows()
+	numWindows := len(windows)
+	lastWindow := numWindows - 1
+	if numWindows > 1 {
+		if f := d.Emit(SignalFocusPreviousWindow, d, windows[lastWindow]); f == enums.EVENT_PASS {
+			d.FocusWindow(windows[lastWindow])
+			return
+		}
 	}
 }
 
 func (d *CDisplay) MapWindow(w Window) {
-	if d.findWindow(w) > -1 {
+	if d.findMappedWindowIndex(w) > -1 {
 		d.LogWarn("window already mapped to display: %v", w.ObjectName())
 		return
 	}
 	w.SetDisplay(d)
-	size := ptypes.MakeRectangle(0, 0)
+	width, height := 0, 0
 	d.RLock()
 	if d.screen != nil {
-		size = ptypes.MakeRectangle(d.screen.Size())
+		width, height = d.screen.Size()
 	}
 	d.RUnlock()
+	region := ptypes.MakeRegion(0, 0, width, height)
+	d.MapWindowWithRegion(w, region)
+}
+
+func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
+	if d.findMappedWindowIndex(w) > -1 {
+		d.LogWarn("window already mapped to display: %v", w.ObjectName())
+		return
+	}
+	w.SetDisplay(d)
 	if s, err := memphis.GetSurface(w.ObjectID()); err != nil {
-		w.LogErr(err)
+		if err := memphis.RegisterSurface(w.ObjectID(), region.Origin(), region.Size(), w.GetTheme().Content.Normal); err != nil {
+			d.LogErr(err)
+		}
 	} else {
-		s.Resize(size, d.GetTheme().Content.Normal)
+		s.SetOrigin(region.Origin())
+		s.Resize(region.Size(), d.GetTheme().Content.Normal)
 	}
 	d.Lock()
 	d.windows = append(d.windows, w)
 	d.Unlock()
-	w.Emit(SignalMapped, d)
+	w.Emit(SignalMappedWindow, d)
 }
 
 func (d *CDisplay) UnmapWindow(w Window) {
-	if idx := d.findWindow(w); idx > -1 {
+	if idx := d.findMappedWindowIndex(w); idx > -1 {
 		d.Lock()
 		d.windows = append(d.windows[:idx], d.windows[idx+1:]...)
 		d.Unlock()
-		w.Emit(SignalUnmapped, d)
+		w.Emit(SignalUnmappedWindow, d)
 	}
+}
+
+func (d *CDisplay) IsMappedWindow(w Window) (mapped bool) {
+	mapped = d.findMappedWindowIndex(w) > -1
+	return
 }
 
 func (d *CDisplay) GetWindows() (windows []Window) {
@@ -427,6 +470,23 @@ func (d *CDisplay) GetWindows() (windows []Window) {
 	for _, w := range d.windows {
 		windows = append(windows, w)
 	}
+	return
+}
+
+func (d *CDisplay) GetWindowAtPoint(point ptypes.Point2I) (window Window) {
+	d.RLock()
+	for i := 0; i < len(d.windows); i++ {
+		if surface, err := memphis.GetSurface(d.windows[i].ObjectID()); err != nil {
+			d.LogErr(err)
+		} else {
+			region := surface.GetRegion()
+			if region.HasPoint(point) {
+				window = d.windows[i]
+				break
+			}
+		}
+	}
+	d.RUnlock()
 	return
 }
 
@@ -480,7 +540,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	switch e := evt.(type) {
 	case *EventError:
 		d.LogErr(e)
-		if w := d.ActiveWindow(); w != nil {
+		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
 			}
@@ -498,14 +558,14 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 				return enums.EVENT_STOP
 			}
 		}
-		if w := d.ActiveWindow(); w != nil {
+		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
 			}
 		}
 		return d.Emit(SignalEventKey, d, e)
 	case *EventMouse:
-		if w := d.ActiveWindow(); w != nil {
+		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
 			}
@@ -526,7 +586,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 		return d.Emit(SignalEventResize, d, e)
 	}
-	if w := d.ActiveWindow(); w != nil {
+	if w := d.FocusedWindow(); w != nil {
 		if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 			return enums.EVENT_STOP
 		}
@@ -534,8 +594,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	return d.Emit(SignalEvent, d, evt)
 }
 
-// DrawScreen renders the active window contents to the screen
-func (d *CDisplay) DrawScreen() enums.EventFlag {
+func (d *CDisplay) renderScreen() enums.EventFlag {
 	d.drawMutex.Lock()
 	defer d.drawMutex.Unlock()
 	d.RLock()
@@ -547,7 +606,7 @@ func (d *CDisplay) DrawScreen() enums.EventFlag {
 	d.RUnlock()
 	windows := d.GetWindows()
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
-		for i := len(windows) - 1; i > 0; i-- {
+		for i := len(windows) - 1; i >= 0; i-- {
 			if wsurface, err := memphis.GetSurface(windows[i].ObjectID()); err == nil {
 				if f := windows[i].Draw(); f == enums.EVENT_STOP {
 					if err := surface.CompositeSurface(wsurface); err != nil {
@@ -751,7 +810,7 @@ screenRequestWorkerLoop:
 			d.RLock()
 			if d.started && d.screen != nil {
 				d.RUnlock()
-				d.DrawScreen()
+				d.renderScreen()
 			} else {
 				d.RUnlock()
 			}
@@ -1015,19 +1074,22 @@ const (
 )
 
 const (
-	SignalDisplayCaptured Signal = "display-captured"
-	SignalInterrupt       Signal = "sigint"
-	SignalEvent           Signal = "event"
-	SignalEventError      Signal = "event-error"
-	SignalEventKey        Signal = "event-key"
-	SignalEventMouse      Signal = "event-mouse"
-	SignalEventResize     Signal = "event-resize"
-	SignalSetEventFocus   Signal = "set-event-focus"
-	SignalStartupComplete Signal = "startup-complete"
-	SignalDisplayStartup  Signal = "display-startup"
-	SignalDisplayShutdown Signal = "display-shutdown"
-	SignalMapped          Signal = "mapped"
-	SignalUnmapped        Signal = "unmapped"
+	SignalDisplayCaptured     Signal = "display-captured"
+	SignalInterrupt           Signal = "sigint"
+	SignalEvent               Signal = "event"
+	SignalEventError          Signal = "event-error"
+	SignalEventKey            Signal = "event-key"
+	SignalEventMouse          Signal = "event-mouse"
+	SignalEventResize         Signal = "event-resize"
+	SignalSetEventFocus       Signal = "set-event-focus"
+	SignalStartupComplete     Signal = "startup-complete"
+	SignalDisplayStartup      Signal = "display-startup"
+	SignalDisplayShutdown     Signal = "display-shutdown"
+	SignalMappedWindow        Signal = "mapped-window"
+	SignalUnmappedWindow      Signal = "unmapped-window"
+	SignalFocusedWindow       Signal = "focused-window"
+	SignalFocusNextWindow     Signal = "focus-next-window"
+	SignalFocusPreviousWindow Signal = "focus-previous-window"
 )
 
 const (
