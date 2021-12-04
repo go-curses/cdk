@@ -16,10 +16,11 @@ package cdk
 
 import (
 	"fmt"
-	"sync"
 
-	"github.com/go-curses/cdk/log"
 	"github.com/gofrs/uuid"
+
+	"github.com/go-curses/cdk/lib/sync"
+	"github.com/go-curses/cdk/log"
 )
 
 type TypeItem interface {

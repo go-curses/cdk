@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
+	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
 )

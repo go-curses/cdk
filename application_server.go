@@ -21,12 +21,12 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/creack/pty"
 	"github.com/go-curses/cdk/env"
 	"github.com/go-curses/cdk/lib/enums"
+	"github.com/go-curses/cdk/lib/sync"
 	"github.com/gofrs/uuid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/ssh"

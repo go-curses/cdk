@@ -15,11 +15,11 @@
 package cdk
 
 import (
-	"sync"
-
 	"github.com/gofrs/uuid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/go-curses/cdk/lib/sync"
 )
 
 type ServerAuthHandler interface {

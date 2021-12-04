@@ -22,7 +22,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/gofrs/uuid"
 	"github.com/pkg/profile"
@@ -33,6 +32,7 @@ import (
 	cfsorter "github.com/go-curses/cdk/lib/flag_sorter"
 	cpaths "github.com/go-curses/cdk/lib/paths"
 	cstrings "github.com/go-curses/cdk/lib/strings"
+	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 )
 

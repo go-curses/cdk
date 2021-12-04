@@ -16,7 +16,8 @@ package cdk
 
 import (
 	"fmt"
-	"sync"
+
+	"github.com/go-curses/cdk/lib/sync"
 )
 
 const (

@@ -18,11 +18,11 @@ package cdk
 import (
 	"fmt"
 	"os"
-	"sync"
 	"unicode/utf8"
 
 	ccharset "github.com/go-curses/cdk/charset"
 	"github.com/go-curses/cdk/lib/paint"
+	"github.com/go-curses/cdk/lib/sync"
 	"golang.org/x/text/transform"
 
 	cstrings "github.com/go-curses/cdk/lib/strings"

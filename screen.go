@@ -22,7 +22,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -31,6 +30,7 @@ import (
 	"golang.org/x/text/transform"
 
 	"github.com/go-curses/cdk/charset"
+	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/term"
 	"github.com/go-curses/terminfo"
 	_ "github.com/go-curses/terminfo/base"

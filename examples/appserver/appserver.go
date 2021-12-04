@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/go-curses/cdk"
 	"github.com/go-curses/cdk/env"
 	"github.com/go-curses/cdk/lib/enums"
+	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 )
 

@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
+	"github.com/go-curses/cdk/lib/sync"
 )
 
 type Property string
