@@ -26,6 +26,7 @@ const (
 	RectangleProperty PropertyType = "rectangle"
 	RegionProperty    PropertyType = "region"
 	StructProperty    PropertyType = "struct"
+	TimeProperty      PropertyType = "time"
 )
 
 type PropertyType string
