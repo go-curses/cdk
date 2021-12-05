@@ -15,6 +15,7 @@
 package cdk
 
 import (
+	"context"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -37,12 +38,14 @@ type timers struct {
 
 func (t *timers) Add(n *timer) (id uuid.UUID) {
 	t.Lock()
-	n.id, _ = uuid.NewV4()
+	if n.id == uuid.Nil {
+		n.id, _ = uuid.NewV4()
+	}
 	t.timers[n.id] = n
 	t.Unlock()
 	_ = n.display.AsyncCall(func(d Display) error {
 		t.Lock()
-		n.timer = time.AfterFunc(n.delay, n.handler)
+		n.handler()
 		t.Unlock()
 		return nil
 	})
@@ -71,7 +74,7 @@ func (t *timers) Stop(id uuid.UUID) bool {
 		t.Lock()
 		defer t.Unlock()
 		_ = t.timers[id].display.AwaitCall(func(_ Display) error {
-			t.timers[id].timer.Stop()
+			t.timers[id].cancel()
 			t.timers[id] = nil
 			log.TraceF("stopped timer: %d", id)
 			return nil
@@ -86,18 +89,25 @@ type timer struct {
 	delay   time.Duration
 	fn      TimerCallbackFn
 	display *CDisplay
-	timer   *time.Timer
+	context context.Context
+	cancel  context.CancelFunc
 }
 
 func (t *timer) handler() {
 	if t.display.IsRunning() {
-		if f := t.fn(); f == enums.EVENT_STOP {
-			cdkTimeouts.Stop(t.id)
-			return
+		select {
+		case <-time.NewTimer(t.delay).C:
+			if f := t.fn(); f == enums.EVENT_STOP {
+				cdkTimeouts.Stop(t.id)
+			} else {
+				t.cancel()
+				t.context, t.cancel = context.WithCancel(context.Background())
+				cdkTimeouts.Add(t)
+			}
+		case <-t.context.Done():
 		}
 	}
-	t.timer.Stop()
-	t.timer = time.AfterFunc(t.delay, t.handler)
+
 }
 
 type TimerCallbackFn = func() enums.EventFlag
@@ -105,10 +115,12 @@ type TimerCallbackFn = func() enums.EventFlag
 func AddTimeout(delay time.Duration, fn TimerCallbackFn) (id uuid.UUID) {
 	if display := GetDefaultDisplay(); display != nil {
 		t := &timer{
+			id:      uuid.Nil,
 			delay:   delay,
 			fn:      fn,
 			display: display,
 		}
+		t.context, t.cancel = context.WithCancel(context.Background())
 		id = cdkTimeouts.Add(t)
 	}
 	return
