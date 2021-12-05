@@ -37,3 +37,19 @@ func newSignalListener(s Signal, n string, c SignalListenerFn, d SignalListenerD
 		d: d,
 	}
 }
+
+func (l *CSignalListener) Signal() Signal {
+	return l.s
+}
+
+func (l *CSignalListener) Name() string {
+	return l.n
+}
+
+func (l *CSignalListener) Func() SignalListenerFn {
+	return l.c
+}
+
+func (l *CSignalListener) Data() SignalListenerData {
+	return l.d
+}
