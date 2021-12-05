@@ -33,12 +33,13 @@ func init() {
 type OffscreenWindow interface {
 	Object
 
-	GetTitle() string
+	Init() bool
+	GetWindowType() (value enums.WindowType)
+	SetWindowType(hint enums.WindowType)
 	SetTitle(title string)
-
+	GetTitle() string
 	GetDisplay() Display
 	SetDisplay(d Display)
-
 	Draw() enums.EventFlag
 	ProcessEvent(evt Event) enums.EventFlag
 }
@@ -69,7 +70,29 @@ func (w *COffscreenWindow) Init() bool {
 		return true
 	}
 	w.CObject.Init()
+	_ = w.InstallProperty(PropertyWindowType, StructProperty, true, enums.WINDOW_TOPLEVEL)
 	return false
+}
+
+// GetWindowType returns the type of the window.
+// See: enums.WindowType.
+func (w *COffscreenWindow) GetWindowType() (value enums.WindowType) {
+	var ok bool
+	if v, err := w.GetStructProperty(PropertyWindowType); err != nil {
+		w.LogErr(err)
+	} else if value, ok = v.(enums.WindowType); !ok {
+		value = enums.WINDOW_TOPLEVEL // default is top-level?
+		w.LogError("value stored in %v is not of enums.WindowType: %v (%T)", PropertyWindowType, v, v)
+	}
+	return
+}
+
+// SetWindowType updates the type of the window.
+// See: enums.WindowType
+func (w *COffscreenWindow) SetWindowType(hint enums.WindowType) {
+	if err := w.SetStructProperty(PropertyWindowType, hint); err != nil {
+		w.LogErr(err)
+	}
 }
 
 func (w *COffscreenWindow) SetTitle(title string) {
