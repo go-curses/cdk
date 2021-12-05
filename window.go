@@ -16,16 +16,15 @@ package cdk
 
 import (
 	"github.com/go-curses/cdk/lib/enums"
-	"github.com/go-curses/cdk/lib/paint"
-	"github.com/go-curses/cdk/lib/ptypes"
 	"github.com/go-curses/cdk/memphis"
 )
 
 const (
-	TypeWindow       CTypeTag = "cdk-window"
-	SignalDraw       Signal   = "draw"
-	SignalSetTitle   Signal   = "set-title"
-	SignalSetDisplay Signal   = "set-display"
+	TypeWindow         CTypeTag = "cdk-window"
+	PropertyWindowType Property = "window-type"
+	SignalDraw         Signal   = "draw"
+	SignalSetTitle     Signal   = "set-title"
+	SignalSetDisplay   Signal   = "set-display"
 )
 
 func init() {
@@ -38,6 +37,8 @@ type Window interface {
 
 	Init() bool
 	Destroy()
+	GetWindowType() (value enums.WindowType)
+	SetWindowType(hint enums.WindowType)
 	SetTitle(title string)
 	GetTitle() string
 	GetDisplay() Display
@@ -68,19 +69,36 @@ func (w *CWindow) Init() bool {
 		return true
 	}
 	w.CObject.Init()
-	style := paint.DefaultColorStyle
-	if display := GetDefaultDisplay(); display != nil {
-		style = display.GetTheme().Content.Normal
-	}
-	if err := memphis.RegisterSurface(w.ObjectID(), ptypes.Point2I{}, ptypes.Rectangle{}, style); err != nil {
-		w.LogErr(err)
-	}
+	_ = w.InstallProperty(PropertyWindowType, StructProperty, true, enums.WINDOW_TOPLEVEL)
 	return false
 }
 
 func (w *CWindow) Destroy() {
-	memphis.RemoveSurface(w.ObjectID())
+	if display := w.GetDisplay(); display != nil {
+		display.UnmapWindow(w)
+	}
 	w.CObject.Destroy()
+}
+
+// GetWindowType returns the type of the window.
+// See: enums.WindowType.
+func (w *CWindow) GetWindowType() (value enums.WindowType) {
+	var ok bool
+	if v, err := w.GetStructProperty(PropertyWindowType); err != nil {
+		w.LogErr(err)
+	} else if value, ok = v.(enums.WindowType); !ok {
+		value = enums.WINDOW_TOPLEVEL // default is top-level?
+		w.LogError("value stored in %v is not of enums.WindowType: %v (%T)", PropertyWindowType, v, v)
+	}
+	return
+}
+
+// SetWindowType updates the type of the window.
+// See: enums.WindowType
+func (w *CWindow) SetWindowType(hint enums.WindowType) {
+	if err := w.SetStructProperty(PropertyWindowType, hint); err != nil {
+		w.LogErr(err)
+	}
 }
 
 func (w *CWindow) SetTitle(title string) {
