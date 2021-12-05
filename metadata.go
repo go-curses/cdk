@@ -16,6 +16,7 @@ package cdk
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
@@ -70,6 +71,8 @@ type MetaData interface {
 	SetRegionProperty(name Property, value ptypes.Region) error
 	GetStructProperty(name Property) (value interface{}, err error)
 	SetStructProperty(name Property, value interface{}) error
+	GetTimeProperty(name Property) (value time.Duration, err error)
+	SetTimeProperty(name Property, value time.Duration) error
 }
 
 type CMetaData struct {
@@ -574,6 +577,35 @@ func (o *CMetaData) SetStructProperty(name Property, value interface{}) error {
 			return o.SetProperty(name, value)
 		}
 		return fmt.Errorf("%v.(%v) property is not a struct", name, prop.Type())
+	}
+	return fmt.Errorf("property not found: %v", name)
+}
+
+func (o *CMetaData) GetTimeProperty(name Property) (value time.Duration, err error) {
+	if prop := o.GetProperty(name); prop != nil {
+		o.propertyLock.RLock()
+		if prop.Type() == TimeProperty {
+			if v, ok := prop.Value().(time.Duration); ok {
+				o.propertyLock.RUnlock()
+				return v, nil
+			}
+			if v, ok := prop.Default().(time.Duration); ok {
+				o.propertyLock.RUnlock()
+				return v, nil
+			}
+		}
+		o.propertyLock.RUnlock()
+		return 0, fmt.Errorf("%v.(%v) property is not a Time", name, prop.Type())
+	}
+	return 0, fmt.Errorf("property not found: %v", name)
+}
+
+func (o *CMetaData) SetTimeProperty(name Property, value time.Duration) error {
+	if prop := o.GetProperty(name); prop != nil {
+		if prop.Type() == TimeProperty {
+			return o.SetProperty(name, value)
+		}
+		return fmt.Errorf("%v.(%v) property is not a Time", name, prop.Type())
 	}
 	return fmt.Errorf("property not found: %v", name)
 }
