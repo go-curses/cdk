@@ -22,8 +22,7 @@ import (
 )
 
 const (
-	TypeSignaling       CTypeTag = "cdk-signaling"
-	SignalSignalingInit Signal   = "signaling-init"
+	TypeSignaling CTypeTag = "cdk-signaling"
 )
 
 func init() {
@@ -39,6 +38,7 @@ type Signaling interface {
 	Disconnect(signal Signal, handle string) error
 	Emit(signal Signal, argv ...interface{}) enums.EventFlag
 	HasListeners(signal Signal) (has bool)
+	DisconnectAll()
 	StopSignal(signal Signal)
 	IsSignalStopped(signal Signal) bool
 	PassSignal(signal Signal)
@@ -172,6 +172,17 @@ func (o *CSignaling) HasListeners(signal Signal) (has bool) {
 		has = len(listeners) > 0
 	}
 	return
+}
+
+func (o *CSignaling) DisconnectAll() {
+	o.RLock()
+	signalListeners := o.listeners
+	o.RUnlock()
+	for signal, listeners := range signalListeners {
+		for _, listener := range listeners {
+			_ = o.Disconnect(signal, listener.n)
+		}
+	}
 }
 
 // StopSignal disables propagation of the given signal with an EVENT_STOP
