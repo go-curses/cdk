@@ -146,7 +146,7 @@ func CancelAllTimeouts() {
 		log.WarnDF(1, "error getting app context for CancelAllTimeouts()")
 	} else {
 		for _, t := range cdkTimeouts.timers {
-			if t != nil && ac.Display.ObjectName() == t.display.ObjectName() {
+			if t != nil && ac.Display.ObjectID() == t.display.ObjectID() {
 				cdkTimeouts.Stop(t.id)
 			}
 		}
