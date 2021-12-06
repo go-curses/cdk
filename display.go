@@ -61,6 +61,7 @@ type Display interface {
 	DisplayCaptured() bool
 	CaptureDisplay() (err error)
 	ReleaseDisplay()
+	Call(fn DisplayCommandFn) (err error)
 	IsMonochrome() bool
 	Colors() (numberOfColors int)
 	CaptureCtrlC()
@@ -289,13 +290,29 @@ func (d *CDisplay) CaptureDisplay() (err error) {
 }
 
 func (d *CDisplay) ReleaseDisplay() {
-	if d.captured {
-		if d.screen != nil {
-			d.screen.Close()
-			d.screen = nil
-		}
+	if d.DisplayCaptured() {
+		d.Lock()
+		d.screen.Close()
+		d.screen = nil
 		d.captured = false
+		d.Unlock()
 	}
+}
+
+func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
+	d.LogDebug("starting new call")
+	d.ReleaseDisplay()
+	d.LogDebug("display released, calling fn")
+	err = fn()
+	d.LogDebug("fn released, capturing display")
+	if derr := d.CaptureDisplay(); derr != nil {
+		d.LogErr(derr)
+	} else if d.screen != nil {
+		d.LogDebug("restoring display")
+		d.RequestDraw()
+		d.RequestSync()
+	}
+	return
 }
 
 func (d *CDisplay) IsMonochrome() bool {
@@ -541,6 +558,9 @@ func (d *CDisplay) GetPriorEvent() (event Event) {
 // ProcessEvent handles events sent from the Screen instance and manages passing
 // those events to the active window
 func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
+	if !d.DisplayCaptured() {
+		return enums.EVENT_PASS
+	}
 	d.eventMutex.Lock()
 	defer func() {
 		d.Lock()
@@ -617,15 +637,11 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 }
 
 func (d *CDisplay) renderScreen() enums.EventFlag {
-	d.drawMutex.Lock()
-	defer d.drawMutex.Unlock()
-	d.RLock()
-	if !d.captured || d.screen == nil {
-		d.RUnlock()
-		d.LogError("display not captured or is otherwise missing")
+	if !d.DisplayCaptured() {
 		return enums.EVENT_PASS
 	}
-	d.RUnlock()
+	d.drawMutex.Lock()
+	defer d.drawMutex.Unlock()
 	d.Lock()
 	windows := d.windows
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
@@ -786,13 +802,17 @@ func (d *CDisplay) PostEvent(evt Event) error {
 func (d *CDisplay) pollEventWorker(ctx context.Context) {
 	// this happens in its own go thread
 pollEventWorkerLoop:
-	for d.IsRunning() && d.screen != nil {
-		select {
-		case evt := <-d.screen.PollEventChan():
-			d.inbound <- evt
-		case <-ctx.Done():
-			break pollEventWorkerLoop
-			// default: // nop
+	for d.IsRunning() {
+		if d.DisplayCaptured() {
+			select {
+			case evt := <-d.screen.PollEventChan():
+				d.inbound <- evt
+			case <-ctx.Done():
+				break pollEventWorkerLoop
+				// default: // nop
+			}
+		} else {
+			time.Sleep(MainIterateDelay)
 		}
 	}
 }
@@ -825,42 +845,38 @@ processEventWorkerLoop:
 	}
 }
 
+func (d *CDisplay) startedAndCaptured() bool {
+	d.RLock()
+	defer d.RUnlock()
+	return d.started && d.captured && d.screen != nil
+}
+
 func (d *CDisplay) screenRequestWorker(ctx context.Context) {
 	// this happens in its own go thread
 screenRequestWorkerLoop:
 	for d.IsRunning() {
 		switch <-d.requests {
 		case displayDrawRequest:
-			d.RLock()
-			if d.started && d.screen != nil {
-				d.RUnlock()
+			if d.startedAndCaptured() {
 				d.renderScreen()
-			} else {
-				d.RUnlock()
 			}
 		case displayShowRequest:
-			d.RLock()
-			if d.started && d.screen != nil {
-				d.RUnlock()
+			if d.startedAndCaptured() {
 				d.screen.Show()
-			} else {
-				d.RUnlock()
 			}
 		case displaySyncRequest:
-			d.RLock()
-			if d.started && d.screen != nil {
-				d.RUnlock()
+			if d.startedAndCaptured() {
 				d.screen.Sync()
-			} else {
-				d.RUnlock()
 			}
 		case displayFuncRequest:
 			// one displayFuncRequest per d.queue fn
-			qlen := len(d.queue)
-			for i := 0; i < qlen; i++ {
-				if fn, ok := <-d.queue; ok {
-					if err := fn(d); err != nil {
-						log.ErrorF("async/await handler error: %v", err)
+			if d.DisplayCaptured() {
+				qlen := len(d.queue)
+				for i := 0; i < qlen; i++ {
+					if fn, ok := <-d.queue; ok {
+						if err := fn(d); err != nil {
+							log.ErrorF("async/await handler error: %v", err)
+						}
 					}
 				}
 			}
@@ -961,18 +977,18 @@ mainForLoop:
 		select {
 		case fn, ok := <-d.mains:
 			if ok {
-				if err := fn(d); err != nil {
-					log.Error(err)
+				if d.DisplayCaptured() {
+					if err := fn(d); err != nil {
+						log.Error(err)
+					}
 				}
 			}
 		case evt, ok := <-d.events:
 			if ok {
-				if d.screen != nil {
+				if d.DisplayCaptured() {
 					if err := d.screen.PostEvent(evt); err != nil {
 						log.Error(err)
 					}
-				} else {
-					d.LogTrace("missing screen, dropping event: %v", evt)
 				}
 			}
 		case <-d.done:
@@ -1043,6 +1059,9 @@ func (d *CDisplay) HasBufferedEvents() (hasEvents bool) {
 // EVENT_STOP from their signal listeners, draw and show requests are made to
 // refresh the display contents.
 func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
+	if !d.DisplayCaptured() {
+		return false
+	}
 	d.Lock()
 	buffer := make([]interface{}, len(d.buffer))
 	for idx, e := range d.buffer {
@@ -1127,6 +1146,8 @@ const (
 )
 
 type DisplayCallbackFn = func(d Display) error
+
+type DisplayCommandFn = func() error
 
 func DisplaySignalDisplayStartupArgv(argv ...interface{}) (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, ok bool) {
 	if len(argv) == 3 {
