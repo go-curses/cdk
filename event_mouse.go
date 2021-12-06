@@ -18,6 +18,8 @@ package cdk
 import (
 	"fmt"
 	"time"
+
+	"github.com/go-curses/cdk/lib/ptypes"
 )
 
 // EventMouse is a mouse event.  It is sent on either mouse up or mouse down
@@ -128,6 +130,11 @@ func (ev *EventMouse) Modifiers() ModMask {
 // 0, 0 is at the upper left corner.
 func (ev *EventMouse) Position() (x, y int) {
 	return ev.x, ev.y
+}
+
+func (ev *EventMouse) Point2I() (point ptypes.Point2I) {
+	point = ptypes.MakePoint2I(ev.x, ev.y)
+	return
 }
 
 func (ev *EventMouse) Button() ButtonMask {
