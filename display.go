@@ -378,8 +378,12 @@ func (d *CDisplay) findMappedWindowIndex(w Window) (index int) {
 func (d *CDisplay) FocusedWindow() Window {
 	d.RLock()
 	defer d.RUnlock()
-	if len(d.windows) > 0 {
-		return d.windows[0]
+	if numWindows := len(d.windows); numWindows > 0 {
+		for i := 0; i < numWindows; i++ {
+			if d.windows[i].GetWindowType() == enums.WINDOW_TOPLEVEL {
+				return d.windows[i]
+			}
+		}
 	}
 	return nil
 }
