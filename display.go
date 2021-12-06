@@ -422,10 +422,6 @@ func (d *CDisplay) FocusPreviousWindow() {
 }
 
 func (d *CDisplay) MapWindow(w Window) {
-	if d.findMappedWindowIndex(w) > -1 {
-		d.LogWarn("window already mapped to display: %v", w.ObjectName())
-		return
-	}
 	w.SetDisplay(d)
 	width, height := 0, 0
 	d.RLock()
@@ -438,10 +434,8 @@ func (d *CDisplay) MapWindow(w Window) {
 }
 
 func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
-	if d.findMappedWindowIndex(w) > -1 {
-		d.LogWarn("window already mapped to display: %v", w.ObjectName())
-		return
-	}
+	d.LogDebug("mapping window: %v, with region: %v", w.ObjectName(), region)
+	index := d.findMappedWindowIndex(w)
 	w.SetDisplay(d)
 	if s, err := memphis.GetSurface(w.ObjectID()); err != nil {
 		if err := memphis.RegisterSurface(w.ObjectID(), region.Origin(), region.Size(), w.GetTheme().Content.Normal); err != nil {
@@ -452,14 +446,19 @@ func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
 		s.Resize(region.Size(), d.GetTheme().Content.Normal)
 	}
 	d.Lock()
-	d.windows = append(d.windows, w)
+	if index > -1 {
+		d.windows = append(d.windows[:index], d.windows[index+1:]...)
+	}
+	d.windows = append([]Window{w}, d.windows...)
 	d.Unlock()
 	w.Emit(SignalMappedWindow, d)
 }
 
 func (d *CDisplay) UnmapWindow(w Window) {
 	if idx := d.findMappedWindowIndex(w); idx > -1 {
+		d.LogDebug("unmapping window: %v", w.ObjectName())
 		d.Lock()
+		memphis.RemoveSurface(w.ObjectID())
 		d.windows = append(d.windows[:idx], d.windows[idx+1:]...)
 		d.Unlock()
 		w.Emit(SignalUnmappedWindow, d)
