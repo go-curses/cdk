@@ -95,17 +95,19 @@ type timer struct {
 
 func (t *timer) handler() {
 	if t.display.IsRunning() {
-		select {
-		case <-time.NewTimer(t.delay).C:
-			if f := t.fn(); f == enums.EVENT_STOP {
-				cdkTimeouts.Stop(t.id)
-			} else {
-				t.cancel()
-				t.context, t.cancel = context.WithCancel(context.Background())
-				cdkTimeouts.Add(t)
+		Go(func() {
+			select {
+			case <-time.NewTimer(t.delay).C:
+				if f := t.fn(); f == enums.EVENT_STOP {
+					cdkTimeouts.Stop(t.id)
+				} else {
+					t.cancel()
+					t.context, t.cancel = context.WithCancel(context.Background())
+					cdkTimeouts.Add(t)
+				}
+			case <-t.context.Done():
 			}
-		case <-t.context.Done():
-		}
+		})
 	}
 
 }
