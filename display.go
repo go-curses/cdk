@@ -215,27 +215,39 @@ func (d *CDisplay) closeChannels() {
 }
 
 func (d *CDisplay) GetTitle() string {
+	d.RLock()
+	defer d.RUnlock()
 	return d.title
 }
 
 func (d *CDisplay) SetTitle(title string) {
+	d.Lock()
 	d.title = title
+	d.Unlock()
 }
 
 func (d *CDisplay) GetTtyPath() string {
+	d.RLock()
+	defer d.RUnlock()
 	return d.ttyPath
 }
 
 func (d *CDisplay) SetTtyPath(ttyPath string) {
+	d.Lock()
 	d.ttyPath = ttyPath
+	d.Unlock()
 }
 
 func (d *CDisplay) GetTtyHandle() *os.File {
+	d.RLock()
+	defer d.RUnlock()
 	return d.ttyHandle
 }
 
 func (d *CDisplay) SetTtyHandle(ttyHandle *os.File) {
+	d.Lock()
 	d.ttyHandle = ttyHandle
+	d.Unlock()
 }
 
 func (d *CDisplay) GetCompressEvents() bool {
@@ -251,10 +263,14 @@ func (d *CDisplay) SetCompressEvents(compress bool) {
 }
 
 func (d *CDisplay) Screen() Screen {
+	d.RLock()
+	defer d.RUnlock()
 	return d.screen
 }
 
 func (d *CDisplay) DisplayCaptured() bool {
+	d.RLock()
+	defer d.RUnlock()
 	return d.screen != nil && d.captured
 }
 
