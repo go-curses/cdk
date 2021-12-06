@@ -132,11 +132,9 @@ func StopTimeout(id uuid.UUID) {
 	if ac, err := GetLocalContext(); err != nil {
 		log.WarnDF(1, "error getting app context for CancelTimeout()")
 	} else {
-		for cdkTimeouts.Valid(id) {
-			if t := cdkTimeouts.Get(id); t != nil {
-				if ac.Display.ObjectName() == t.display.ObjectName() {
-					cdkTimeouts.Stop(t.id)
-				}
+		if t := cdkTimeouts.Get(id); t != nil {
+			if ac.Display.ObjectID() == t.display.ObjectID() {
+				cdkTimeouts.Stop(t.id)
 			}
 		}
 	}
