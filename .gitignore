@@ -131,3 +131,5 @@ go_test_*
 /demoplugin
 /demoplugin.so
 !examples/pluginworld/demoplugin
+/hellocall
+!examples/hellocall/
