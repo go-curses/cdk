@@ -622,7 +622,8 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 		return enums.EVENT_PASS
 	}
 	d.RUnlock()
-	windows := d.GetWindows()
+	d.Lock()
+	windows := d.windows
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
 		for i := len(windows) - 1; i >= 0; i-- {
 			if wsurface, err := memphis.GetSurface(windows[i].ObjectID()); err == nil {
@@ -638,10 +639,11 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 		if err := surface.Render(d.screen); err != nil {
 			d.LogErr(err)
 		}
+		d.Unlock()
 		return enums.EVENT_STOP
-	} else {
-		d.LogError("missing surface for display: %v", d.ObjectID())
 	}
+	d.Unlock()
+	d.LogError("missing surface for display: %v", d.ObjectID())
 	return enums.EVENT_PASS
 }
 
