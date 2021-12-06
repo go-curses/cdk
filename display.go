@@ -76,6 +76,7 @@ type Display interface {
 	IsMappedWindow(w Window) (mapped bool)
 	GetWindows() (windows []Window)
 	GetWindowAtPoint(point ptypes.Point2I) (window Window)
+	CursorPosition() (position ptypes.Point2I, moving bool)
 	SetEventFocus(widget Object) error
 	GetEventFocus() (widget Object)
 	GetPriorEvent() (event Event)
@@ -118,6 +119,9 @@ type CDisplay struct {
 	started    bool
 	eventFocus Object
 	priorEvent Event
+
+	cursor       *ptypes.Point2I
+	cursorMoving bool
 
 	running  bool
 	closing  sync.Once
@@ -170,6 +174,9 @@ func (d *CDisplay) Init() (already bool) {
 	d.inbound = make(chan Event, DisplayCallCapacity)
 	d.requests = make(chan displayRequest, DisplayCallCapacity)
 	d.compress = true
+
+	d.cursor = ptypes.NewPoint2I(0, 0)
+	d.cursorMoving = false
 
 	d.priorEvent = nil
 	d.eventFocus = nil
@@ -490,6 +497,14 @@ func (d *CDisplay) GetWindowAtPoint(point ptypes.Point2I) (window Window) {
 	return
 }
 
+func (d *CDisplay) CursorPosition() (position ptypes.Point2I, moving bool) {
+	d.RLock()
+	position = d.cursor.Clone()
+	moving = d.cursorMoving
+	d.RUnlock()
+	return
+}
+
 func (d *CDisplay) SetEventFocus(widget Object) error {
 	d.Lock()
 	if widget != nil {
@@ -565,6 +580,10 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 		return d.Emit(SignalEventKey, d, e)
 	case *EventMouse:
+		d.Lock()
+		d.cursor.Set(e.Position())
+		d.cursorMoving = e.IsMoving() || e.IsDragging()
+		d.Unlock()
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
