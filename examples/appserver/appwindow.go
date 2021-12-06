@@ -48,7 +48,7 @@ func (w *AppWindow) draw(data []interface{}, argv ...interface{}) enums.EventFla
 	var err error
 	var ctx *cdk.CLocalContext
 	if surface, ok := argv[1].(memphis.Surface); ok {
-		theme := w.GetDisplay().DefaultTheme()
+		theme := w.GetTheme()
 		size := surface.GetSize()
 		surface.Box(ptypes.Point2I{}, size, true, true, false, ' ', theme.Content.Normal, theme.Border.Normal, theme.Border.BorderRunes)
 		title := w.GetTitle()

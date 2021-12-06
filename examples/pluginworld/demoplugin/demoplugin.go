@@ -84,7 +84,7 @@ func init() {
 				w := cdk.NewWindow("Demo Plugin", display)
 				w.Connect(cdk.SignalDraw, "demo-plugin-draw-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
 					if surface, ok := argv[1].(memphis.Surface); ok {
-						theme := w.GetDisplay().DefaultTheme()
+						theme := w.GetTheme()
 						size := surface.GetSize()
 						surface.Box(ptypes.Point2I{}, size, true, true, false, ' ', theme.Content.Normal, theme.Border.Normal, theme.Border.BorderRunes)
 						content := "<b><span foreground=\"darkgreen\" background=\"yellow\"><u>H</u>ello</span> <span foreground=\"brown\" background=\"orange\"><i>W</i>orld</span></b>\n"
