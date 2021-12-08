@@ -25,7 +25,6 @@ import (
 	"github.com/go-curses/cdk/log"
 )
 
-// var cdkTimeouts *timers
 var cdkTimeouts = &timers{
 	timers: make(map[uuid.UUID]*timer, 0),
 }
@@ -113,12 +112,15 @@ func (t *timer) handler() {
 			select {
 			case <-time.NewTimer(delay).C:
 				if f := t.fn(); f == enums.EVENT_STOP {
+					log.TraceF("stopping timeout, fn wants EVENT_STOP: %v", t.id)
 					cdkTimeouts.Stop(t.id)
 				} else {
+					log.TraceF("restarting timeout, fn wants EVENT_PASS: %v", t.id)
 					t.context, t.cancel = context.WithCancel(context.Background())
 					cdkTimeouts.Add(t)
 				}
 			case <-t.context.Done():
+				log.TraceF("aborting timeout, cancel() received: %v", t.id)
 			}
 		})
 	}
@@ -149,6 +151,8 @@ func StopTimeout(id uuid.UUID) {
 		if t := cdkTimeouts.Get(id); t != nil {
 			if ac.Display.ObjectID() == t.display.ObjectID() {
 				cdkTimeouts.Stop(t.id)
+			} else {
+				log.WarnDF(1, "cannot stop timeout associated with a different display: %v", id)
 			}
 		}
 	}
@@ -156,13 +160,7 @@ func StopTimeout(id uuid.UUID) {
 }
 
 func CancelAllTimeouts() {
-	if ac, err := GetLocalContext(); err != nil {
-		log.WarnDF(1, "error getting app context for CancelAllTimeouts()")
-	} else {
-		for _, t := range cdkTimeouts.timers {
-			if t != nil && ac.Display.ObjectID() == t.display.ObjectID() {
-				cdkTimeouts.Stop(t.id)
-			}
-		}
+	for _, t := range cdkTimeouts.timers {
+		StopTimeout(t.id)
 	}
 }
