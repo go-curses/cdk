@@ -55,11 +55,9 @@ func (d *CScreen) reengage() error {
 	if d.term != nil {
 		_ = term.CBreakMode(d.term)
 		_ = d.term.Restore()
-		if !d.ttyKeepFH {
-			Go(func() {
-				_ = d.term.Close()
-			})
-		}
+		Go(func() {
+			_ = d.term.Close()
+		})
 	}
 	if d.ttyFile != nil && !d.ttyKeepFH {
 		_ = d.ttyFile.Close()
@@ -107,17 +105,17 @@ func (d *CScreen) finalize() {
 		if err := d.term.Restore(); err != nil {
 			log.ErrorF("error restoring terminal: %v", err)
 		}
-		if !d.ttyKeepFH {
-			Go(func() {
-				if err := d.term.Close(); err != nil {
-					log.ErrorF("error closing terminal: %v", err)
-				}
-			})
-		}
+		Go(func() {
+			if err := d.term.Close(); err != nil {
+				log.ErrorF("error closing terminal: %v", err)
+			}
+		})
 	}
-	if d.ttyFile != nil && !d.ttyKeepFH {
-		if err := d.ttyFile.Close(); err != nil {
-			log.ErrorF("error closing ttyFile: %v", err)
+	if d.ttyFile != nil {
+		if !d.ttyKeepFH {
+			if err := d.ttyFile.Close(); err != nil {
+				log.ErrorF("error closing ttyFile: %v", err)
+			}
 		}
 	}
 }
