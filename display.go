@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/go-curses/cdk/lib/enums"
@@ -62,6 +64,7 @@ type Display interface {
 	CaptureDisplay() (err error)
 	ReleaseDisplay()
 	Call(fn DisplayCommandFn) (err error)
+	Command(name string, argv ...string) (err error)
 	IsMonochrome() bool
 	Colors() (numberOfColors int)
 	CaptureCtrlC()
@@ -316,10 +319,30 @@ func (d *CDisplay) ReleaseDisplay() {
 }
 
 func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
+	if !d.startedAndCaptured() {
+		return fmt.Errorf("display is not captured or not completely started up yet")
+	}
 	d.LogDebug("starting new call")
+	if d.ttyHandle != nil {
+		d.screen.TtyKeepFileHandle(true)
+	}
 	d.ReleaseDisplay()
 	d.LogDebug("display released, calling fn")
-	err = fn()
+	if d.ttyHandle != nil {
+		err = fn(d.ttyHandle)
+	} else if d.ttyPath != "/dev/tty" {
+		var fh *os.File
+		var derr error
+		if fh, derr = os.Open(d.ttyPath); derr != nil {
+			d.LogErr(derr)
+		}
+		err = fn(fh)
+		if derr = fh.Close(); derr != nil {
+			d.LogErr(derr)
+		}
+	} else {
+		err = fn(nil)
+	}
 	d.LogDebug("fn released, capturing display")
 	if derr := d.CaptureDisplay(); derr != nil {
 		d.LogErr(derr)
@@ -329,6 +352,22 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 		d.RequestSync()
 	}
 	return
+}
+
+func (d *CDisplay) Command(name string, argv ...string) (err error) {
+	return d.Call(func(tty *os.File) error {
+		cmd := exec.Command(name, argv...)
+		if tty != nil {
+			cmd.Stdin = tty
+			cmd.Stdout = tty
+			cmd.Stderr = tty
+		} else {
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
+		return cmd.Run()
+	})
 }
 
 func (d *CDisplay) IsMonochrome() bool {
@@ -574,7 +613,7 @@ func (d *CDisplay) GetPriorEvent() (event Event) {
 // ProcessEvent handles events sent from the Screen instance and manages passing
 // those events to the active window
 func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
-	if !d.DisplayCaptured() {
+	if !d.startedAndCaptured() {
 		return enums.EVENT_PASS
 	}
 	d.eventMutex.Lock()
@@ -593,7 +632,10 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	}
 	switch e := evt.(type) {
 	case *EventError:
-		d.LogErr(e)
+		if strings.Index(e.Error(), "bad file descriptor") != -1 {
+			d.LogWarn("%v", e)
+			return enums.EVENT_PASS
+		}
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
@@ -1163,7 +1205,7 @@ const (
 
 type DisplayCallbackFn = func(d Display) error
 
-type DisplayCommandFn = func() error
+type DisplayCommandFn = func(tty *os.File) error
 
 func DisplaySignalDisplayStartupArgv(argv ...interface{}) (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, ok bool) {
 	if len(argv) == 3 {
