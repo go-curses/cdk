@@ -88,6 +88,7 @@ type timer struct {
 	id      uuid.UUID
 	delay   time.Duration
 	fn      TimerCallbackFn
+	created time.Time
 	display *CDisplay
 	context context.Context
 	cancel  context.CancelFunc
@@ -96,12 +97,24 @@ type timer struct {
 func (t *timer) handler() {
 	if t.display.IsRunning() {
 		Go(func() {
+			delta := time.Now().Sub(t.created)
+			delay := t.delay
+			if delta > delay {
+				// catch longer than delay to fire, 1ms-delay
+				delay = time.Millisecond
+			} else if delay >= delta {
+				// delay has room, subtract delta so fires closer to correct
+				delay -= delta
+				if delay <= 0 {
+					// catch floor, 1ms-delay
+					delay = time.Millisecond
+				}
+			}
 			select {
-			case <-time.NewTimer(t.delay).C:
+			case <-time.NewTimer(delay).C:
 				if f := t.fn(); f == enums.EVENT_STOP {
 					cdkTimeouts.Stop(t.id)
 				} else {
-					t.cancel()
 					t.context, t.cancel = context.WithCancel(context.Background())
 					cdkTimeouts.Add(t)
 				}
@@ -121,6 +134,7 @@ func AddTimeout(delay time.Duration, fn TimerCallbackFn) (id uuid.UUID) {
 			delay:   delay,
 			fn:      fn,
 			display: display,
+			created: time.Now(),
 		}
 		t.context, t.cancel = context.WithCancel(context.Background())
 		id = cdkTimeouts.Add(t)
