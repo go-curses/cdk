@@ -136,6 +136,13 @@ func (o *COffScreen) InitWithFileHandle(ttyHandle *os.File) (err error) {
 	return o.Init()
 }
 
+func (o *COffScreen) TtyKeepFileHandle(keep bool) {
+}
+
+func (o *COffScreen) TtyKeepingFileHandle() (keeping bool) {
+	return false
+}
+
 func (o *COffScreen) Init() error {
 	o.evCh = make(chan Event, 10)
 	o.quit = make(chan struct{})
@@ -379,8 +386,8 @@ func (o *COffScreen) PollEvent() Event {
 	}
 }
 
-func (d *COffScreen) PollEventChan() (next chan Event) {
-	next <- d.PollEvent()
+func (o *COffScreen) PollEventChan() (next chan Event) {
+	next <- o.PollEvent()
 	return
 }
 
