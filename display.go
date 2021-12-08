@@ -338,6 +338,7 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 		d.RUnlock()
 		err = fn(d.ttyHandle)
 	} else if d.ttyPath != "" && d.ttyPath != "/dev/tty" {
+		// this isn't tested very well
 		d.RUnlock()
 		var e error
 		var fin *os.File
@@ -1294,19 +1295,19 @@ func DisplaySignalDisplayStartupArgv(argv ...interface{}) (ctx context.Context, 
 func CopyUntilCancelOrEOF(dst, src *os.File) (cancel context.CancelFunc) {
 	stop := false
 	cancel = func() {
-		log.DebugF("Go-func cancelling: dst=%v,src=%v", dst.Name(), src.Name())
+		// log.DebugF("Go-func cancelling: dst=%v,src=%v", dst.Name(), src.Name())
 		stop = true
 		_, _ = src.Write([]byte{0})
 	}
 	Go(func() {
-		log.DebugF("Go-func starting: dst=%v,src=%v", dst.Name(), src.Name())
+		// log.DebugF("Go-func starting: dst=%v,src=%v", dst.Name(), src.Name())
 		var n int
 		var err error
 		buf := make([]byte, 1)
 		for {
-			log.DebugF("reading 1 byte from %v", src.Name())
+			// log.DebugF("reading 1 byte from %v", src.Name())
 			n, err = src.Read(buf)
-			log.DebugF("read: %v from %v", buf[:n], src.Name())
+			// log.DebugF("read: %v from %v", buf[:n], src.Name())
 			if err != nil && err != io.EOF {
 				break
 			}
@@ -1317,7 +1318,7 @@ func CopyUntilCancelOrEOF(dst, src *os.File) (cancel context.CancelFunc) {
 				break
 			}
 		}
-		log.DebugF("Go-func ending: dst=%v,src=%v,err=%v", dst.Name(), src.Name(), err)
+		// log.DebugF("Go-func ending: dst=%v,src=%v,err=%v", dst.Name(), src.Name(), err)
 	})
 	return
 }
