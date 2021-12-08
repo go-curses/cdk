@@ -26,6 +26,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-curses/cdk/lib/paint"
+	"github.com/go-curses/cdk/log"
 	"github.com/jackdoe/go-gpmctl"
 	"golang.org/x/text/transform"
 
@@ -1776,7 +1777,13 @@ func (d *CScreen) inputLoop() {
 		case io.EOF:
 		case nil:
 		default:
-			_ = d.PostEvent(NewEventError(e))
+			if strings.Index(e.Error(), "bad file descriptor") > -1 {
+				if err := d.reengage(); err != nil {
+					log.ErrorF("Screen reengage error handling \"bad file descriptor\": %v", err)
+				}
+			} else {
+				_ = d.PostEvent(NewEventError(e))
+			}
 			return
 		}
 		d.keyChan <- chunk[:n]
