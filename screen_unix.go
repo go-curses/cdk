@@ -107,11 +107,13 @@ func (d *CScreen) finalize() {
 		if err := d.term.Restore(); err != nil {
 			log.ErrorF("error restoring terminal: %v", err)
 		}
-		Go(func() {
-			if err := d.term.Close(); err != nil {
-				log.ErrorF("error closing terminal: %v", err)
-			}
-		})
+		if !d.ttyKeepFH {
+			Go(func() {
+				if err := d.term.Close(); err != nil {
+					log.ErrorF("error closing terminal: %v", err)
+				}
+			})
+		}
 	}
 	if d.ttyFile != nil && !d.ttyKeepFH {
 		if err := d.ttyFile.Close(); err != nil {
