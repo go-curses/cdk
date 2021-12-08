@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/go-curses/cdk"
@@ -90,7 +89,7 @@ func init() {
 						surface.Box(ptypes.Point2I{}, size, true, true, false, ' ', theme.Content.Normal, theme.Border.Normal, theme.Border.BorderRunes)
 						content := "<b><span foreground=\"darkgreen\" background=\"yellow\"><u>H</u>ello</span> <span foreground=\"brown\" background=\"orange\"><i>W</i>orld</span></b>\n"
 						content += "<span foreground=\"cyan\" background=\"gray\">(press CTRL+c or ESC to exit)</span>\n"
-						content += "<span foreground=\"cyan\" background=\"gray\">(press b to open a bash shell)</span>\n"
+						content += "<span foreground=\"cyan\" background=\"gray\">(press b to bash shell)</span>\n"
 						content += "<span foreground=\"cyan\" background=\"gray\">(press f to run a func)</span>\n"
 						content += "<span foreground=\"yellow\" background=\"darkblue\">" + time.Now().Format("2006-01-02 15:04:05") + "</span>"
 						textPoint := ptypes.MakePoint2I(size.W/2/2, size.H/2-1)
@@ -111,14 +110,18 @@ func init() {
 								cdk.GetDefaultDisplay().RequestQuit()
 							} else if v.Rune() == rune('f') {
 								w.LogInfo("ProcessEvent: Call func (key:%v)", v.Name())
-								fn := func() (err error) {
+								fn := func(tty *os.File) (err error) {
+									outfh := os.Stdout
+									if tty != nil {
+										outfh = tty
+									}
 									w.LogDebug("fn is running!")
-									fmt.Println("# waiting for 5 seconds #")
+									_, _ = fmt.Fprintln(outfh, "# waiting for 5 seconds #")
 									for _, i := range []int{5, 4, 3, 2, 1} {
-										fmt.Printf("# %v...\n", i)
+										_, _ = fmt.Fprintf(outfh, "# %v...\n", i)
 										time.Sleep(time.Second)
 									}
-									fmt.Println("# returning to hellocall now! #")
+									_, _ = fmt.Fprintln(outfh, "# returning to hellocall now! #")
 									time.Sleep(time.Millisecond * 500)
 									return nil
 								}
@@ -127,16 +130,7 @@ func init() {
 								}
 							} else if v.Rune() == rune('b') {
 								w.LogInfo("ProcessEvent: Call bash (key:%v)", v.Name())
-								fn := func() (err error) {
-									w.LogDebug("fn is running!")
-									fmt.Println("# exit the following shell to return to hellocall #")
-									cmd := exec.Command("/bin/bash", "-l")
-									cmd.Stdin = os.Stdin
-									cmd.Stdout = os.Stdout
-									cmd.Stderr = os.Stderr
-									return cmd.Run()
-								}
-								if err := display.Call(fn); err != nil {
+								if err := display.Command("/bin/bash", "-l"); err != nil {
 									w.LogErr(err)
 								}
 							} else {
