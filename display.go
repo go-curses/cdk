@@ -17,10 +17,14 @@ package cdk
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
-	"strings"
+	"os/signal"
+	"syscall"
 	"time"
+
+	"github.com/creack/pty"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
@@ -28,6 +32,7 @@ import (
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
+	"github.com/go-curses/term"
 )
 
 var (
@@ -328,45 +333,96 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 	}
 	d.ReleaseDisplay()
 	d.LogDebug("display released, calling fn")
+	d.RLock()
 	if d.ttyHandle != nil {
+		d.RUnlock()
 		err = fn(d.ttyHandle)
-	} else if d.ttyPath != "/dev/tty" {
-		var fh *os.File
-		var derr error
-		if fh, derr = os.Open(d.ttyPath); derr != nil {
-			d.LogErr(derr)
+	} else if d.ttyPath != "" && d.ttyPath != "/dev/tty" {
+		d.RUnlock()
+		var e error
+		var fin *os.File
+		if fin, e = os.Open(d.ttyPath); e != nil {
+			d.LogErr(e)
 		}
-		err = fn(fh)
-		if derr = fh.Close(); derr != nil {
-			d.LogErr(derr)
+		err = fn(fin)
+		if e = fin.Close(); e != nil {
+			d.LogErr(e)
 		}
 	} else {
+		d.RUnlock()
 		err = fn(nil)
 	}
 	d.LogDebug("fn released, capturing display")
 	if derr := d.CaptureDisplay(); derr != nil {
 		d.LogErr(derr)
-	} else if d.screen != nil {
+	} else if d.startedAndCaptured() {
 		d.LogDebug("restoring display")
 		d.RequestDraw()
 		d.RequestSync()
+	} else {
+		d.LogError("attempted capture display, yet not started and captured")
 	}
 	return
 }
 
 func (d *CDisplay) Command(name string, argv ...string) (err error) {
-	return d.Call(func(tty *os.File) error {
+	return d.Call(func(tty *os.File) (err error) {
 		cmd := exec.Command(name, argv...)
-		if tty != nil {
-			cmd.Stdin = tty
-			cmd.Stdout = tty
-			cmd.Stderr = tty
-		} else {
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
+		var ptmx *os.File
+		if ptmx, err = pty.Start(cmd); err != nil {
+			return
 		}
-		return cmd.Run()
+
+		var stdin, stdout *os.File
+		if tty != nil {
+			stdin = tty
+			stdout = tty
+		} else {
+			stdin = os.Stdin
+			stdout = os.Stdout
+		}
+
+		// Handle pty size.
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGWINCH)
+		Go(func() {
+			for range ch {
+				if err := pty.InheritSize(stdin, ptmx); err != nil {
+					log.ErrorF("error resizing pty: %s", err)
+				}
+			}
+		})
+		ch <- syscall.SIGWINCH // Initial resize.
+
+		// Set stdin in raw mode.
+		var cterm *term.Term
+		if cterm, err = term.Open(stdin.Name()); err != nil {
+			d.LogErr(err)
+		}
+		if err = term.RawMode(cterm); err != nil {
+			d.LogErr(err)
+		}
+
+		cancelStdinToPty := CopyUntilCancelOrEOF(ptmx, stdin)
+		cancelPtyToStdout := CopyUntilCancelOrEOF(stdout, ptmx)
+
+		if err = cmd.Wait(); err != nil {
+			d.LogErr(err)
+		}
+
+		// cleanups
+		cancelStdinToPty()
+		cancelPtyToStdout()
+		_ = ptmx.Close()
+		signal.Stop(ch)
+		close(ch)
+		if err = cterm.Restore(); err != nil {
+			d.LogErr(err)
+		}
+		if err = cterm.Close(); err != nil {
+			d.LogErr(err)
+		}
+		return
 	})
 }
 
@@ -632,10 +688,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	}
 	switch e := evt.(type) {
 	case *EventError:
-		if strings.Index(e.Error(), "bad file descriptor") != -1 {
-			d.LogWarn("%v", e)
-			return enums.EVENT_PASS
-		}
+		d.LogError("EventError: %v", e)
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
@@ -867,7 +920,6 @@ pollEventWorkerLoop:
 				d.inbound <- evt
 			case <-ctx.Done():
 				break pollEventWorkerLoop
-				// default: // nop
 			}
 		} else {
 			time.Sleep(MainIterateDelay)
@@ -1219,5 +1271,36 @@ func DisplaySignalDisplayStartupArgv(argv ...interface{}) (ctx context.Context, 
 			ctx = nil
 		}
 	}
+	return
+}
+
+func CopyUntilCancelOrEOF(dst, src *os.File) (cancel context.CancelFunc) {
+	stop := false
+	cancel = func() {
+		log.DebugF("Go-func cancelling: dst=%v,src=%v", dst.Name(), src.Name())
+		stop = true
+		_, _ = src.Write([]byte{0})
+	}
+	Go(func() {
+		log.DebugF("Go-func starting: dst=%v,src=%v", dst.Name(), src.Name())
+		var n int
+		var err error
+		buf := make([]byte, 1)
+		for {
+			log.DebugF("reading 1 byte from %v", src.Name())
+			n, err = src.Read(buf)
+			log.DebugF("read: %v from %v", buf[:n], src.Name())
+			if err != nil && err != io.EOF {
+				break
+			}
+			if n == 0 {
+				break
+			}
+			if _, err := dst.Write(buf[:n]); err != nil {
+				break
+			}
+		}
+		log.DebugF("Go-func ending: dst=%v,src=%v,err=%v", dst.Name(), src.Name(), err)
+	})
 	return
 }
