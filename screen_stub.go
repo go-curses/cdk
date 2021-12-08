@@ -25,6 +25,10 @@ func (d *CScreen) engage() error {
 	return ErrNoScreen
 }
 
+func (d *CScreen) reengage() error {
+	return ErrNoScreen
+}
+
 func (d *CScreen) disengage() {
 }
 

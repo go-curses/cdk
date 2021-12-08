@@ -51,6 +51,22 @@ func (d *CScreen) disengage() {
 	}
 }
 
+func (d *CScreen) reengage() error {
+	if d.term != nil {
+		_ = term.CBreakMode(d.term)
+		_ = d.term.Restore()
+		if !d.ttyKeepFH {
+			Go(func() {
+				_ = d.term.Close()
+			})
+		}
+	}
+	if d.ttyFile != nil && !d.ttyKeepFH {
+		_ = d.ttyFile.Close()
+	}
+	return d.initialize()
+}
+
 // initialize is used at application startup, and sets up the initial values
 // including file descriptors used for terminals and saving the initial state
 // so that it can be restored when the application terminates.
