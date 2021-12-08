@@ -965,40 +965,57 @@ func (d *CDisplay) screenRequestWorker(ctx context.Context) {
 	// this happens in its own go thread
 screenRequestWorkerLoop:
 	for d.IsRunning() {
-		switch <-d.requests {
-		case displayDrawRequest:
-			if d.startedAndCaptured() {
-				d.renderScreen()
+		var buffered []displayRequest
+		max := len(d.requests)
+		for i := 0; i < max; i++ {
+			r := <-d.requests
+			found := false
+			for j := 0; j < len(buffered); j++ {
+				if buffered[j] == r {
+					found = true
+				}
 			}
-		case displayShowRequest:
-			if d.startedAndCaptured() {
-				d.screen.Show()
+			if !found {
+				buffered = append(buffered, r)
 			}
-		case displaySyncRequest:
-			if d.startedAndCaptured() {
-				d.screen.Sync()
-			}
-		case displayFuncRequest:
-			// one displayFuncRequest per d.queue fn
-			if d.DisplayCaptured() {
-				qlen := len(d.queue)
-				for i := 0; i < qlen; i++ {
-					if fn, ok := <-d.queue; ok {
-						if err := fn(d); err != nil {
-							log.ErrorF("async/await handler error: %v", err)
+		}
+		for _, r := range buffered {
+			switch r {
+			case displayDrawRequest:
+				if d.startedAndCaptured() {
+					d.renderScreen()
+				}
+			case displayShowRequest:
+				if d.startedAndCaptured() {
+					d.screen.Show()
+				}
+			case displaySyncRequest:
+				if d.startedAndCaptured() {
+					d.screen.Sync()
+				}
+			case displayFuncRequest:
+				// one displayFuncRequest per d.queue fn
+				if d.DisplayCaptured() {
+					qlen := len(d.queue)
+					for i := 0; i < qlen; i++ {
+						if fn, ok := <-d.queue; ok {
+							if err := fn(d); err != nil {
+								log.ErrorF("async/await handler error: %v", err)
+							}
 						}
 					}
 				}
+			case displayQuitRequest:
+				d.done <- true
+				break screenRequestWorkerLoop
 			}
-		case displayQuitRequest:
-			d.done <- true
-			break screenRequestWorkerLoop
+			select {
+			case <-ctx.Done():
+				break screenRequestWorkerLoop
+			default: // nop
+			}
 		}
-		select {
-		case <-ctx.Done():
-			break screenRequestWorkerLoop
-		default: // nop
-		}
+		time.Sleep(MainIterateDelay)
 	}
 }
 
