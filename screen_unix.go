@@ -97,7 +97,7 @@ func (d *CScreen) finalize() {
 			}
 		})
 	}
-	if d.ttyFile != nil {
+	if d.ttyFile != nil && !d.ttyKeepFH {
 		if err := d.ttyFile.Close(); err != nil {
 			log.ErrorF("error closing ttyFile: %v", err)
 		}

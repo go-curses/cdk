@@ -45,6 +45,9 @@ type Screen interface {
 	InitWithFilePath(fp string) error
 	InitWithFileHandle(fh *os.File) error
 
+	TtyKeepFileHandle(keeping bool)
+	TtyKeepingFileHandle() (keeping bool)
+
 	// Close finalizes the screen also releasing resources.
 	Close()
 
@@ -278,6 +281,7 @@ type tKeyCode struct {
 type CScreen struct {
 	ttyPath      string
 	ttyFile      *os.File
+	ttyKeepFH    bool
 	ti           *terminfo.Terminfo
 	h            int
 	w            int
@@ -336,6 +340,15 @@ func (d *CScreen) InitWithFileHandle(fh *os.File) error {
 	d.ttyPath = ""
 	d.ttyFile = fh
 	return d.initReal()
+}
+
+func (d *CScreen) TtyKeepFileHandle(keep bool) {
+	d.ttyKeepFH = keep
+}
+
+func (d *CScreen) TtyKeepingFileHandle() (keeping bool) {
+	keeping = d.ttyKeepFH
+	return
 }
 
 func (d *CScreen) initReal() error {
