@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-curses/cdk"
@@ -61,6 +62,8 @@ func (w *AppWindow) draw(data []interface{}, argv ...interface{}) enums.EventFla
 		)
 		content := "<b><span foreground=\"darkgreen\" background=\"yellow\"><u>H</u>ello</span> <span foreground=\"brown\" background=\"orange\"><i>W</i>orld</span></b>\n"
 		content += "<span foreground=\"cyan\" background=\"gray\">(press CTRL+c or ESC to exit)</span>\n"
+		content += "<span foreground=\"cyan\" background=\"gray\">(press b to bash shell)</span>\n"
+		content += "<span foreground=\"cyan\" background=\"gray\">(press f to run a func)</span>\n"
 		content += "<span foreground=\"yellow\" background=\"darkblue\">" + time.Now().Format("2006-01-02 15:04:05") + "</span>\n"
 		if ctx, err = cdk.GetLocalContext(); err != nil {
 			w.LogError("error getting local context: %v", err)
@@ -94,6 +97,7 @@ func (w *AppWindow) draw(data []interface{}, argv ...interface{}) enums.EventFla
 }
 
 func (w *AppWindow) event(data []interface{}, argv ...interface{}) enums.EventFlag {
+	display := cdk.GetDefaultDisplay()
 	if evt, ok := argv[1].(cdk.Event); ok {
 		switch v := evt.(type) {
 		case *cdk.EventError:
@@ -101,7 +105,32 @@ func (w *AppWindow) event(data []interface{}, argv ...interface{}) enums.EventFl
 		case *cdk.EventKey:
 			if v.Key() == cdk.KeyESC {
 				w.LogInfo("ProcessEvent: RequestQuit (key:%v)", v.Name())
-				cdk.GetDefaultDisplay().RequestQuit()
+				display.RequestQuit()
+			} else if v.Rune() == rune('f') {
+				w.LogInfo("ProcessEvent: Call func (key:%v)", v.Name())
+				fn := func(tty *os.File) (err error) {
+					outfh := os.Stdout
+					if tty != nil {
+						outfh = tty
+					}
+					w.LogDebug("fn is running!")
+					_, _ = fmt.Fprintln(outfh, "# waiting for 5 seconds #")
+					for _, i := range []int{5, 4, 3, 2, 1} {
+						_, _ = fmt.Fprintf(outfh, "# %v...\n", i)
+						time.Sleep(time.Second)
+					}
+					_, _ = fmt.Fprintln(outfh, "# returning to hellocall now! #")
+					time.Sleep(time.Millisecond * 500)
+					return nil
+				}
+				if err := display.Call(fn); err != nil {
+					w.LogErr(err)
+				}
+			} else if v.Rune() == rune('b') {
+				w.LogInfo("ProcessEvent: Call bash (key:%v)", v.Name())
+				if err := display.Command("/bin/bash", "-l"); err != nil {
+					w.LogErr(err)
+				}
 			} else {
 				w.LogInfo("ProcessEvent: Key (key:%v)", v.Name())
 			}
