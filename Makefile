@@ -144,7 +144,13 @@ local:
 		fi; \
 	done
 
-unlocal:
+local-term:
+	@if [ -d ../term ]; then \
+		echo "#\tgithub.com/go-curses/term"; \
+		go mod edit -replace=github.com/go-curses/term=../term; \
+	fi
+
+unlocal: unlocal-term
 	@echo "# removing go.mod local package replacements..."
 	@go mod edit -dropreplace=github.com/go-curses/cdk
 	@for tgt in charset encoding env log memphis; do \
@@ -157,6 +163,12 @@ unlocal:
 			go mod edit -dropreplace=github.com/go-curses/cdk/lib/$$tgt ; \
 		fi; \
 	done
+
+unlocal-term:
+	@if [ -d ../term ]; then \
+		echo "#\tgithub.com/go-curses/term"; \
+		go mod edit -dropreplace=github.com/go-curses/term; \
+	fi
 
 dev: clean
 	@if [ -d examples/${DEV_EXAMPLE} ]; \
