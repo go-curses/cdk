@@ -110,7 +110,7 @@ func init() {
 								cdk.GetDefaultDisplay().RequestQuit()
 							} else if v.Rune() == rune('f') {
 								w.LogInfo("ProcessEvent: Call func (key:%v)", v.Name())
-								fn := func(tty *os.File) (err error) {
+								fn := func(_, tty *os.File) (err error) {
 									w.LogDebug("fn is running!")
 									_, _ = fmt.Fprintf(tty, "# waiting for 5 seconds #\r\n")
 									for _, i := range []int{5, 4, 3, 2, 1} {
