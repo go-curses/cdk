@@ -283,6 +283,7 @@ type CScreen struct {
 	ttyPath      string
 	ttyFile      *os.File
 	ttyKeepFH    bool
+	ttyReading   bool
 	ti           *terminfo.Terminfo
 	h            int
 	w            int
@@ -1772,7 +1773,9 @@ func (d *CScreen) mainLoop() {
 func (d *CScreen) inputLoop() {
 	for {
 		chunk := make([]byte, 128)
+		d.ttyReading = true
 		n, e := d.term.Read(chunk)
+		d.ttyReading = false
 		switch e {
 		case io.EOF:
 		case nil:
