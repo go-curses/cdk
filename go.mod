@@ -6,7 +6,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/creack/pty v1.1.17
 	github.com/gdamore/encoding v1.0.0
-	github.com/go-curses/term v1.2.1
+	github.com/go-curses/term v1.2.2-gocurses.0
 	github.com/go-curses/terminfo v1.0.0
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/gopherjs/gopherjs v0.0.0-20211111143520-d0d5ecc1a356 // indirect
