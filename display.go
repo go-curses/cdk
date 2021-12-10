@@ -20,8 +20,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/creack/pty"
+	"golang.org/x/term"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
@@ -29,7 +33,7 @@ import (
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
-	"github.com/go-curses/term"
+	cterm "github.com/go-curses/term"
 )
 
 var (
@@ -321,12 +325,13 @@ func (d *CDisplay) ReleaseDisplay() {
 }
 
 func (d *CDisplay) ioCopy(tag string, dst io.Writer, src io.Reader) (err error) {
-	d.LogDebug("start copy: [%s]", tag)
+	d.LogDebug("start copy: %s", tag)
 	n := 0
 	buf := make([]byte, 1)
 	for {
+		// log.DebugF("waiting for read: %s", tag)
 		n, err = src.Read(buf)
-		// log.DebugF("read: %v from %v", buf[:n], src.Name())
+		// log.DebugF("read %v for: %s", buf[:n], tag)
 		if err != nil && err != io.EOF {
 			break
 		}
@@ -357,8 +362,7 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 
 	if d.ttyHandle != nil {
 		var dupeFd int
-		if dupeFd, e = syscall.Dup(int(d.ttyHandle.Fd())); e != nil {
-			d.LogErr(e)
+		if dupeFd, err = syscall.Dup(int(d.ttyHandle.Fd())); err != nil {
 			return
 		}
 		callTty = os.NewFile(uintptr(dupeFd), d.ttyHandle.Name())
@@ -370,27 +374,83 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 		}
 		d.LogDebug("callTty = os.OpenFile(%v)", ttyPath)
 		if callTty, err = os.OpenFile(ttyPath, os.O_APPEND|os.O_RDWR, 0); err != nil {
-			d.LogErr(err)
 			return
 		}
 	}
 
-	err = fn(callTty)
+	var ptmx, ptty *os.File
+	if ptmx, ptty, err = pty.Open(); err != nil {
+		return
+	}
+
+	// Handle pty size.
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGWINCH)
+	go func() {
+		for range ch {
+			if err := pty.InheritSize(callTty, ptmx); err != nil {
+				d.LogError("error resizing pty: %s", err)
+			}
+		}
+	}()
+	ch <- syscall.SIGWINCH // Initial resize.
+
+	var oldState *term.State
+	if oldState, err = term.MakeRaw(int(callTty.Fd())); err != nil {
+		return
+	}
+
+	var nok bool
+
+	Go(func() {
+		if e := d.ioCopy(
+			fmt.Sprintf("NOK %v->%v", callTty.Name(), ptmx.Name()),
+			ptmx,
+			callTty,
+		); e != nil {
+			d.LogErr(e)
+		}
+		nok = true
+	})
+
+	Go(func() {
+		if e := d.ioCopy(
+			fmt.Sprintf("OK %v->%v", ptmx.Name(), callTty.Name()),
+			callTty,
+			ptmx,
+		); e != nil {
+			d.LogErr(e)
+		}
+	})
+
+	err = fn(ptty)
+
+	// Cleanup signals when done.
+	signal.Stop(ch)
+	close(ch)
+
+	if e = ptmx.Close(); e != nil {
+		d.LogErr(e)
+	}
+
+	if e = ptty.Close(); e != nil {
+		d.LogErr(e)
+	}
+
+	if !nok {
+		d.LogDebug("sending Tiocsti to: %v", callTty.Name())
+		if e = cterm.Tiocsti(callTty.Fd(), " "); e != nil {
+			d.LogErr(e)
+		}
+	}
+
+	if e = term.Restore(int(callTty.Fd()), oldState); e != nil {
+		d.LogErr(e)
+	}
 
 	d.LogDebug("closing callTty: %v", callTty.Name())
 	if e = callTty.Close(); e != nil {
 		d.LogErr(e)
-	}
-
-	if d.ttyHandle != nil {
-		if e = term.Tiocsti(d.ttyHandle.Fd(), " "); e != nil {
-			d.LogErr(e)
-		}
-	} else {
-		// Stdin may not be correct
-		if e = term.Tiocsti(os.Stdin.Fd(), " "); e != nil {
-			d.LogErr(e)
-		}
 	}
 
 	d.LogDebug("fn released, capturing display")
