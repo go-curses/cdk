@@ -423,7 +423,8 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 		}
 	})
 
-	err = fn(ptty)
+	err = fn(ptty, ptty)
+	time.Sleep(time.Millisecond * 100) // let things catch up?
 
 	// Cleanup signals when done.
 	signal.Stop(ch)
@@ -444,8 +445,11 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 		}
 	}
 
-	if e = term.Restore(int(callTty.Fd()), oldState); e != nil {
-		d.LogErr(e)
+	if oldState != nil {
+		d.LogDebug("restoring term state: %v", callTty.Name())
+		if e = term.Restore(int(callTty.Fd()), oldState); e != nil {
+			d.LogErr(e)
+		}
 	}
 
 	d.LogDebug("closing callTty: %v", callTty.Name())
@@ -467,12 +471,12 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 }
 
 func (d *CDisplay) Command(name string, argv ...string) (err error) {
-	return d.Call(func(tty *os.File) (err error) {
+	return d.Call(func(in, out *os.File) (err error) {
 		d.LogDebug("invoking exec.Command: %v %v", name, argv)
 		cmd := exec.Command(name, argv...)
-		cmd.Stdin = tty
-		cmd.Stdout = tty
-		cmd.Stderr = tty
+		cmd.Stdin = in
+		cmd.Stdout = out
+		cmd.Stderr = out
 		return cmd.Run()
 	})
 }
@@ -1325,7 +1329,7 @@ const (
 
 type DisplayCallbackFn = func(d Display) error
 
-type DisplayCommandFn = func(tty *os.File) error
+type DisplayCommandFn = func(in, out *os.File) error
 
 func DisplaySignalDisplayStartupArgv(argv ...interface{}) (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, ok bool) {
 	if len(argv) == 3 {
