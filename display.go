@@ -20,11 +20,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/creack/pty"
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
@@ -323,39 +320,82 @@ func (d *CDisplay) ReleaseDisplay() {
 	}
 }
 
+func (d *CDisplay) ioCopy(tag string, dst io.Writer, src io.Reader) (err error) {
+	d.LogDebug("start copy: [%s]", tag)
+	n := 0
+	buf := make([]byte, 1)
+	for {
+		n, err = src.Read(buf)
+		// log.DebugF("read: %v from %v", buf[:n], src.Name())
+		if err != nil && err != io.EOF {
+			break
+		}
+		if n == 0 {
+			break
+		}
+		if _, err = dst.Write(buf[:n]); err != nil {
+			break
+		}
+	}
+	d.LogDebug("finish copy: [%s]", tag)
+	return
+}
+
 func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 	if !d.startedAndCaptured() {
 		return fmt.Errorf("display is not captured or not completely started up yet")
 	}
-	d.LogDebug("starting new call")
+	d.LogDebug("starting new Call")
 	if d.ttyHandle != nil {
 		d.screen.TtyKeepFileHandle(true)
 	}
 	d.ReleaseDisplay()
 	d.LogDebug("display released, calling fn")
-	d.RLock()
+
+	var e error
+	var callTty *os.File
+
 	if d.ttyHandle != nil {
-		d.RUnlock()
-		err = fn(d.ttyHandle)
-	} else if d.ttyPath != "" && d.ttyPath != "/dev/tty" {
-		// this isn't tested very well
-		d.RUnlock()
-		var e error
-		var fin *os.File
-		if fin, e = os.Open(d.ttyPath); e != nil {
+		var dupeFd int
+		if dupeFd, e = syscall.Dup(int(d.ttyHandle.Fd())); e != nil {
 			d.LogErr(e)
+			return
 		}
-		err = fn(fin)
-		if e = fin.Close(); e != nil {
+		callTty = os.NewFile(uintptr(dupeFd), d.ttyHandle.Name())
+		d.LogDebug("callTty = from d.ttyHandle(%v)", callTty.Name())
+	} else {
+		ttyPath := "/dev/tty"
+		if d.ttyPath != "" {
+			ttyPath = d.ttyPath
+		}
+		d.LogDebug("callTty = os.OpenFile(%v)", ttyPath)
+		if callTty, err = os.OpenFile(ttyPath, os.O_APPEND|os.O_RDWR, 0); err != nil {
+			d.LogErr(err)
+			return
+		}
+	}
+
+	err = fn(callTty)
+
+	d.LogDebug("closing callTty: %v", callTty.Name())
+	if e = callTty.Close(); e != nil {
+		d.LogErr(e)
+	}
+
+	if d.ttyHandle != nil {
+		if e = term.Tiocsti(d.ttyHandle.Fd(), " "); e != nil {
 			d.LogErr(e)
 		}
 	} else {
-		d.RUnlock()
-		err = fn(nil)
+		// Stdin may not be correct
+		if e = term.Tiocsti(os.Stdin.Fd(), " "); e != nil {
+			d.LogErr(e)
+		}
 	}
+
 	d.LogDebug("fn released, capturing display")
-	if derr := d.CaptureDisplay(); derr != nil {
-		d.LogErr(derr)
+	if e = d.CaptureDisplay(); e != nil {
+		d.LogErr(e)
 	} else if d.startedAndCaptured() {
 		d.LogDebug("restoring display")
 		d.RequestDraw()
@@ -368,62 +408,12 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 
 func (d *CDisplay) Command(name string, argv ...string) (err error) {
 	return d.Call(func(tty *os.File) (err error) {
+		d.LogDebug("invoking exec.Command: %v %v", name, argv)
 		cmd := exec.Command(name, argv...)
-		var ptmx *os.File
-		if ptmx, err = pty.Start(cmd); err != nil {
-			return
-		}
-
-		var stdin, stdout *os.File
-		if tty != nil {
-			stdin = tty
-			stdout = tty
-		} else {
-			stdin = os.Stdin
-			stdout = os.Stdout
-		}
-
-		// Handle pty size.
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGWINCH)
-		Go(func() {
-			for range ch {
-				if err := pty.InheritSize(stdin, ptmx); err != nil {
-					log.ErrorF("error resizing pty: %s", err)
-				}
-			}
-		})
-		ch <- syscall.SIGWINCH // Initial resize.
-
-		// Set stdin in raw mode.
-		var cterm *term.Term
-		if cterm, err = term.Open(stdin.Name()); err != nil {
-			d.LogErr(err)
-		}
-		if err = term.RawMode(cterm); err != nil {
-			d.LogErr(err)
-		}
-
-		cancelStdinToPty := CopyUntilCancelOrEOF(ptmx, stdin)
-		cancelPtyToStdout := CopyUntilCancelOrEOF(stdout, ptmx)
-
-		if err = cmd.Wait(); err != nil {
-			d.LogErr(err)
-		}
-
-		// cleanups
-		cancelStdinToPty()
-		cancelPtyToStdout()
-		_ = ptmx.Close()
-		signal.Stop(ch)
-		close(ch)
-		if err = cterm.Restore(); err != nil {
-			d.LogErr(err)
-		}
-		if err = cterm.Close(); err != nil {
-			d.LogErr(err)
-		}
-		return
+		cmd.Stdin = tty
+		cmd.Stdout = tty
+		cmd.Stderr = tty
+		return cmd.Run()
 	})
 }
 
@@ -1289,36 +1279,5 @@ func DisplaySignalDisplayStartupArgv(argv ...interface{}) (ctx context.Context, 
 			ctx = nil
 		}
 	}
-	return
-}
-
-func CopyUntilCancelOrEOF(dst, src *os.File) (cancel context.CancelFunc) {
-	stop := false
-	cancel = func() {
-		// log.DebugF("Go-func cancelling: dst=%v,src=%v", dst.Name(), src.Name())
-		stop = true
-		_, _ = src.Write([]byte{0})
-	}
-	Go(func() {
-		// log.DebugF("Go-func starting: dst=%v,src=%v", dst.Name(), src.Name())
-		var n int
-		var err error
-		buf := make([]byte, 1)
-		for {
-			// log.DebugF("reading 1 byte from %v", src.Name())
-			n, err = src.Read(buf)
-			// log.DebugF("read: %v from %v", buf[:n], src.Name())
-			if err != nil && err != io.EOF {
-				break
-			}
-			if n == 0 {
-				break
-			}
-			if _, err := dst.Write(buf[:n]); err != nil {
-				break
-			}
-		}
-		// log.DebugF("Go-func ending: dst=%v,src=%v,err=%v", dst.Name(), src.Name(), err)
-	})
 	return
 }
