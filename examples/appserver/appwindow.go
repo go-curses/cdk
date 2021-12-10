@@ -109,17 +109,13 @@ func (w *AppWindow) event(data []interface{}, argv ...interface{}) enums.EventFl
 			} else if v.Rune() == rune('f') {
 				w.LogInfo("ProcessEvent: Call func (key:%v)", v.Name())
 				fn := func(tty *os.File) (err error) {
-					outfh := os.Stdout
-					if tty != nil {
-						outfh = tty
-					}
 					w.LogDebug("fn is running!")
-					_, _ = fmt.Fprintln(outfh, "# waiting for 5 seconds #")
+					_, _ = fmt.Fprintf(tty, "# waiting for 5 seconds #\r\n")
 					for _, i := range []int{5, 4, 3, 2, 1} {
-						_, _ = fmt.Fprintf(outfh, "# %v...\n", i)
+						_, _ = fmt.Fprintf(tty, "# %v...\r\n", i)
 						time.Sleep(time.Second)
 					}
-					_, _ = fmt.Fprintln(outfh, "# returning to hellocall now! #")
+					_, _ = fmt.Fprintf(tty, "# returning to hellocall now! #\r\n")
 					time.Sleep(time.Millisecond * 500)
 					return nil
 				}
