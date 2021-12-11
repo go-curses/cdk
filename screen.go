@@ -25,13 +25,13 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-curses/cdk/lib/paint"
-	"github.com/go-curses/cdk/log"
 	"github.com/jackdoe/go-gpmctl"
 	"golang.org/x/text/transform"
 
 	"github.com/go-curses/cdk/charset"
+	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/sync"
+	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/term"
 	"github.com/go-curses/terminfo"
 	_ "github.com/go-curses/terminfo/base"
@@ -252,8 +252,9 @@ func NewScreen() (Screen, error) {
 		terminfo.AddTerminfo(ti)
 	}
 	t := &CScreen{
-		ti:      ti,
-		ttyPath: "/dev/tty",
+		ti:          ti,
+		ttyPath:     "/dev/tty",
+		ttyReadLock: &sync.Mutex{},
 	}
 
 	t.keyExist = make(map[Key]bool)
@@ -284,6 +285,7 @@ type CScreen struct {
 	ttyFile      *os.File
 	ttyKeepFH    bool
 	ttyReading   bool
+	ttyReadLock  *sync.Mutex
 	ti           *terminfo.Terminfo
 	h            int
 	w            int
@@ -1773,9 +1775,13 @@ func (d *CScreen) mainLoop() {
 func (d *CScreen) inputLoop() {
 	for {
 		chunk := make([]byte, 128)
+		d.ttyReadLock.Lock()
 		d.ttyReading = true
+		d.ttyReadLock.Unlock()
 		n, e := d.term.Read(chunk)
+		d.ttyReadLock.Lock()
 		d.ttyReading = false
+		d.ttyReadLock.Unlock()
 		switch e {
 		case io.EOF:
 		case nil:
