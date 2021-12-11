@@ -535,8 +535,9 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 			display = NewDisplayWithHandle("display-service", out)
 			display.app = app
 			username := env.Get("USER", "nil")
-			display.SetName(cstrings.MakeObjectName(app.name, username, asc.conn.RemoteAddr().String()))
-			_ = display.SetStringProperty(PropertyDisplayName, app.name)
+			displayname := cstrings.MakeObjectName(app.name, username, asc.conn.RemoteAddr().String())
+			display.SetName(displayname)
+			_ = display.SetStringProperty(PropertyDisplayName, displayname)
 			_ = display.SetStringProperty(PropertyDisplayUser, username)
 			_ = display.SetStringProperty(PropertyDisplayHost, asc.conn.RemoteAddr().String())
 			valid = true
