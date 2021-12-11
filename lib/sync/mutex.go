@@ -7,5 +7,5 @@ import (
 type Mutex struct {
 	sync.Mutex
 
-	mutexLockStack []string
+	lockStack []string
 }

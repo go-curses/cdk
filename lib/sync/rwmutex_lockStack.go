@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-func (m *RWMutex) getLockStackTag(write bool, depth int) (tag string) {
+func (m *RWMutex) makeTag(write bool, depth int) (tag string) {
 	depth += 1
 	if pc, _, line, ok := runtime.Caller(depth); ok {
 		details := runtime.FuncForPC(pc)
@@ -20,28 +20,28 @@ func (m *RWMutex) getLockStackTag(write bool, depth int) (tag string) {
 
 func (m *RWMutex) Lock() {
 	m.RWMutex.Lock()
-	m.rwMutexLockStack = append(m.rwMutexLockStack, m.getLockStackTag(true, 1))
+	m.lockStack = append(m.lockStack, m.makeTag(true, 1))
 }
 
 func (m *RWMutex) Unlock() {
 	m.RWMutex.Unlock()
-	if len(m.rwMutexLockStack) > 1 {
-		m.rwMutexLockStack = append([]string{}, m.rwMutexLockStack[:len(m.rwMutexLockStack)-1]...)
+	if len(m.lockStack) > 1 {
+		m.lockStack = append([]string{}, m.lockStack[:len(m.lockStack)-1]...)
 	} else {
-		m.rwMutexLockStack = []string{}
+		m.lockStack = []string{}
 	}
 }
 
 func (m *RWMutex) RLock() {
 	m.RWMutex.RLock()
-	m.rwMutexLockStack = append(m.rwMutexLockStack, m.getLockStackTag(false, 1))
+	m.lockStack = append(m.lockStack, m.getLockStackTag(false, 1))
 }
 
 func (m *RWMutex) RUnlock() {
 	m.RWMutex.RUnlock()
-	if len(m.rwMutexLockStack) > 1 {
-		m.rwMutexLockStack = append([]string{}, m.rwMutexLockStack[:len(m.rwMutexLockStack)-1]...)
+	if len(m.lockStack) > 1 {
+		m.lockStack = append([]string{}, m.lockStack[:len(m.lockStack)-1]...)
 	} else {
-		m.rwMutexLockStack = []string{}
+		m.lockStack = []string{}
 	}
 }

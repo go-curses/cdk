@@ -6,4 +6,6 @@ import (
 
 type Once struct {
 	sync.Once
+
+	doStack string
 }

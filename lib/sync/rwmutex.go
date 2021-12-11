@@ -7,5 +7,5 @@ import (
 type RWMutex struct {
 	sync.RWMutex
 
-	rwMutexLockStack []string
+	lockStack []string
 }
