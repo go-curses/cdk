@@ -64,6 +64,7 @@ func init() {
 	cdk.Build.LogTimestamps = cstrings.IsTrue(IncludeLogTimestamps)
 	cdk.Build.LogTimestampFormat = cstrings.IsTrue(IncludeLogTimestampFormat)
 	cdk.Build.LogOutput = cstrings.IsTrue(IncludeLogOutput)
+	cdk.Build.DisableLocalCall = false
 	CdkApp = cdk.NewApplication(
 		"hellocall",
 		"An example CDK application/plugin using Display.Call",

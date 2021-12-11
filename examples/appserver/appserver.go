@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	cdk.Build.DisableRemoteCall = false
+	cdk.Build.DisableLocalCall = false
 	env.Set("GO_CDK_LOG_FILE", "./appserver.log")
 	env.Set("GO_CDK_LOG_LEVEL", "debug")
 	cdk.Init()
