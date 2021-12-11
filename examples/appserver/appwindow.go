@@ -47,7 +47,7 @@ func (w *AppWindow) Init() (already bool) {
 
 func (w *AppWindow) draw(data []interface{}, argv ...interface{}) enums.EventFlag {
 	var err error
-	var ctx *cdk.CLocalContext
+	var ctx *cdk.CLocalContextData
 	if surface, ok := argv[1].(memphis.Surface); ok {
 		theme := w.GetTheme()
 		size := surface.GetSize()
