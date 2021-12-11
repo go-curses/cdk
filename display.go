@@ -22,10 +22,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-curses/cdk/env"
 	"github.com/go-curses/cdk/lib/enums"
 	cexec "github.com/go-curses/cdk/lib/exec"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
+	cstrings "github.com/go-curses/cdk/lib/strings"
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
@@ -170,6 +172,12 @@ func (d *CDisplay) Init() (already bool) {
 		return true
 	}
 	d.CObject.Init()
+
+	username := env.Get("USER", "nil")
+	displayname := cstrings.MakeObjectName("tty", username, "/dev/tty")
+	_ = d.InstallProperty(PropertyDisplayName, StringProperty, true, displayname)
+	_ = d.InstallProperty(PropertyDisplayUser, StringProperty, true, username)
+	_ = d.InstallProperty(PropertyDisplayHost, StringProperty, true, "/dev/tty")
 
 	d.captured = false
 	d.started = false
