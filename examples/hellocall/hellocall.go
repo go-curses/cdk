@@ -44,7 +44,6 @@ var (
 	IncludeLogOutput          = "false"
 )
 
-// exported
 var CdkApp cdk.Application
 
 func main() {
