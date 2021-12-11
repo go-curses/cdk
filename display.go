@@ -37,6 +37,8 @@ var (
 	DisplayCallCapacity = 16
 	// MainIterateDelay is the event iteration loop delay
 	MainIterateDelay = time.Millisecond * 50
+	// MainRequestDelay is the screen request iteration loop delay
+	MainRequestDelay = time.Millisecond * 100
 )
 
 const (
@@ -983,7 +985,7 @@ screenRequestWorkerLoop:
 			default: // nop
 			}
 		}
-		time.Sleep(MainIterateDelay)
+		time.Sleep(MainRequestDelay)
 	}
 }
 
