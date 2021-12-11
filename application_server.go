@@ -15,17 +15,17 @@
 package cdk
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/creack/pty"
 	"github.com/go-curses/cdk/env"
 	"github.com/go-curses/cdk/lib/enums"
+	"github.com/go-curses/cdk/lib/exec"
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/gofrs/uuid"
 	"github.com/urfave/cli/v2"
@@ -504,14 +504,10 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 	// request for another logical connection
 	connection, requests, err := channel.Accept()
 	if err != nil {
-		log.ErrorF("Could not accept channel (%s)", err)
+		s.LogError("Could not accept channel (%s)", err)
 		return
 	}
 
-	var p, t *os.File
-	if p, t, err = pty.Open(); err != nil {
-		panic(err)
-	}
 	app := NewApplication(
 		s.name,
 		s.usage,
@@ -525,58 +521,63 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 	app.Connect(SignalStartup, "application-server-startup--client", func(data []interface{}, argv ...interface{}) enums.EventFlag {
 		return s.clientInitFn(data, argv...)
 	})
-	display := NewDisplayWithHandle("display-service", t)
-	display.app = app
-	username := env.Get("USER", "nil")
-	display.SetName(cstrings.MakeObjectName(app.name, username, asc.conn.RemoteAddr().String()))
-	_ = display.SetStringProperty(PropertyDisplayName, app.name)
-	_ = display.SetStringProperty(PropertyDisplayUser, username)
-	_ = display.SetStringProperty(PropertyDisplayHost, asc.conn.RemoteAddr().String())
-	var wg sync.WaitGroup
+
+	var display *CDisplay
+	var cancel context.CancelFunc
+	var resize exec.SpawnResize
+	var wg *sync.WaitGroup
+	valid := false
+	once := &sync.Once{}
+
+	if cancel, resize, wg, err = exec.Spawn(
+		connection,
+		func(in, out *os.File) (err error) {
+			display = NewDisplayWithHandle("display-service", out)
+			display.app = app
+			username := env.Get("USER", "nil")
+			display.SetName(cstrings.MakeObjectName(app.name, username, asc.conn.RemoteAddr().String()))
+			_ = display.SetStringProperty(PropertyDisplayName, app.name)
+			_ = display.SetStringProperty(PropertyDisplayUser, username)
+			_ = display.SetStringProperty(PropertyDisplayHost, asc.conn.RemoteAddr().String())
+			valid = true
+			return
+		},
+		func() (err error) {
+			if !valid {
+				return fmt.Errorf("shutdown called before startup")
+			}
+			log.DebugF("handleChannel, requesting quit on display")
+			display.RequestQuit()
+			wg.Wait() // hold until shutdown signal is received
+			if ok, err := connection.SendRequest("exit-status", true, []byte{0, 0, 0, 0}); err != nil {
+				log.ErrorF("error sending exit-status channel request")
+			} else {
+				log.InfoF("received exit-status response: %v, on connection: %s", ok, asc.String())
+			}
+			if err := connection.Close(); err != nil {
+				log.ErrorF("error closing ssh channel: %v", err)
+			}
+			if err := asc.conn.Close(); err != nil {
+				log.ErrorF("error closing ssh connection: %v", err)
+			}
+			if err := s.freeClient(asc.id); err != nil {
+				log.ErrorF("error freeing app client: %v", err)
+			}
+			log.DebugF("Session closed")
+			return
+		},
+	); err != nil {
+		s.LogErr(err)
+		return
+	}
+
 	wg.Add(1)
 	app.Connect(SignalShutdown, "exit-handler", func(_ []interface{}, _ ...interface{}) enums.EventFlag {
 		log.DebugF("exiting client connection: %s", asc.String())
 		wg.Done()
+		once.Do(cancel)
 		return enums.EVENT_PASS
 	})
-	shutdown := func() {
-		log.DebugF("handleChannel, requesting quit on display")
-		display.RequestQuit()
-		wg.Wait() // hold until shutdown signal is received
-		if ok, err := connection.SendRequest("exit-status", true, []byte{0, 0, 0, 0}); err != nil {
-			log.ErrorF("error sending exit-status channel request")
-		} else {
-			log.InfoF("received exit-status response: %v, on connection: %s", ok, asc.String())
-		}
-		if err := connection.Close(); err != nil {
-			log.ErrorF("error closing ssh channel: %v", err)
-		}
-		if err := asc.conn.Close(); err != nil {
-			log.ErrorF("error closing ssh connection: %v", err)
-		}
-		_ = t.Close() // expected file already closed, guarding
-		if err := p.Close(); err != nil {
-			log.ErrorF("error closing pty: %v", err)
-		}
-		if err := s.freeClient(asc.id); err != nil {
-			log.ErrorF("error freeing app client: %v", err)
-		}
-		log.DebugF("Session closed")
-	}
-
-	// pipe session to pty and visa-versa
-	log.DebugF("pty: %v, %v", p.Name(), p.Fd())
-	log.DebugF("tty: %v, %v", t.Name(), t.Fd())
-
-	var once sync.Once
-	go func() {
-		_, _ = io.Copy(connection, p)
-		once.Do(shutdown)
-	}()
-	go func() {
-		_, _ = io.Copy(p, connection)
-		once.Do(shutdown)
-	}()
 
 	// start display service
 	Go(func() {
@@ -588,12 +589,12 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 			func() {
 				if err := app.SetDisplay(display); err != nil {
 					log.Error(err)
-					once.Do(shutdown)
+					once.Do(cancel)
 					return
 				}
 				display.Connect(SignalDisplayStartup, "application-signal-display-startup-handler", func(data []interface{}, argv ...interface{}) enums.EventFlag {
-					if ctx, cancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
-						if f := app.Emit(SignalStartup, app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
+					if ctx, dcancel, wg, ok := DisplaySignalDisplayStartupArgv(argv...); ok {
+						if f := app.Emit(SignalStartup, app.Self(), display, ctx, dcancel, wg); f == enums.EVENT_STOP {
 							app.LogInfo("application startup signal listener requested EVENT_STOP")
 							display.RequestQuit()
 							return enums.EVENT_STOP
@@ -605,7 +606,7 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 				if err := app.cli.Run(os.Args); err != nil {
 					log.Error(err)
 				}
-				once.Do(shutdown)
+				once.Do(cancel)
 			},
 		)
 	})
@@ -631,7 +632,7 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 			case "pty-req":
 				termLen := req.Payload[3]
 				w, h := cterm.ParseDims(req.Payload[termLen+4:])
-				if err := cterm.SetWinSz(p.Fd(), w, h); err != nil {
+				if err := resize(w, h); err != nil {
 					log.Error(err)
 				}
 				_ = display.PostEvent(NewEventResize(int(w), int(h)))
@@ -641,7 +642,7 @@ func (s *CApplicationServer) handleChannel(asc *CApplicationServerClient, channe
 				_ = req.Reply(true, nil)
 			case "window-change":
 				w, h := cterm.ParseDims(req.Payload)
-				if err := cterm.SetWinSz(p.Fd(), w, h); err != nil {
+				if err := resize(w, h); err != nil {
 					log.Error(err)
 				}
 				_ = display.PostEvent(NewEventResize(int(w), int(h)))
