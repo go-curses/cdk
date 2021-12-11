@@ -17,17 +17,13 @@ package cdk
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/creack/pty"
-	"golang.org/x/term"
-
 	"github.com/go-curses/cdk/lib/enums"
+	cexec "github.com/go-curses/cdk/lib/exec"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
 	"github.com/go-curses/cdk/lib/sync"
@@ -69,7 +65,7 @@ type Display interface {
 	DisplayCaptured() bool
 	CaptureDisplay() (err error)
 	ReleaseDisplay()
-	Call(fn DisplayCommandFn) (err error)
+	Call(fn cexec.Callback) (err error)
 	Command(name string, argv ...string) (err error)
 	IsMonochrome() bool
 	Colors() (numberOfColors int)
@@ -324,29 +320,7 @@ func (d *CDisplay) ReleaseDisplay() {
 	}
 }
 
-func (d *CDisplay) ioCopy(tag string, dst io.Writer, src io.Reader) (err error) {
-	d.LogDebug("start copy: %s", tag)
-	n := 0
-	buf := make([]byte, 1)
-	for {
-		// log.DebugF("waiting for read: %s", tag)
-		n, err = src.Read(buf)
-		// log.DebugF("read %v for: %s", buf[:n], tag)
-		if err != nil && err != io.EOF {
-			break
-		}
-		if n == 0 {
-			break
-		}
-		if _, err = dst.Write(buf[:n]); err != nil {
-			break
-		}
-	}
-	d.LogDebug("finish copy: [%s]", tag)
-	return
-}
-
-func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
+func (d *CDisplay) Call(fn cexec.Callback) (err error) {
 	if !d.startedAndCaptured() {
 		return fmt.Errorf("display is not captured or not completely started up yet")
 	}
@@ -363,92 +337,31 @@ func (d *CDisplay) Call(fn DisplayCommandFn) (err error) {
 	if d.ttyHandle != nil {
 		var dupeFd int
 		if dupeFd, err = syscall.Dup(int(d.ttyHandle.Fd())); err != nil {
-			return
+			return fmt.Errorf("syscall.Dup error: %v", err)
 		}
 		callTty = os.NewFile(uintptr(dupeFd), d.ttyHandle.Name())
-		d.LogDebug("callTty = from d.ttyHandle(%v)", callTty.Name())
+		d.LogDebug("callTty = os.NewFile(%v, %v)", dupeFd, callTty.Name())
 	} else {
 		ttyPath := "/dev/tty"
 		if d.ttyPath != "" {
 			ttyPath = d.ttyPath
 		}
+		if callTty, err = os.OpenFile(ttyPath, os.O_RDWR, 0); err != nil {
+			return fmt.Errorf("os.OpenFile error: %v", err)
+		}
 		d.LogDebug("callTty = os.OpenFile(%v)", ttyPath)
-		if callTty, err = os.OpenFile(ttyPath, os.O_APPEND|os.O_RDWR, 0); err != nil {
-			return
-		}
 	}
 
-	var ptmx, ptty *os.File
-	if ptmx, ptty, err = pty.Open(); err != nil {
-		return
+	if err = cexec.CallWithTty(callTty, fn); err != nil {
+		return fmt.Errorf("cexec.CallWithTty error: %v", err)
 	}
 
-	// Handle pty size.
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGWINCH)
-	go func() {
-		for range ch {
-			if err := pty.InheritSize(callTty, ptmx); err != nil {
-				d.LogError("error resizing pty: %s", err)
-			}
-		}
-	}()
-	ch <- syscall.SIGWINCH // Initial resize.
-
-	var oldState *term.State
-	if oldState, err = term.MakeRaw(int(callTty.Fd())); err != nil {
-		return
-	}
-
-	var nok bool
-
-	Go(func() {
-		if e := d.ioCopy(
-			fmt.Sprintf("NOK %v->%v", callTty.Name(), ptmx.Name()),
-			ptmx,
-			callTty,
-		); e != nil {
-			d.LogErr(e)
-		}
-		nok = true
-	})
-
-	Go(func() {
-		if e := d.ioCopy(
-			fmt.Sprintf("OK %v->%v", ptmx.Name(), callTty.Name()),
-			callTty,
-			ptmx,
-		); e != nil {
-			d.LogErr(e)
-		}
-	})
-
-	err = fn(ptty, ptty)
-	time.Sleep(time.Millisecond * 100) // let things catch up?
-
-	// Cleanup signals when done.
-	signal.Stop(ch)
-	close(ch)
-
-	if e = ptmx.Close(); e != nil {
-		d.LogErr(e)
-	}
-
-	if e = ptty.Close(); e != nil {
-		d.LogErr(e)
-	}
-
-	if !nok {
-		d.LogDebug("sending Tiocsti to: %v", callTty.Name())
-		if e = cterm.Tiocsti(callTty.Fd(), " "); e != nil {
-			d.LogErr(e)
-		}
-	}
-
-	if oldState != nil {
-		d.LogDebug("restoring term state: %v", callTty.Name())
-		if e = term.Restore(int(callTty.Fd()), oldState); e != nil {
-			d.LogErr(e)
+	d.LogDebug("sending Tiocsti: %v", callTty.Name())
+	if err := cterm.Tiocsti(callTty.Fd(), " "); err != nil {
+		log.Error(err)
+		d.LogDebug("[trying again] writing Tiocsti: %v", callTty.Name())
+		if _, err := callTty.Write([]byte(" ")); err != nil {
+			log.Error(err)
 		}
 	}
 
