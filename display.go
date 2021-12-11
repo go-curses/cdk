@@ -331,6 +331,16 @@ func (d *CDisplay) ReleaseDisplay() {
 }
 
 func (d *CDisplay) Call(fn cexec.Callback) (err error) {
+	remote := false
+	if name, e := d.GetStringProperty(PropertyDisplayHost); e == nil {
+		remote = name != "/dev/tty"
+	}
+	if Build.DisableLocalCall && !remote {
+		return fmt.Errorf("local Call() feature is disabled")
+	}
+	if Build.DisableRemoteCall && remote {
+		return fmt.Errorf("remote Call() feature is disabled")
+	}
 	if !d.startedAndCaptured() {
 		return fmt.Errorf("display is not captured or not completely started up yet")
 	}

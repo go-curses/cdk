@@ -24,6 +24,8 @@ type Config struct {
 	LogTimestamps      bool
 	LogTimestampFormat bool
 	LogOutput          bool
+	DisableLocalCall   bool
+	DisableRemoteCall  bool
 }
 
 var Build = Config{
@@ -36,4 +38,6 @@ var Build = Config{
 	LogTimestamps:      false,
 	LogTimestampFormat: false,
 	LogOutput:          false,
+	DisableLocalCall:   true,
+	DisableRemoteCall:  true,
 }
