@@ -78,6 +78,12 @@ func (p Point2I) NewClone() (clone *Point2I) {
 	return
 }
 
+// Position returns the X and Y coordinates
+func (p Point2I) Position() (x, y int) {
+	x, y = p.X, p.Y
+	return
+}
+
 // returns true if both the given x and y coordinates and this Point2I are
 // equivalent, returns false otherwise
 func (p Point2I) Equals(x, y int) bool {
