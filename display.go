@@ -570,7 +570,7 @@ func (d *CDisplay) MapWindow(w Window) {
 }
 
 func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
-	d.LogDebug("mapping window: %v, with region: %v", w.ObjectName(), region)
+	log.DebugDF(1, "mapping window: %v, with region: %v", w.ObjectName(), region)
 	index := d.findMappedWindowIndex(w)
 	w.SetDisplay(d)
 	if err := memphis.MakeConfigureSurface(w.ObjectID(), region.Origin(), region.Size(), w.GetTheme().Content.Normal); err != nil {
