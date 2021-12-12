@@ -561,7 +561,7 @@ func (d *CDisplay) MapWindow(w Window) {
 	w.SetDisplay(d)
 	width, height := 0, 0
 	d.RLock()
-	if d.screen != nil {
+	if d.startedAndCaptured() {
 		width, height = d.screen.Size()
 	}
 	d.RUnlock()
