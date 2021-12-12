@@ -105,13 +105,15 @@ func (d *CScreen) finalize() {
 		if err := d.term.Restore(); err != nil {
 			log.ErrorF("error restoring terminal: %v", err)
 		}
-		d.ttyReadLock.Lock()
-		if d.ttyReading {
-			if e := d.term.Tiocsti(" "); e != nil {
-				log.Error(e)
+		if d.ttyReadSti {
+			d.ttyReadLock.Lock()
+			if d.ttyReading {
+				if e := d.term.Tiocsti(" "); e != nil {
+					log.Error(e)
+				}
 			}
+			d.ttyReadLock.Unlock()
 		}
-		d.ttyReadLock.Unlock()
 		Go(func() {
 			if err := d.term.Close(); err != nil {
 				log.ErrorF("error closing terminal: %v", err)

@@ -48,6 +48,8 @@ type Screen interface {
 
 	TtyKeepFileHandle(keeping bool)
 	TtyKeepingFileHandle() (keeping bool)
+	TtyCloseWithStiRead(enabled bool)
+	GetTtyCloseWithStiRead() (enabled bool)
 
 	// Close finalizes the screen also releasing resources.
 	Close()
@@ -283,9 +285,10 @@ type tKeyCode struct {
 type CScreen struct {
 	ttyPath      string
 	ttyFile      *os.File
-	ttyKeepFH    bool
-	ttyReading   bool
-	ttyReadLock  *sync.Mutex
+	ttyKeepFH    bool        // do not close the file handle
+	ttyReadSti   bool        // inject " " to cancel term.Read
+	ttyReading   bool        // is currently waiting for a term.Read
+	ttyReadLock  *sync.Mutex // thread-safe term.Read tracking
 	ti           *terminfo.Terminfo
 	h            int
 	w            int
@@ -352,6 +355,15 @@ func (d *CScreen) TtyKeepFileHandle(keep bool) {
 
 func (d *CScreen) TtyKeepingFileHandle() (keeping bool) {
 	keeping = d.ttyKeepFH
+	return
+}
+
+func (d *CScreen) TtyCloseWithStiRead(enabled bool) {
+	d.ttyReadSti = enabled
+}
+
+func (d *CScreen) GetTtyCloseWithStiRead() (enabled bool) {
+	enabled = d.ttyReadSti
 	return
 }
 

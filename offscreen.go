@@ -143,6 +143,12 @@ func (o *COffScreen) TtyKeepingFileHandle() (keeping bool) {
 	return false
 }
 
+func (o *COffScreen) TtyCloseWithStiRead(enabled bool) {}
+
+func (o *COffScreen) GetTtyCloseWithStiRead() (enabled bool) {
+	return
+}
+
 func (o *COffScreen) Init() error {
 	o.evCh = make(chan Event, 10)
 	o.quit = make(chan struct{})
