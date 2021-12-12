@@ -69,6 +69,7 @@ type Display interface {
 	DisplayCaptured() bool
 	CaptureDisplay() (err error)
 	ReleaseDisplay()
+	CallEnabled() (enabled bool, err error)
 	Call(fn cexec.Callback) (err error)
 	Command(name string, argv ...string) (err error)
 	IsMonochrome() bool
@@ -310,6 +311,8 @@ func (d *CDisplay) CaptureDisplay() (err error) {
 			return fmt.Errorf("error initializing new tty path screen: %v", err)
 		}
 	}
+	enabled, _ := d.CallEnabled()
+	d.screen.TtyCloseWithStiRead(enabled)
 	d.screen.SetStyle(paint.DefaultColorStyle)
 	d.screen.EnableMouse()
 	d.screen.EnablePaste()
@@ -330,16 +333,26 @@ func (d *CDisplay) ReleaseDisplay() {
 	}
 }
 
-func (d *CDisplay) Call(fn cexec.Callback) (err error) {
+func (d *CDisplay) CallEnabled() (enabled bool, err error) {
+	enabled = true
 	remote := false
 	if name, e := d.GetStringProperty(PropertyDisplayHost); e == nil {
 		remote = name != "/dev/tty"
 	}
 	if Build.DisableLocalCall && !remote {
-		return fmt.Errorf("local Call() feature is disabled")
+		enabled = false
+		err = fmt.Errorf("local call feature is disabled")
 	}
 	if Build.DisableRemoteCall && remote {
-		return fmt.Errorf("remote Call() feature is disabled")
+		enabled = false
+		err = fmt.Errorf("remote call feature is disabled")
+	}
+	return
+}
+
+func (d *CDisplay) Call(fn cexec.Callback) (err error) {
+	if enabled, err := d.CallEnabled(); !enabled {
+		return err
 	}
 	if !d.startedAndCaptured() {
 		return fmt.Errorf("display is not captured or not completely started up yet")
