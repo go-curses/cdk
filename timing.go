@@ -70,14 +70,25 @@ func (t *timers) Get(id uuid.UUID) *timer {
 
 func (t *timers) Stop(id uuid.UUID) bool {
 	if t.Valid(id) {
-		t.Lock()
-		defer t.Unlock()
-		_ = t.timers[id].display.AwaitCall(func(_ Display) error {
-			t.timers[id].cancel()
-			t.timers[id] = nil
-			log.TraceF("stopped timer: %d", id)
+		stopFn := func(_ Display) error {
+			if t.Valid(id) {
+				t.Lock()
+				t.timers[id].cancel()
+				delete(t.timers, id)
+				t.Unlock()
+				log.TraceF("stopped timer: %d", id)
+			}
 			return nil
-		})
+		}
+		t.RLock()
+		if display := t.timers[id].display; display != nil {
+			t.RUnlock()
+			if err := display.AwaitCall(stopFn); err != nil {
+				log.Error(err)
+			}
+		} else {
+			t.RUnlock()
+		}
 		return true
 	}
 	return false
@@ -160,7 +171,11 @@ func StopTimeout(id uuid.UUID) {
 }
 
 func CancelAllTimeouts() {
-	for _, t := range cdkTimeouts.timers {
-		StopTimeout(t.id)
+	if cdkTimeouts != nil {
+		if cdkTimeouts.timers != nil {
+			for _, t := range cdkTimeouts.timers {
+				StopTimeout(t.id)
+			}
+		}
 	}
 }
