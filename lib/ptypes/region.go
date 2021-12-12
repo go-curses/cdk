@@ -116,6 +116,50 @@ func (r Region) Size() Rectangle {
 	return Rectangle{r.W, r.H}
 }
 
+func (r *Region) ClampToRegion(region Region) (clamped bool) {
+	var x, y, w, h int
+	fp := r.FarPoint()
+	rfp := region.FarPoint()
+	if r.X < region.X {
+		// too far left
+		x = region.X
+	} else if r.X > rfp.X {
+		// too far right
+		x = rfp.X
+	} else {
+		// accept
+		x = r.X
+	}
+	if r.Y < region.Y {
+		// too far up
+		y = region.Y
+	} else if r.Y > rfp.Y {
+		// too far down
+		y = rfp.Y
+	} else {
+		// accept
+		y = r.Y
+	}
+	if fp.X > rfp.X {
+		// too wide
+		w = rfp.X - region.X
+	} else {
+		// accept
+		w = r.W
+	}
+	if fp.Y > rfp.Y {
+		// to tall
+		h = rfp.Y - region.Y
+	} else {
+		// accept
+		h = r.W
+	}
+	// apply changes
+	clamped = r.X != x || r.Y != y || r.W != w || r.H != h
+	r.X, r.Y, r.W, r.H = x, y, w, h
+	return
+}
+
 var (
 	rxParseRegion     = regexp.MustCompile(`(?:i)^{??(?:x:)??(\d+),(?:y:)??(\d+),(?:w:)??(\d+),(?:h:)??(\d+)}??$`)
 	rxParseFourDigits = regexp.MustCompile(`(?:i)^\s*(\d+)\s*(\d+)\s*(\d+)\s*(\d+)\s*$`)
