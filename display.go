@@ -204,7 +204,7 @@ func (d *CDisplay) Init() (already bool) {
 	d.eventMutex = &sync.Mutex{}
 	d.drawMutex = &sync.Mutex{}
 
-	if err := memphis.RegisterSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), ptypes.MakeRectangle(0, 0), paint.DefaultColorStyle); err != nil {
+	if err := memphis.MakeSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), ptypes.MakeRectangle(0, 0), paint.DefaultColorStyle); err != nil {
 		d.LogErr(err)
 	}
 	return false
@@ -570,13 +570,8 @@ func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
 	d.LogDebug("mapping window: %v, with region: %v", w.ObjectName(), region)
 	index := d.findMappedWindowIndex(w)
 	w.SetDisplay(d)
-	if s, err := memphis.GetSurface(w.ObjectID()); err != nil {
-		if err := memphis.RegisterSurface(w.ObjectID(), region.Origin(), region.Size(), w.GetTheme().Content.Normal); err != nil {
-			d.LogErr(err)
-		}
-	} else {
-		s.SetOrigin(region.Origin())
-		s.Resize(region.Size(), d.GetTheme().Content.Normal)
+	if err := memphis.MakeConfigureSurface(w.ObjectID(), region.Origin(), region.Size(), w.GetTheme().Content.Normal); err != nil {
+		d.LogErr(err)
 	}
 	d.Lock()
 	if index > -1 {
