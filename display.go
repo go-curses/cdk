@@ -1074,6 +1074,10 @@ func (d *CDisplay) Startup() (ctx context.Context, cancel context.CancelFunc, wg
 		}
 		wg.Done()
 	})
+	_ = d.AsyncCall(func(_ Display) error {
+		d.Emit(SignalDisplayStartup, ctx, cancel, wg)
+		return nil
+	})
 	return
 }
 
@@ -1098,10 +1102,6 @@ func (d *CDisplay) Main(ctx context.Context, cancel context.CancelFunc, wg *sync
 	Go(func() {
 		d.screenRequestWorker(ctx)
 		wg.Done()
-	})
-	_ = d.AsyncCall(func(_ Display) error {
-		d.Emit(SignalDisplayStartup, ctx, cancel, wg)
-		return nil
 	})
 mainForLoop:
 	for d.IsRunning() {
