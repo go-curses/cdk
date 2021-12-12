@@ -531,7 +531,7 @@ func (d *CDisplay) FocusWindow(w Window) {
 	} else {
 		d.MapWindow(w)
 	}
-	d.Emit(SignalFocusedWindow, d, w)
+	d.Emit(SignalFocusedWindow, w)
 }
 
 func (d *CDisplay) FocusNextWindow() {
