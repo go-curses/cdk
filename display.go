@@ -481,14 +481,17 @@ func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
 	}
 	d.Unlock()
 	for _, window := range windows {
-		d.Lock()
-		if s, err := memphis.GetSurface(window.ObjectID()); err != nil {
-			d.LogErr(err)
-		} else {
-			s.Resize(size, d.GetTheme().Content.Normal)
+		if window.GetWindowType() != enums.WINDOW_POPUP {
+			d.Lock()
+			if s, err := memphis.GetSurface(window.ObjectID()); err != nil {
+				d.LogErr(err)
+			} else {
+				s.Resize(size, d.GetTheme().Content.Normal)
+			}
+			d.Unlock()
 		}
-		d.Unlock()
 	}
+	return
 }
 
 func (d *CDisplay) findMappedWindowIndex(w Window) (index int) {
