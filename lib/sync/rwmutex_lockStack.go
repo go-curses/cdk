@@ -34,7 +34,7 @@ func (m *RWMutex) Unlock() {
 
 func (m *RWMutex) RLock() {
 	m.RWMutex.RLock()
-	m.lockStack = append(m.lockStack, m.getLockStackTag(false, 1))
+	m.lockStack = append(m.lockStack, m.makeTag(false, 1))
 }
 
 func (m *RWMutex) RUnlock() {
