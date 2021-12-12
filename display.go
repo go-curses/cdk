@@ -582,6 +582,8 @@ func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
 	}
 	d.windows = append([]Window{w}, d.windows...)
 	d.Unlock()
+	d.RequestDraw()
+	d.RequestShow()
 	w.Emit(SignalMappedWindow, d)
 }
 
@@ -592,6 +594,8 @@ func (d *CDisplay) UnmapWindow(w Window) {
 		memphis.RemoveSurface(w.ObjectID())
 		d.windows = append(d.windows[:idx], d.windows[idx+1:]...)
 		d.Unlock()
+		d.RequestDraw()
+		d.RequestShow()
 		w.Emit(SignalUnmappedWindow, d)
 	}
 }
@@ -733,7 +737,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 		if stopped {
 			d.RequestDraw()
-			d.RequestShow()
+			d.RequestSync()
 		}
 		return d.Emit(SignalEventResize, d, e)
 	}
