@@ -40,7 +40,7 @@ var (
 	// MainIterateDelay is the event iteration loop delay
 	MainIterateDelay = time.Millisecond * 50
 	// MainRequestDelay is the screen request iteration loop delay
-	MainRequestDelay = time.Millisecond * 100
+	MainRequestDelay = time.Millisecond * 25
 )
 
 const (
