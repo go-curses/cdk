@@ -159,6 +159,7 @@ func (app *CApplication) SetupDisplay() {
 			app.LogErr(err)
 		}
 	}
+	app.Emit(SignalSetupDisplay, app.display)
 }
 
 func (app *CApplication) Destroy() {
@@ -550,6 +551,8 @@ const SignalReconfigure Signal = "reconfigure"
 const SignalChanged Signal = "changed"
 
 const SignalPrepareStartup Signal = "prepare-startup"
+
+const SignalSetupDisplay Signal = "setup-display"
 
 const SignalStartup Signal = "startup"
 
