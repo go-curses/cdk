@@ -463,14 +463,14 @@ func (d *CDisplay) DefaultTheme() paint.Theme {
 	return paint.DefaultColorTheme
 }
 
-func (d *CDisplay) resizeWindows() {
+func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
 	d.RLock()
 	if d.screen == nil {
 		d.RUnlock()
 		return
 	}
 	windows := d.windows
-	w, h := d.screen.Size()
+	w, h = d.screen.Size()
 	size := ptypes.MakeRectangle(w, h)
 	d.RUnlock()
 	d.Lock()
@@ -722,7 +722,6 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		return d.Emit(SignalEventMouse, d, e)
 	case *EventResize:
 		// all windows get resize event
-		d.resizeWindows()
 		stopped := false
 		for _, window := range d.GetWindows() {
 			if f := window.ProcessEvent(evt); f == enums.EVENT_STOP {
@@ -838,7 +837,9 @@ func (d *CDisplay) setRunning(isRunning bool) {
 
 // StartupComplete emits SignalStartupComplete
 func (d *CDisplay) StartupComplete() {
+	w, h := d.resizeWindowSurfaces()
 	d.Emit(SignalStartupComplete)
+	d.ProcessEvent(NewEventResize(w, h))
 }
 
 // AsyncCall runs the given DisplayCallbackFn on the UI thread, non-blocking
