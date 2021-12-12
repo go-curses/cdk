@@ -14,7 +14,7 @@ var (
 	surfacesLock = &sync.RWMutex{}
 )
 
-func RegisterSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Rectangle, style paint.Style) (err error) {
+func MakeSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Rectangle, style paint.Style) (err error) {
 	surfacesLock.Lock()
 	defer surfacesLock.Unlock()
 	if _, ok := surfaces[id]; ok {
@@ -22,6 +22,13 @@ func RegisterSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Rectangle,
 	}
 	surfaces[id] = NewSurface(origin, size, style)
 	return nil
+}
+
+func HasSurface(id uuid.UUID) (ok bool) {
+	surfacesLock.RLock()
+	defer surfacesLock.RUnlock()
+	_, ok = surfaces[id]
+	return
 }
 
 func GetSurface(id uuid.UUID) (*CSurface, error) {
@@ -52,6 +59,17 @@ func FillSurface(id uuid.UUID, theme paint.Theme) (err error) {
 func ConfigureSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Rectangle, style paint.Style) (err error) {
 	var s Surface
 	if s, err = GetSurface(id); err == nil {
+		s.SetOrigin(origin)
+		s.Resize(size, style)
+	}
+	return
+}
+
+func MakeConfigureSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Rectangle, style paint.Style) (err error) {
+	var s Surface
+	if s, err = GetSurface(id); err != nil {
+		err = MakeSurface(id, origin, size, style)
+	} else {
 		s.SetOrigin(origin)
 		s.Resize(size, style)
 	}
