@@ -584,14 +584,7 @@ type ApplicationStartupFn = func(
 
 type ApplicationShutdownFn = func() enums.EventFlag
 
-func WithArgvApplicationSignalStartup(startupFn ApplicationStartupFn) SignalListenerFn {
-	return func(_ []interface{}, argv ...interface{}) enums.EventFlag {
-		if app, display, ctx, cancel, wg, ok := ArgvApplicationSignalStartup(argv...); ok {
-			return startupFn(app, display, ctx, cancel, wg)
-		}
-		return enums.EVENT_STOP
-	}
-}
+// TODO: need to go:generate WithArgv* wrappers from signals somehow, maybe the fn signature?
 
 func WithArgvNoneWithFlagsSignal(fn func() enums.EventFlag) SignalListenerFn {
 	return func(_ []interface{}, _ ...interface{}) enums.EventFlag {
@@ -603,6 +596,15 @@ func WithArgvNoneSignal(fn func(), eventFlag enums.EventFlag) SignalListenerFn {
 	return func(_ []interface{}, _ ...interface{}) enums.EventFlag {
 		fn()
 		return eventFlag
+	}
+}
+
+func WithArgvApplicationSignalStartup(startupFn ApplicationStartupFn) SignalListenerFn {
+	return func(_ []interface{}, argv ...interface{}) enums.EventFlag {
+		if app, display, ctx, cancel, wg, ok := ArgvApplicationSignalStartup(argv...); ok {
+			return startupFn(app, display, ctx, cancel, wg)
+		}
+		return enums.EVENT_STOP
 	}
 }
 
