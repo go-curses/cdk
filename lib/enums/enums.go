@@ -188,6 +188,7 @@ const (
 	JUSTIFY_RIGHT
 	JUSTIFY_CENTER
 	JUSTIFY_FILL
+	JUSTIFY_NONE
 )
 
 //go:generate stringer -type Orientation
