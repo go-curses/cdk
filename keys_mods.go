@@ -477,6 +477,15 @@ func LookupKeyName(key Key) string {
 	return fmt.Sprintf("%v", key)
 }
 
+func LookupKeyByName(name string) Key {
+	for key, value := range KeyNames {
+		if value == name {
+			return key
+		}
+	}
+	return 0
+}
+
 // ModMask is a mask of modifier keys.  Note that it will not always be
 // possible to report modifier keys.
 type ModMask int16
@@ -515,8 +524,8 @@ func (m ModMask) String() string {
 	return v
 }
 
-var rxParseKeyMods = regexp.MustCompile(`^\s*((?:\s*<[a-zA-Z][a-zA-Z0-9]+>\s*)*[a-zA-Z0-9])\s*$`)
-var rxParseMods = regexp.MustCompile(`\s*<([a-zA-Z][a-zA-Z0-9]+)>\s*`)
+var rxParseKeyMods = regexp.MustCompile(`^\s*((?:\s*<[a-zA-Z][a-zA-Z0-9]+>\s*)*(?:[fF]\d{1,2}|[a-zA-Z\d]))\s*$`)
+var rxParseMods = regexp.MustCompile(`\s*<([a-zA-Z][a-zA-Z\d]+)>\s*`)
 
 func ParseKeyMods(input string) (key Key, mods ModMask, err error) {
 	if rxParseKeyMods.MatchString(input) {
@@ -551,7 +560,11 @@ func ParseKeyMods(input string) (key Key, mods ModMask, err error) {
 			err = fmt.Errorf("error parsing key: %q", match[0])
 			return
 		}
-		key = LookupKeyRune(rune(remainder[0]))
+		if len(remainder) >= 2 {
+			key = LookupKeyByName(remainder)
+		} else {
+			key = LookupKeyRune(rune(remainder[0]))
+		}
 		return
 	}
 	key = KeyNUL
