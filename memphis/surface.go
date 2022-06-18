@@ -18,12 +18,13 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/gofrs/uuid"
+
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/math"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
 	"github.com/go-curses/cdk/log"
-	"github.com/gofrs/uuid"
 )
 
 // a Surface is the primary means of drawing to the terminal display within CDK
