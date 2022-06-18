@@ -16,8 +16,10 @@ package paths
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -64,4 +66,44 @@ func ReadFile(path string) (content string, err error) {
 		return
 	}
 	return "", fmt.Errorf("not a file or file not found: %v", path)
+}
+
+func CopyFile(src, dst string) (nBytes int64, err error) {
+	// see: https://opensource.com/article/18/6/copying-files-go
+
+	var srcInfo os.FileInfo
+	if srcInfo, err = os.Stat(src); err != nil {
+		return 0, err
+	}
+
+	if !srcInfo.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+
+	var srcFile *os.File
+	if srcFile, err = os.Open(src); err != nil {
+		return 0, err
+	}
+	defer srcFile.Close()
+
+	var destination *os.File
+	if destination, err = os.Create(dst); err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+
+	nBytes, err = io.Copy(destination, srcFile)
+	return
+}
+
+// BackupFile will copy a file to the same location, with the same file name and
+// suffixed with the given tag and finally a datestamp in the format of:
+// YYYYMMDDHHMMSS
+func BackupFile(tag, path string) (err error) {
+	if IsFile(path) {
+		stamp := time.Now().Format("20060102150405")
+		dst := fmt.Sprintf("%v.%v.%v", path, tag, stamp)
+		_, err = CopyFile(path, dst)
+	}
+	return
 }
