@@ -53,7 +53,12 @@ const (
 	RuneULCorner = '┌'
 	RuneURCorner = '┐'
 	RuneVLine    = '│'
-	// Extra Arrow-Type Things
+
+	RuneLLCornerRounded = '╰'
+	RuneLRCornerRounded = '╯'
+	RuneULCornerRounded = '╭'
+	RuneURCornerRounded = '╮'
+
 	RuneLeftwardsTwoHeadedArrowWithTriangleArrowheads  = '⯬'
 	RuneUpwardsTwoHeadedArrowWithTriangleArrowheads    = '⯭'
 	RuneRightwardsTwoHeadedArrowWithTriangleArrowheads = '⯮'
@@ -67,7 +72,7 @@ const (
 	RuneUpwardsBlackCircledWhiteArrow                  = '⮉'
 	RuneRightwardsBlackCircledWhiteArrow               = '⮊'
 	RuneDownwardsBlackCircledWhiteArrow                = '⮋'
-	// Punctuation, typography
+
 	RuneEllipsis = '…'
 )
 
@@ -128,7 +133,12 @@ var RuneFallbacks = map[rune]string{
 	RuneULCorner: "+",
 	RuneURCorner: "+",
 	RuneVLine:    "|",
-	// Extra Arrow-Type Things
+
+	RuneLLCornerRounded: "+",
+	RuneLRCornerRounded: "+",
+	RuneULCornerRounded: "+",
+	RuneURCornerRounded: "+",
+
 	RuneLeftwardsTwoHeadedArrowWithTriangleArrowheads:  "<",
 	RuneUpwardsTwoHeadedArrowWithTriangleArrowheads:    "^",
 	RuneRightwardsTwoHeadedArrowWithTriangleArrowheads: ">",
@@ -142,6 +152,6 @@ var RuneFallbacks = map[rune]string{
 	RuneUpwardsBlackCircledWhiteArrow:                  "^",
 	RuneRightwardsBlackCircledWhiteArrow:               ">",
 	RuneDownwardsBlackCircledWhiteArrow:                "v",
-	// Punctuation, typography
-	RuneEllipsis: "...",
+
+	RuneEllipsis: "…",
 }
