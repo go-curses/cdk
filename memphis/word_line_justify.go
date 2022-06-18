@@ -163,3 +163,18 @@ func (w *CWordLine) applyTypographicJustifyLeft(input []WordLine) (output []Word
 	}
 	return
 }
+
+func (w *CWordLine) applyTypographicJustifyNone(input []WordLine) (output []WordLine) {
+	// trim left space for each line
+	lid := 0
+	for _, line := range input {
+		if lid >= len(output) {
+			output = append(output, NewEmptyWordLine())
+		}
+		for _, word := range line.Words() {
+			output[lid].AppendWordCell(word)
+		}
+		lid++
+	}
+	return
+}

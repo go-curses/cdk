@@ -179,8 +179,17 @@ func (w *CWordLine) applyTypographicWrapNone(ellipsize bool, maxChars int, input
 			output = append(output, NewEmptyWordLine())
 		}
 		for _, word := range line.Words() {
-			if word.IsSpace() {
-				if maxChars > -1 && cid+1 > maxChars {
+			if maxChars > -1 && cid+word.Len() > maxChars {
+				wc := NewEmptyWordCell()
+				for _, c := range word.Characters() {
+					if cid+c.Width() > maxChars {
+						break
+					}
+					wc.AppendRune(c.Value(), c.Style())
+					cid += c.Width()
+				}
+				if wc.Len() > 0 {
+					output[lid].AppendWordCell(wc)
 					if ellipsize {
 						// ellipsize here
 						eStartIndex := output[lid].CharacterCount() - 1
@@ -190,37 +199,9 @@ func (w *CWordLine) applyTypographicWrapNone(ellipsize bool, maxChars int, input
 					}
 					break
 				}
-				if c := word.GetCharacter(0); c != nil {
-					wc := NewEmptyWordCell()
-					wc.AppendRune(c.Value(), c.Style())
-					output[lid].AppendWordCell(wc)
-					cid += wc.Len()
-				}
 			} else {
-				if maxChars > -1 && cid+word.Len() > maxChars {
-					wc := NewEmptyWordCell()
-					for _, c := range word.Characters() {
-						if cid+c.Width() > maxChars {
-							break
-						}
-						wc.AppendRune(c.Value(), c.Style())
-						cid += c.Width()
-					}
-					if wc.Len() > 0 {
-						output[lid].AppendWordCell(wc)
-						if ellipsize {
-							// ellipsize here
-							eStartIndex := output[lid].CharacterCount() - 1
-							if eStartIndex > 0 {
-								output[lid].SetCharacter(eStartIndex, paint.RuneEllipsis)
-							}
-						}
-						break
-					}
-				} else {
-					output[lid].AppendWordCell(word)
-					cid += word.Len()
-				}
+				output[lid].AppendWordCell(word)
+				cid += word.Len()
 			}
 		}
 		lid++

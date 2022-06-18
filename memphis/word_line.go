@@ -337,10 +337,12 @@ func (w *CWordLine) applyTypographicJustify(justify enums.Justification, maxChar
 		// each non-empty line is left-padded to fill maxChars
 		output = w.applyTypographicJustifyRight(maxChars, fillerStyle, input)
 	case enums.JUSTIFY_LEFT:
-		fallthrough
-	default:
 		// each non-empty line has leading space removed
 		output = w.applyTypographicJustifyLeft(input)
+	case enums.JUSTIFY_NONE:
+		fallthrough
+	default:
+		output = w.applyTypographicJustifyNone(input)
 	}
 	return
 }
