@@ -180,12 +180,19 @@ func (b *CSurfaceBuffer) GetBgColor(x, y int) (bg paint.Color) {
 
 // set the cell content at the given coordinates
 func (b *CSurfaceBuffer) SetCell(x int, y int, r rune, style paint.Style) error {
-	dLen := len(b.data)
-	if x >= 0 && x < dLen {
-		dxLen := len(b.data[x])
-		if y >= 0 && y < dxLen {
+	dxLen := len(b.data)
+	if x >= 0 && x < dxLen {
+		dyLen := len(b.data[x])
+		if y >= 0 && y < dyLen {
 			b.data[x][y].Set(r)
 			b.data[x][y].SetStyle(style)
+			if count := b.data[x][y].Count(); count > 1 {
+				for i := 1; i < count; i++ {
+					if xi := x + i; xi < dxLen {
+						b.data[xi][y].SetStyle(style)
+					}
+				}
+			}
 			return nil
 		}
 		return fmt.Errorf("y=%v not in range [0-%d]", y, len(b.data[x])-1)
