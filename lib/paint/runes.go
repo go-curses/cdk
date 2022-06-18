@@ -19,6 +19,8 @@ package paint
 // the runes we provide extra special handling for, with ASCII fallbacks
 // for terminals that lack them.
 const (
+	RuneBoxLineX = '╳'
+	RuneCheckbox = '✔'
 	RuneSterling = '£'
 	RuneDArrow   = '↓'
 	RuneLArrow   = '←'
@@ -92,6 +94,8 @@ const (
 // some care in selecting the characters you support in your application
 // is still appropriate.
 var RuneFallbacks = map[rune]string{
+	RuneBoxLineX: "X",
+	RuneCheckbox: "*",
 	RuneSterling: "f",
 	RuneDArrow:   "v",
 	RuneLArrow:   "<",
