@@ -36,6 +36,7 @@ type TextBuffer interface {
 	SetMnemonic(enabled bool)
 	CharacterCount() (cellCount int)
 	WordCount() (wordCount int)
+	LineCount() (lineCount int)
 	ClearText(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (plain string)
 	PlainText(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (plain string)
 	PlainTextInfo(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (longestLine, lineCount int)
@@ -112,6 +113,13 @@ func (b *CTextBuffer) CharacterCount() (cellCount int) {
 func (b *CTextBuffer) WordCount() (wordCount int) {
 	if b.input != nil {
 		wordCount = b.input.WordCount()
+	}
+	return
+}
+
+func (b *CTextBuffer) LineCount() (lineCount int) {
+	if b.input != nil {
+		lineCount = b.input.LineCount()
 	}
 	return
 }

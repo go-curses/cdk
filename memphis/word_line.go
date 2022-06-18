@@ -37,6 +37,7 @@ type WordLine interface {
 	Len() (wordSpaceCount int)
 	CharacterCount() (count int)
 	WordCount() (wordCount int)
+	LineCount() (lineCount int)
 	HasSpace() bool
 	Value() (s string)
 	String() (s string)
@@ -209,6 +210,13 @@ func (w *CWordLine) WordCount() (wordCount int) {
 		if !word.IsSpace() {
 			wordCount++
 		}
+	}
+	return
+}
+
+func (w *CWordLine) LineCount() (lineCount int) {
+	for _, word := range w.words {
+		lineCount += word.NewlineCount()
 	}
 	return
 }

@@ -28,6 +28,7 @@ type WordCell interface {
 	IsNil() bool
 	IsSpace() bool
 	HasSpace() bool
+	NewlineCount() (newlineCount int)
 	Len() (count int)
 	CompactLen() (count int)
 	Value() (word string)
@@ -109,11 +110,20 @@ func (w *CWordCell) HasSpace() bool {
 	return false
 }
 
+func (w *CWordCell) NewlineCount() (newlineCount int) {
+	for _, c := range w.characters {
+		if c.IsNewline() {
+			newlineCount += 1
+		}
+	}
+	return
+}
+
 // the total number of characters in this word
 func (w *CWordCell) Len() (count int) {
 	count = 0
 	for _, c := range w.characters {
-		count += c.Width()
+		count += c.Count()
 	}
 	return
 }

@@ -28,12 +28,14 @@ type TextCell interface {
 	SetStyle(style paint.Style)
 	Equals(mc rune, style paint.Style, width int) bool
 	Width() int
+	Count() int
 	Value() rune
 	StringValue() string
 	String() string
 	Style() paint.Style
 	IsNil() bool
 	IsSpace() bool
+	IsNewline() bool
 
 	sync.Locker
 }
@@ -102,6 +104,10 @@ func (t *CTextCell) Width() int {
 	return t.char.Width()
 }
 
+func (t *CTextCell) Count() int {
+	return t.char.Count()
+}
+
 func (t *CTextCell) Value() rune {
 	return t.char.Value()
 }
@@ -128,4 +134,8 @@ func (t *CTextCell) IsNil() bool {
 
 func (t *CTextCell) IsSpace() bool {
 	return t.char.IsSpace()
+}
+
+func (t *CTextCell) IsNewline() bool {
+	return t.char.IsNewline()
 }
