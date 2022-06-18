@@ -593,10 +593,17 @@ func (d *CDisplay) UnmapWindow(w Window) {
 		d.Lock()
 		memphis.RemoveSurface(w.ObjectID())
 		d.windows = append(d.windows[:idx], d.windows[idx+1:]...)
+		var restoreFocusedWindow Window
+		if len(d.windows) > 0 {
+			restoreFocusedWindow = d.windows[0]
+		}
 		d.Unlock()
 		d.RequestDraw()
 		d.RequestShow()
 		w.Emit(SignalUnmappedWindow, d)
+		if restoreFocusedWindow != nil {
+			d.FocusWindow(restoreFocusedWindow)
+		}
 	}
 }
 
