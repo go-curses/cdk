@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"time"
 
+	cterm "github.com/go-curses/term"
+
 	"github.com/go-curses/cdk/env"
 	"github.com/go-curses/cdk/lib/enums"
 	cexec "github.com/go-curses/cdk/lib/exec"
@@ -31,7 +33,6 @@ import (
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
-	cterm "github.com/go-curses/term"
 )
 
 var (
@@ -453,10 +454,9 @@ func (d *CDisplay) ReleaseCtrlC() {
 
 func (d *CDisplay) DefaultTheme() paint.Theme {
 	d.RLock()
-	screen := d.screen
-	d.RUnlock()
-	if screen != nil {
-		if screen.Colors() <= 0 {
+	defer d.RUnlock()
+	if d.screen != nil {
+		if d.screen.Colors() <= 0 {
 			return paint.DefaultMonoTheme
 		}
 	}
@@ -632,10 +632,10 @@ func (d *CDisplay) GetWindowAtPoint(point ptypes.Point2I) (window Window) {
 }
 
 func (d *CDisplay) CursorPosition() (position ptypes.Point2I, moving bool) {
-	d.RLock()
+	// d.RLock()
 	position = d.cursor.Clone()
 	moving = d.cursorMoving
-	d.RUnlock()
+	// d.RUnlock()
 	return
 }
 
@@ -755,7 +755,7 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 	}
 	d.drawMutex.Lock()
 	defer d.drawMutex.Unlock()
-	d.Lock()
+	// d.Lock()
 	windows := d.windows
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
 		for i := len(windows) - 1; i >= 0; i-- {
@@ -772,10 +772,10 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 		if err := surface.Render(d.screen); err != nil {
 			d.LogErr(err)
 		}
-		d.Unlock()
+		// d.Unlock()
 		return enums.EVENT_STOP
 	}
-	d.Unlock()
+	// d.Unlock()
 	d.LogError("missing surface for display: %v", d.ObjectID())
 	return enums.EVENT_PASS
 }
