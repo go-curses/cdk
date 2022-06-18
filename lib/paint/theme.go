@@ -32,6 +32,26 @@ var (
 		Bottom:      RuneHLine,
 		BottomRight: RuneLRCorner,
 	}
+	EmptyBorderRune = BorderRuneSet{
+		TopLeft:     ' ',
+		Top:         ' ',
+		TopRight:    ' ',
+		Left:        ' ',
+		Right:       ' ',
+		BottomLeft:  ' ',
+		Bottom:      ' ',
+		BottomRight: ' ',
+	}
+	NilBorderRune = BorderRuneSet{
+		TopLeft:     rune(0),
+		Top:         rune(0),
+		TopRight:    rune(0),
+		Left:        rune(0),
+		Right:       rune(0),
+		BottomLeft:  rune(0),
+		Bottom:      rune(0),
+		BottomRight: rune(0),
+	}
 	DefaultArrowRune = ArrowRuneSet{
 		Up:    RuneUArrow,
 		Left:  RuneLArrow,
