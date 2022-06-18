@@ -39,11 +39,11 @@ type Signaling interface {
 	Emit(signal Signal, argv ...interface{}) enums.EventFlag
 	HasListeners(signal Signal) (has bool)
 	DisconnectAll()
-	StopSignal(signal Signal)
+	StopSignal(signals ...Signal)
 	IsSignalStopped(signal Signal) bool
-	PassSignal(signal Signal)
+	PassSignal(signals ...Signal)
 	IsSignalPassed(signal Signal) bool
-	ResumeSignal(signal Signal)
+	ResumeSignal(signals ...Signal)
 	Freeze()
 	Thaw()
 	IsFrozen() (frozen bool)
@@ -188,12 +188,14 @@ func (o *CSignaling) DisconnectAll() {
 // StopSignal disables propagation of the given signal with an EVENT_STOP
 //
 // Locking: write
-func (o *CSignaling) StopSignal(signal Signal) {
-	if !o.IsSignalStopped(signal) {
-		o.LogTrace("stopping %v signal", signal)
-		o.Lock()
-		o.stopped = append(o.stopped, signal)
-		o.Unlock()
+func (o *CSignaling) StopSignal(signals ...Signal) {
+	for _, signal := range signals {
+		if !o.IsSignalStopped(signal) {
+			o.LogTrace("stopping %v signal", signal)
+			o.Lock()
+			o.stopped = append(o.stopped, signal)
+			o.Unlock()
+		}
 	}
 }
 
@@ -216,12 +218,14 @@ func (o *CSignaling) getSignalStopIndex(signal Signal) int {
 // PassSignal disables propagation of the given signal with an EVENT_PASS
 //
 // Locking: write
-func (o *CSignaling) PassSignal(signal Signal) {
-	if !o.IsSignalPassed(signal) {
-		o.LogTrace("passing %v signal", signal)
-		o.Lock()
-		o.passed = append(o.passed, signal)
-		o.Unlock()
+func (o *CSignaling) PassSignal(signals ...Signal) {
+	for _, signal := range signals {
+		if !o.IsSignalPassed(signal) {
+			o.LogTrace("passing %v signal", signal)
+			o.Lock()
+			o.passed = append(o.passed, signal)
+			o.Unlock()
+		}
 	}
 }
 
@@ -245,40 +249,31 @@ func (o *CSignaling) getSignalPassIndex(signal Signal) int {
 // currently stopped.
 //
 // Locking: write
-func (o *CSignaling) ResumeSignal(signal Signal) {
+func (o *CSignaling) ResumeSignal(signals ...Signal) {
 	o.Lock()
-	sid := o.getSignalStopIndex(signal)
-	pid := o.getSignalPassIndex(signal)
-	if sid >= 0 {
-		o.LogTrace("resuming %v signal from being stopped", signal)
-		if len(o.stopped) > 1 {
-			o.stopped = append(
-				o.stopped[:sid],
-				o.stopped[sid+1:]...,
-			)
-		} else {
-			o.stopped = []Signal{}
+	for _, signal := range signals {
+		if sid := o.getSignalStopIndex(signal); sid >= 0 {
+			o.LogTrace("resuming %v stopped signal", signal)
+			if len(o.stopped) > 1 {
+				o.stopped = append(
+					o.stopped[:sid],
+					o.stopped[sid+1:]...,
+				)
+			} else {
+				o.stopped = []Signal{}
+			}
 		}
-		o.Unlock()
-		return
-	}
-	if pid >= 0 {
-		o.LogTrace("resuming %v signal from being passed", signal)
-		if len(o.passed) > 1 {
-			o.passed = append(
-				o.passed[:pid],
-				o.passed[pid+1:]...,
-			)
-		} else {
-			o.passed = []Signal{}
+		if pid := o.getSignalPassIndex(signal); pid >= 0 {
+			o.LogTrace("resuming %v passed signal", signal)
+			if len(o.passed) > 1 {
+				o.passed = append(
+					o.passed[:pid],
+					o.passed[pid+1:]...,
+				)
+			} else {
+				o.passed = []Signal{}
+			}
 		}
-		o.Unlock()
-		return
-	}
-	if _, ok := o.listeners[signal]; ok {
-		o.LogWarn("%v signal already resumed", signal)
-	} else {
-		o.LogError("failed to resume unknown signal: %v", signal)
 	}
 	o.Unlock()
 }
