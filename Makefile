@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 DEV_EXAMPLE := helloworld
+CDK_PATH := ../cdk
 
 .PHONY: all build clean cover dev examples fmt help run test tidy vet
 
@@ -132,15 +133,17 @@ examples: clean demoplugin.so demoplugin
 
 local:
 	@echo "# adding go.mod local package replacements..."
-	@go mod edit -replace=github.com/go-curses/cdk=../cdk
+	@go mod edit -replace=github.com/go-curses/cdk=${CDK_PATH}
 	@for tgt in charset encoding env log memphis; do \
+		if [ -f ${CDK_PATH}/$$tgt/go.mod ]; then \
 			echo "#\t$$tgt"; \
-			go mod edit -replace=github.com/go-curses/cdk/$$tgt=../cdk/$$tgt ; \
+			go mod edit -replace=github.com/go-curses/cdk/$$tgt=${CDK_PATH}/$$tgt ; \
+		fi; \
 	done
-	@for tgt in `ls lib`; do \
-		if [ -d lib/$$tgt ]; then \
+	@for tgt in `ls ${CDK_PATH}/lib`; do \
+		if [ -f ${CDK_PATH}/lib/$$tgt/go.mod ]; then \
 			echo "#\tlib/$$tgt"; \
-			go mod edit -replace=github.com/go-curses/cdk/lib/$$tgt=../cdk/lib/$$tgt ; \
+			go mod edit -replace=github.com/go-curses/cdk/lib/$$tgt=${CDK_PATH}/lib/$$tgt ; \
 		fi; \
 	done
 
@@ -154,11 +157,13 @@ unlocal: unlocal-term
 	@echo "# removing go.mod local package replacements..."
 	@go mod edit -dropreplace=github.com/go-curses/cdk
 	@for tgt in charset encoding env log memphis; do \
+		if [ -f ${CDK_PATH}/$$tgt/go.mod ]; then \
 			echo "#\t$$tgt"; \
 			go mod edit -dropreplace=github.com/go-curses/cdk/$$tgt ; \
+		fi; \
 	done
-	@for tgt in `ls lib`; do \
-		if [ -d lib/$$tgt ]; then \
+	@for tgt in `ls ${CDK_PATH}/lib`; do \
+		if [ -f ${CDK_PATH}/lib/$$tgt/go.mod ]; then \
 			echo "#\tlib/$$tgt"; \
 			go mod edit -dropreplace=github.com/go-curses/cdk/lib/$$tgt ; \
 		fi; \
