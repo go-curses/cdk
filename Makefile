@@ -180,15 +180,13 @@ dev: clean
 	then \
 		echo -n "# building: ${DEV_EXAMPLE} [dev]... "; \
 		cd examples/${DEV_EXAMPLE}; \
-		( go build -v -o ../../${DEV_EXAMPLE} \
-				-trimpath \
-				-gcflags=all="-N -l" \
+		( go build -v \
 				-ldflags="\
 -X 'main.IncludeProfiling=true' \
 -X 'main.IncludeLogFile=true'   \
 -X 'main.IncludeLogLevel=true'  \
 " \
-				-gcflags=all="-N -l" \
+				-o ../../${DEV_EXAMPLE} \
 			2>&1 ) > ../../${DEV_EXAMPLE}.build.log; \
 		cd - > /dev/null; \
 		[ -f ${DEV_EXAMPLE} ] \
