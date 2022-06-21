@@ -40,9 +40,9 @@ type Signaling interface {
 	HasListeners(signal Signal) (has bool)
 	DisconnectAll()
 	StopSignal(signals ...Signal)
-	IsSignalStopped(signal Signal) bool
+	IsSignalStopped(signals ...Signal) (stopped bool)
 	PassSignal(signals ...Signal)
-	IsSignalPassed(signal Signal) bool
+	IsSignalPassed(signals ...Signal) (passed bool)
 	ResumeSignal(signals ...Signal)
 	Freeze()
 	Thaw()
@@ -202,8 +202,14 @@ func (o *CSignaling) StopSignal(signals ...Signal) {
 // IsSignalStopped returns TRUE if the given signal is currently stopped.
 //
 // Locking: none
-func (o *CSignaling) IsSignalStopped(signal Signal) bool {
-	return o.getSignalStopIndex(signal) >= 0
+func (o *CSignaling) IsSignalStopped(signals ...Signal) (stopped bool) {
+	for _, signal := range signals {
+		if o.getSignalStopIndex(signal) < 0 {
+			return
+		}
+	}
+	stopped = true
+	return
 }
 
 func (o *CSignaling) getSignalStopIndex(signal Signal) int {
@@ -229,11 +235,17 @@ func (o *CSignaling) PassSignal(signals ...Signal) {
 	}
 }
 
-// IsSignalPassed returns TRUE if the given signal is curerntly passed.
+// IsSignalPassed returns TRUE if the given signal is currently passed.
 //
 // Locking: none
-func (o *CSignaling) IsSignalPassed(signal Signal) bool {
-	return o.getSignalPassIndex(signal) >= 0
+func (o *CSignaling) IsSignalPassed(signals ...Signal) (passed bool) {
+	for _, signal := range signals {
+		if o.getSignalPassIndex(signal) < 0 {
+			return
+		}
+	}
+	passed = true
+	return
 }
 
 func (o *CSignaling) getSignalPassIndex(signal Signal) int {
