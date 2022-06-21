@@ -711,7 +711,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	case *EventError:
 		d.LogError("EventError: %v", e)
 		if w := d.FocusedWindow(); w != nil {
-			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
+			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
 			}
 		}
@@ -730,7 +730,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 			}
 		}
 		if w := d.FocusedWindow(); w != nil {
-			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
+			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
 			}
 		}
@@ -742,7 +742,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		d.cursorMoving = e.IsMoving() || e.IsDragging()
 		d.Unlock()
 		if w := d.FocusedWindow(); w != nil {
-			if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
+			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
 				return enums.EVENT_STOP
 			}
 		}
@@ -752,7 +752,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		// all windows get resize event
 		stopped := false
 		for _, window := range d.GetWindows() {
-			if f := window.ProcessEvent(evt); f == enums.EVENT_STOP {
+			if f := window.ProcessEvent(e); f == enums.EVENT_STOP {
 				stopped = true
 			}
 		}
