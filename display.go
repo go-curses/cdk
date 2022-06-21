@@ -761,6 +761,9 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 			d.RequestSync()
 		}
 		return d.Emit(SignalEventResize, d, e)
+
+	default:
+		d.LogWarn("received unknown event: %T %v", e, e)
 	}
 	if w := d.FocusedWindow(); w != nil {
 		if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
