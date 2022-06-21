@@ -32,6 +32,16 @@ var (
 		Bottom:      RuneHLine,
 		BottomRight: RuneLRCorner,
 	}
+	RoundedBorderRune = BorderRuneSet{
+		TopLeft:     RuneULCornerRounded,
+		Top:         RuneHLine,
+		TopRight:    RuneURCornerRounded,
+		Left:        RuneVLine,
+		Right:       RuneVLine,
+		BottomLeft:  RuneLLCornerRounded,
+		Bottom:      RuneHLine,
+		BottomRight: RuneLRCornerRounded,
+	}
 	EmptyBorderRune = BorderRuneSet{
 		TopLeft:     ' ',
 		Top:         ' ',
