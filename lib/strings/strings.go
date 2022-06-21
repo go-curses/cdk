@@ -133,6 +133,19 @@ func StringSliceHasValue(slice []string, value string) (has bool) {
 	return
 }
 
+func EqualStringSlices(a, b []string) (same bool) {
+	lenA := len(a)
+	if lenA != len(b) {
+		return false
+	}
+	for i := 0; i < lenA; i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 var _rxStripTags = regexp.MustCompile(`<[^>]*>`)
 
 func StripTags(input string) (output string) {
