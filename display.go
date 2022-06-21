@@ -37,11 +37,11 @@ import (
 
 var (
 	// DisplayCallCapacity limits the number of concurrent calls on main threads
-	DisplayCallCapacity = 16
+	DisplayCallCapacity = 32
 	// MainIterateDelay is the event iteration loop delay
-	MainIterateDelay = time.Millisecond * 50
+	MainIterateDelay = time.Millisecond * 25
 	// MainRequestDelay is the screen request iteration loop delay
-	MainRequestDelay = time.Millisecond * 25
+	MainRequestDelay = time.Millisecond * 100
 )
 
 const (
