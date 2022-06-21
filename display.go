@@ -682,6 +682,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	if !d.startedAndCaptured() {
 		return enums.EVENT_PASS
 	}
+
 	d.eventMutex.Lock()
 	defer func() {
 		d.Lock()
@@ -689,6 +690,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		d.Unlock()
 		d.eventMutex.Unlock()
 	}()
+
 	if d.eventFocus != nil {
 		if sensitive, ok := d.eventFocus.Self().(Sensitive); ok {
 			return sensitive.ProcessEvent(evt)
@@ -696,7 +698,16 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		d.LogError("event focus does not implement Sensitive: %v (%T)", d.eventFocus, d.eventFocus)
 		return enums.EVENT_PASS
 	}
+
 	switch e := evt.(type) {
+	case *EventPaste:
+		if w := d.FocusedWindow(); w != nil {
+			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
+				return enums.EVENT_STOP
+			}
+		}
+		return d.Emit(SignalEventError, d, e)
+
 	case *EventError:
 		d.LogError("EventError: %v", e)
 		if w := d.FocusedWindow(); w != nil {
@@ -705,6 +716,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 			}
 		}
 		return d.Emit(SignalEventError, d, e)
+
 	case *EventKey:
 		if d.captureCtrlC {
 			switch e.Rune() {
@@ -723,6 +735,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 			}
 		}
 		return d.Emit(SignalEventKey, d, e)
+
 	case *EventMouse:
 		d.Lock()
 		d.cursor.Set(e.Position())
@@ -734,6 +747,7 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 			}
 		}
 		return d.Emit(SignalEventMouse, d, e)
+
 	case *EventResize:
 		// all windows get resize event
 		stopped := false
@@ -1201,27 +1215,35 @@ func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 		return false
 	}
 	d.Lock()
-	buffer := make([]interface{}, len(d.buffer))
-	for idx, e := range d.buffer {
-		buffer[idx] = e
+	buffer := make([]interface{}, 0)
+	for len(d.buffer) > 0 {
+		buffer = append(buffer, d.buffer[0])
+		if len(d.buffer) > 1 {
+			d.buffer = d.buffer[1:]
+		} else {
+			d.buffer = nil
+		}
 	}
-	d.buffer = make([]interface{}, 0)
 	d.Unlock()
 	var pending []interface{}
 	if d.GetCompressEvents() {
 		pending = make([]interface{}, 0)
-		history := make(map[string]int)
 		for _, e := range buffer {
+			last := len(pending) - 1
 			switch t := e.(type) {
+			case *EventPaste, *EventKey:
+				// never compress paste or keys
+				pending = append(pending, t)
 			default:
-				key := fmt.Sprintf("%T", t)
-				if idx, ok := history[key]; ok {
-					if idx < len(pending) {
-						pending = append(pending[:idx], pending[idx+1:]...)
+				if last <= -1 {
+					pending = append(pending, t)
+				} else {
+					thisType := fmt.Sprintf("%T", t)
+					lastType := fmt.Sprintf("%T", pending[last])
+					if thisType != lastType {
+						pending = append(pending, t)
 					}
 				}
-				pending = append(pending, e)
-				history[key] = len(pending) - 1
 			}
 		}
 	} else {
@@ -1262,6 +1284,7 @@ const (
 	SignalEventKey            Signal = "event-key"
 	SignalEventMouse          Signal = "event-mouse"
 	SignalEventResize         Signal = "event-resize"
+	SignalEventPaste          Signal = "event-paste"
 	SignalSetEventFocus       Signal = "set-event-focus"
 	SignalStartupComplete     Signal = "startup-complete"
 	SignalDisplayStartup      Signal = "display-startup"
