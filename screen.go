@@ -28,13 +28,14 @@ import (
 	"github.com/jackdoe/go-gpmctl"
 	"golang.org/x/text/transform"
 
+	"github.com/go-curses/term"
+	"github.com/go-curses/terminfo"
+	_ "github.com/go-curses/terminfo/base"
+
 	"github.com/go-curses/cdk/charset"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
-	"github.com/go-curses/term"
-	"github.com/go-curses/terminfo"
-	_ "github.com/go-curses/terminfo/base"
 )
 
 // Screen represents the physical (or emulated) display.
@@ -230,10 +231,10 @@ type Screen interface {
 }
 
 var (
-	EventQueueSize    = 10
-	EventKeyQueueSize = 10
+	EventQueueSize    = 1024
+	EventKeyQueueSize = 1024
 	EventKeyTiming    = time.Millisecond * 50
-	SignalQueueSize   = 10
+	SignalQueueSize   = 100
 )
 
 // NewScreen returns a Screen that uses the stock TTY interface
