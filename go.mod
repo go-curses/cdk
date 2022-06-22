@@ -3,10 +3,9 @@ module github.com/go-curses/cdk
 go 1.16
 
 require (
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/creack/pty v1.1.18
 	github.com/gdamore/encoding v1.0.0
-	github.com/go-curses/term v1.2.2-gocurses.0
+	github.com/go-curses/term v1.2.2-gocurses.1
 	github.com/go-curses/terminfo v1.0.0
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
@@ -23,10 +22,10 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/tg123/go-htpasswd v1.2.0
-	github.com/urfave/cli/v2 v2.10.0
+	github.com/urfave/cli/v2 v2.10.2
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c
+	golang.org/x/sys v0.0.0-20220622161953-175b2fd9d664
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 	golang.org/x/text v0.3.7
 )
