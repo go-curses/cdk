@@ -16,6 +16,7 @@ package strings
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"regexp"
 	"strings"
@@ -156,4 +157,28 @@ func StripTags(input string) (output string) {
 func MakeObjectName(tag, user, address string) (name string) {
 	name = fmt.Sprintf("[%s]%s@%s", tag, user, address)
 	return
+}
+
+var _rxDomainName = regexp.MustCompile(`^(?i)[a-z\d][-a-z\d]+?[a-z\d]+(\.[a-z\d][-a-z\d]+?[a-z\d]+)+\.?$`)
+
+func StringIsDomainName(input string) bool {
+	return _rxDomainName.MatchString(input)
+}
+
+func StringIsIP(input string) bool {
+	return net.ParseIP(input) != nil
+}
+
+func StringIsIPv4(input string) bool {
+	if ip := net.ParseIP(input); ip != nil {
+		return ip.To4() != nil
+	}
+	return false
+}
+
+func StringIsIPv6(input string) bool {
+	if ip := net.ParseIP(input); ip != nil {
+		return ip.To16() != nil
+	}
+	return false
 }
