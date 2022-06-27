@@ -177,14 +177,21 @@ func (o *CTypeItem) ObjectID() uuid.UUID {
 	return o.id
 }
 
+func (o *CTypeItem) ObjectShortID() (short string) {
+	o.itemLock.RLock()
+	defer o.itemLock.RUnlock()
+	short = fmt.Sprintf("%x-%x", o.id[:2], o.id[14:])
+	return
+}
+
 func (o *CTypeItem) ObjectName() string {
 	o.itemLock.RLock()
 	tt, n := o.typeTag, o.name
 	o.itemLock.RUnlock()
 	if len(n) > 0 {
-		return fmt.Sprintf("%v.%v#%v", tt, o.ObjectID(), n)
+		return fmt.Sprintf("%v.%v#%v", tt, o.ObjectShortID(), n)
 	}
-	return fmt.Sprintf("%v.%v", tt, o.ObjectID())
+	return fmt.Sprintf("%v.%v", tt, o.ObjectShortID())
 }
 
 func (o *CTypeItem) DestroyObject() (err error) {
