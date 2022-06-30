@@ -146,6 +146,11 @@ type CDisplay struct {
 	requests chan displayRequest
 	compress bool
 
+	requestingDraw bool
+	requestingShow bool
+	requestingSync bool
+	requestingQuit bool
+
 	runLock    *sync.RWMutex
 	eventMutex *sync.Mutex
 	drawMutex  *sync.Mutex
@@ -807,50 +812,94 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 // RequestDraw asks the Display to process a SignalDraw event cycle, this does
 // not actually render the contents to in Screen, just update
 func (d *CDisplay) RequestDraw() {
-	_ = d.AsyncCall(func(_ Display) error {
-		if d.IsRunning() {
-			d.requests <- displayDrawRequest
-		} else {
-			log.TraceF("application not running")
-		}
-		return nil
-	})
+	d.RLock()
+	req := d.requestingDraw
+	d.RUnlock()
+	if !req {
+		d.Lock()
+		d.requestingDraw = true
+		d.Unlock()
+		_ = d.AsyncCall(func(_ Display) error {
+			if d.IsRunning() {
+				d.requests <- displayDrawRequest
+				d.Lock()
+				d.requestingDraw = false
+				d.Unlock()
+			} else {
+				log.TraceF("application not running")
+			}
+			return nil
+		})
+	}
 }
 
 // RequestShow asks the Display to render pending Screen changes
 func (d *CDisplay) RequestShow() {
-	_ = d.AsyncCall(func(_ Display) error {
-		if d.IsRunning() {
-			d.requests <- displayShowRequest
-		} else {
-			log.TraceF("application not running")
-		}
-		return nil
-	})
+	d.RLock()
+	req := d.requestingShow
+	d.RUnlock()
+	if !req {
+		d.Lock()
+		d.requestingShow = true
+		d.Unlock()
+		_ = d.AsyncCall(func(_ Display) error {
+			if d.IsRunning() {
+				d.requests <- displayShowRequest
+				d.Lock()
+				d.requestingShow = false
+				d.Unlock()
+			} else {
+				log.TraceF("application not running")
+			}
+			return nil
+		})
+	}
 }
 
 // RequestSync asks the Display to render everything in the Screen
 func (d *CDisplay) RequestSync() {
-	_ = d.AsyncCall(func(_ Display) error {
-		if d.IsRunning() {
-			d.requests <- displaySyncRequest
-		} else {
-			log.TraceF("application not running")
-		}
-		return nil
-	})
+	d.RLock()
+	req := d.requestingSync
+	d.RUnlock()
+	if !req {
+		d.Lock()
+		d.requestingSync = true
+		d.Unlock()
+		_ = d.AsyncCall(func(_ Display) error {
+			if d.IsRunning() {
+				d.requests <- displaySyncRequest
+				d.Lock()
+				d.requestingSync = false
+				d.Unlock()
+			} else {
+				log.TraceF("application not running")
+			}
+			return nil
+		})
+	}
 }
 
 // RequestQuit asks the Display to quit nicely
 func (d *CDisplay) RequestQuit() {
-	_ = d.AsyncCall(func(_ Display) error {
-		if d.IsRunning() {
-			d.requests <- displayQuitRequest
-		} else {
-			log.TraceF("application not running")
-		}
-		return nil
-	})
+	d.RLock()
+	req := d.requestingQuit
+	d.RUnlock()
+	if !req {
+		d.Lock()
+		d.requestingQuit = true
+		d.Unlock()
+		_ = d.AsyncCall(func(_ Display) error {
+			if d.IsRunning() {
+				d.requests <- displayQuitRequest
+				d.Lock()
+				d.requestingQuit = false
+				d.Unlock()
+			} else {
+				log.TraceF("application not running")
+			}
+			return nil
+		})
+	}
 }
 
 // IsRunning returns TRUE if the main thread is currently running.
