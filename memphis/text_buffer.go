@@ -27,6 +27,7 @@ var (
 )
 
 type TextBuffer interface {
+	Clone() TextBuffer
 	Set(input string, style paint.Style)
 	Input() (raw string)
 	SetInput(input WordLine)
@@ -66,6 +67,13 @@ func NewTextBuffer(input string, style paint.Style, mnemonic bool) TextBuffer {
 	}
 	tb.Set(input, style)
 	return tb
+}
+
+func (b *CTextBuffer) Clone() (cloned TextBuffer) {
+	b.Lock()
+	defer b.Unlock()
+	cloned = NewTextBuffer(b.raw, b.style, b.mnemonics)
+	return
 }
 
 func (b *CTextBuffer) Set(input string, style paint.Style) {
