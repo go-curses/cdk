@@ -788,14 +788,9 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 	windows := d.windows
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
 		for i := len(windows) - 1; i >= 0; i-- {
-			if wsurface, err := memphis.GetSurface(windows[i].ObjectID()); err == nil {
-				if f := windows[i].Draw(); f == enums.EVENT_STOP {
-					if err := surface.CompositeSurface(wsurface); err != nil {
-						d.LogErr(err)
-					}
-				}
-			} else {
-				d.LogError("missing surface for window: %v", windows[i].ObjectID())
+			windows[i].Draw()
+			if err := surface.Composite(windows[i].ObjectID()); err != nil {
+				d.LogErr(err)
 			}
 		}
 		if err := surface.Render(d.screen); err != nil {
