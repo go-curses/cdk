@@ -1,11 +1,11 @@
 package sync
 
 import (
-	"sync"
+	goSync "sync"
 )
 
 type Mutex struct {
-	sync.Mutex
+	goSync.Mutex
 
 	lockStack []string
 }

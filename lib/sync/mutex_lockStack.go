@@ -1,3 +1,4 @@
+//go:build lockStack
 // +build lockStack
 
 package sync
@@ -5,13 +6,21 @@ package sync
 import (
 	"fmt"
 	"runtime"
+	"strings"
 )
 
 func (m *Mutex) makeTag(write bool, depth int) (tag string) {
 	depth += 1
 	if pc, _, line, ok := runtime.Caller(depth); ok {
 		details := runtime.FuncForPC(pc)
-		tag = fmt.Sprintf("[write:%v] %v:%d", write, details.Name(), line)
+		name := details.Name()
+		if strings.Contains(name, "(*CWidget).LockDraw") {
+			if pc, _, line, ok = runtime.Caller(depth + 1); ok {
+				details = runtime.FuncForPC(pc)
+				name = details.Name()
+			}
+		}
+		tag = fmt.Sprintf("[write:%v] %v:%d", write, name, line)
 	} else {
 		tag = fmt.Sprintf("invalid depth: %d", depth)
 	}

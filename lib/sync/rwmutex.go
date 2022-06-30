@@ -1,11 +1,11 @@
 package sync
 
 import (
-	"sync"
+	goSync "sync"
 )
 
 type RWMutex struct {
-	sync.RWMutex
+	goSync.RWMutex
 
 	lockStack []string
 }
