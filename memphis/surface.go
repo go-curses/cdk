@@ -191,7 +191,11 @@ func (c *CSurface) CompositeSurface(v *CSurface) error {
 	if c == nil || c.buffer == nil {
 		return fmt.Errorf("canvas is nil")
 	}
+
 	vOrigin := v.GetOrigin()
+	cOrigin := c.GetOrigin()
+	(&vOrigin).SubPoint(cOrigin)
+
 	bSize := c.buffer.Size()
 	for y := 0; y < v.Height(); y++ {
 		for x := 0; x < v.Width(); x++ {
@@ -401,6 +405,10 @@ func (c *CSurface) BoxWithTheme(pos ptypes.Point2I, size ptypes.Rectangle, borde
 // more flexible
 func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{}) {
 	text := fmt.Sprintf(format, argv...)
+	if c.size.Equals(0, 0) {
+		log.DebugDF(1, "[DebugBox] (zero-size) info: %v (%v)", text, color)
+		return
+	}
 	log.DebugDF(1, "[DebugBox] info: %v (%v)", text, color)
 	bs := paint.DefaultMonoTheme // intentionally mono
 	bs.Border.Normal = bs.Border.Normal.Foreground(color)
@@ -415,7 +423,7 @@ func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{
 		bs.Border.Normal,
 		bs.Border.BorderRunes,
 	)
-	c.DrawSingleLineText(ptypes.MakePoint2I(1, 0), c.size.W-2, false, enums.JUSTIFY_LEFT, bs.Border.Normal, false, false, text)
+	c.DrawSingleLineText(ptypes.MakePoint2I(c.origin.X+1, c.origin.Y), c.size.W-2, false, enums.JUSTIFY_LEFT, bs.Border.Normal, false, false, text)
 }
 
 // fill the entire canvas according to the given theme
