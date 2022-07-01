@@ -72,6 +72,7 @@ type Application interface {
 	Display() *CDisplay
 	SetDisplay(d *CDisplay) (err error)
 	NotifyStartupComplete()
+	StartupCompleted() bool
 	Run(args []string) (err error)
 	MainInit(argv ...interface{}) (ok bool)
 	MainRun(runner ApplicationMain)
@@ -323,6 +324,12 @@ func (app *CApplication) SetDisplay(d *CDisplay) (err error) {
 		},
 	)
 	return
+}
+
+func (app *CApplication) StartupCompleted() bool {
+	// app.RLock()
+	// defer app.RUnlock()
+	return app.started
 }
 
 func (app *CApplication) NotifyStartupComplete() {
