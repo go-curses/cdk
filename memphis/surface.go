@@ -24,6 +24,7 @@ import (
 	"github.com/go-curses/cdk/lib/math"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
+	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 )
 
@@ -65,6 +66,8 @@ type CSurface struct {
 	buffer *CSurfaceBuffer
 	origin ptypes.Point2I
 	fill   rune
+
+	sync.RWMutex
 }
 
 // create a new canvas object with the given origin point, size and theme
@@ -78,6 +81,8 @@ func NewSurface(origin ptypes.Point2I, size ptypes.Rectangle, style paint.Style)
 }
 
 func (c *CSurface) GetStyle() (style paint.Style) {
+	c.RLock()
+	defer c.RUnlock()
 	return c.buffer.Style()
 }
 
@@ -90,7 +95,9 @@ func (c *CSurface) SetStyle(style paint.Style) {
 }
 
 // return a string describing the canvas metadata, useful for debugging
-func (c CSurface) String() string {
+func (c *CSurface) String() string {
+	c.RLock()
+	defer c.RUnlock()
 	return fmt.Sprintf(
 		"{Origin=%s,Fill=%v,Buffer=%v}",
 		c.origin,
@@ -108,30 +115,40 @@ func (c *CSurface) Resize(size ptypes.Rectangle) {
 
 // get the text cell at the given coordinates
 func (c *CSurface) GetContent(x, y int) (textCell TextCell) {
+	c.RLock()
+	defer c.RUnlock()
 	return c.buffer.GetCell(x, y)
 }
 
 // from the given string, set the character and style of the cell at the given
 // coordinates. note that only the first UTF-8 byte is used
 func (c *CSurface) SetContent(x, y int, char string, s paint.Style) error {
+	c.Lock()
+	defer c.Unlock()
 	r, _ := utf8.DecodeRune([]byte(char))
 	return c.buffer.SetCell(x, y, r, s)
 }
 
 // set the rune and the style of the cell at the given coordinates
 func (c *CSurface) SetRune(x, y int, r rune, s paint.Style) error {
+	c.Lock()
+	defer c.Unlock()
 	return c.buffer.SetCell(x, y, r, s)
 }
 
 // set the origin (top-left corner) position of the canvas, used when
 // compositing one canvas with another
 func (c *CSurface) SetOrigin(origin ptypes.Point2I) {
+	c.Lock()
+	defer c.Unlock()
 	c.origin = origin
 }
 
 // get the origin point of the canvas
 func (c *CSurface) GetOrigin() ptypes.Point2I {
-	return c.origin
+	c.RLock()
+	defer c.RUnlock()
+	return c.origin.Clone()
 }
 
 // get the rectangle size of the canvas
@@ -175,9 +192,10 @@ func (c *CSurface) SetRegion(region ptypes.Region) {
 // canvases
 func (c *CSurface) Equals(onlyDirty bool, v *CSurface) bool {
 	vOrigin := v.GetOrigin()
+	bSize := c.buffer.Size()
 	vSize := v.GetSize()
 	if c.origin.EqualsTo(vOrigin) {
-		if c.size.EqualsTo(vSize) {
+		if bSize.EqualsTo(vSize) {
 			for x := 0; x < vSize.W; x++ {
 				for y := 0; y < vSize.H; y++ {
 					ca := c.GetContent(x, y)
@@ -200,24 +218,37 @@ func (c *CSurface) Equals(onlyDirty bool, v *CSurface) bool {
 // apply the given canvas to this canvas, at the given one's origin. returns
 // an error if the underlying buffer write failed or if the given canvas is
 // beyond the bounds of this canvas
-func (c *CSurface) CompositeSurface(v *CSurface) error {
+func (c *CSurface) CompositeSurface(src *CSurface) error {
 	if c == nil || c.buffer == nil {
 		return fmt.Errorf("canvas is nil")
 	}
 
-	vOrigin := v.GetOrigin()
-	cOrigin := c.GetOrigin()
-	(&vOrigin).SubPoint(cOrigin)
+	dstSize := c.buffer.Size()
+	srcSize := src.buffer.Size()
 
-	bSize := c.buffer.Size()
-	for y := 0; y < v.Height(); y++ {
-		for x := 0; x < v.Width(); x++ {
-			if cell := v.GetContent(x, y); cell != nil && !cell.IsNil() {
-				oX, oY := vOrigin.X+x, vOrigin.Y+y
-				if oX >= 0 && oX < bSize.W && oY >= 0 && oY < bSize.H {
+	if dstSize.W <= 0 || srcSize.W <= 0 || dstSize.H <= 0 || srcSize.H <= 0 {
+		return fmt.Errorf("either canvas has zero size")
+	}
+
+	dstOrigin := c.GetOrigin()
+	srcOrigin := src.GetOrigin()
+	srcOrigin.SubPoint(dstOrigin)
+
+	c.Lock()
+	defer c.Unlock()
+	src.Lock()
+	defer src.Unlock()
+
+	for x := 0; x < srcSize.W; x++ {
+		for y := 0; y < srcSize.H; y++ {
+			if cell := src.buffer.GetCell(x, y); cell != nil && !cell.IsNil() {
+				local := srcOrigin.Clone()
+				local.Add(x, y)
+				local.ClampMin(0, 0)
+				if local.X < dstSize.W && local.Y < dstSize.H {
 					if err := c.buffer.SetCell(
-						oX,
-						oY,
+						local.X,
+						local.Y,
 						cell.Value(),
 						cell.Style(),
 					); err != nil {
@@ -227,6 +258,7 @@ func (c *CSurface) CompositeSurface(v *CSurface) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -239,14 +271,18 @@ func (c *CSurface) Composite(id uuid.UUID) (err error) {
 
 // render this canvas upon the given display
 func (c *CSurface) Render(display Renderer) error {
-	for x := 0; x < c.size.W; x++ {
-		for y := 0; y < c.size.H; y++ {
+	origin := c.GetOrigin()
+	size := c.GetSize()
+	c.Lock()
+	defer c.Unlock()
+	for x := 0; x < size.W; x++ {
+		for y := 0; y < size.H; y++ {
 			cell := c.buffer.GetCell(x, y)
 			if cell != nil {
 				if cell.Dirty() {
 					mc, _, style, width := display.GetContent(x, y)
 					if !cell.Equals(mc, style, width) {
-						display.SetContent(x, y, cell.Value(), nil, cell.Style())
+						display.SetContent(origin.X+x, origin.Y+y, cell.Value(), nil, cell.Style())
 					}
 				}
 			} else {
@@ -277,8 +313,9 @@ func (c *CSurface) DrawText(pos ptypes.Point2I, size ptypes.Rectangle, justify e
 	} else {
 		tb = NewTextBuffer(text, style, mnemonic)
 	}
-	if size.W == -1 || size.W >= c.size.W {
-		size.W = c.size.W
+	cSize := c.GetSize()
+	if size.W == -1 || size.W >= cSize.W {
+		size.W = cSize.W
 	}
 	v := NewSurface(pos, size, style)
 	theme := paint.DefaultColorTheme
@@ -310,7 +347,9 @@ func (c *CSurface) DrawLine(pos ptypes.Point2I, length int, orient enums.Orienta
 
 // convenience method to draw a horizontal line
 func (c *CSurface) DrawHorizontalLine(pos ptypes.Point2I, length int, style paint.Style) {
-	length = math.ClampI(length, pos.X, c.size.W-pos.X)
+	c.Lock()
+	defer c.Unlock()
+	length = math.ClampI(length, pos.X, c.GetSize().W-pos.X)
 	end := pos.X + length
 	for i := pos.X; i < end; i++ {
 		_ = c.buffer.SetCell(i, pos.Y, paint.RuneHLine, style)
@@ -319,7 +358,9 @@ func (c *CSurface) DrawHorizontalLine(pos ptypes.Point2I, length int, style pain
 
 // convenience method to draw a vertical line
 func (c *CSurface) DrawVerticalLine(pos ptypes.Point2I, length int, style paint.Style) {
-	length = math.ClampI(length, pos.Y, c.size.H-pos.Y)
+	c.Lock()
+	defer c.Unlock()
+	length = math.ClampI(length, pos.Y, c.GetSize().H-pos.Y)
 	end := pos.Y + length
 	for i := pos.Y; i < end; i++ {
 		_ = c.buffer.SetCell(i, pos.Y, paint.RuneVLine, style)
@@ -329,6 +370,8 @@ func (c *CSurface) DrawVerticalLine(pos ptypes.Point2I, length int, style paint.
 // draw a box, at position, of size, with or without a border, with or without
 // being filled in and following the given theme
 func (c *CSurface) Box(pos ptypes.Point2I, size ptypes.Rectangle, border, fill, overlay bool, fillRune rune, contentStyle, borderStyle paint.Style, borderRunes paint.BorderRuneSet) {
+	c.Lock()
+	defer c.Unlock()
 	log.TraceDF(1, "c.Box(%v,%v,%v,%v,%v,%v,%v,%v,%v)", pos, size, border, fill, overlay, fillRune, contentStyle, borderStyle, borderRunes)
 	xEnd := pos.X + size.W - 1
 	yEnd := pos.Y + size.H - 1

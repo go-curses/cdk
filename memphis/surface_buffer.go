@@ -35,8 +35,6 @@ type SurfaceBuffer interface {
 	GetCell(x, y int) (textCell TextCell)
 	SetCell(x int, y int, r rune, style paint.Style) error
 	LoadData(d [][]TextCell)
-
-	sync.Locker
 }
 
 // concrete implementation of the SurfaceBuffer interface
@@ -44,7 +42,7 @@ type CSurfaceBuffer struct {
 	data  [][]*CTextCell
 	style paint.Style
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 // construct a new canvas buffer
@@ -60,6 +58,8 @@ func NewSurfaceBuffer(size ptypes.Rectangle, style paint.Style) *CSurfaceBuffer 
 
 // return a string describing the buffer, only useful for debugging purposes
 func (b *CSurfaceBuffer) String() string {
+	b.RLock()
+	defer b.RUnlock()
 	return fmt.Sprintf(
 		"{Size=%s}",
 		b.Size(),
@@ -68,6 +68,8 @@ func (b *CSurfaceBuffer) String() string {
 
 // return the rectangle size of the buffer
 func (b *CSurfaceBuffer) Style() (style paint.Style) {
+	b.RLock()
+	defer b.RUnlock()
 	return b.style
 }
 
@@ -87,72 +89,23 @@ func (b *CSurfaceBuffer) Size() (size ptypes.Rectangle) {
 func (b *CSurfaceBuffer) Resize(size ptypes.Rectangle) {
 	b.Lock()
 	defer b.Unlock()
+
 	size.Floor(0, 0)
-	if b.size.W == size.W && b.size.H == size.H && b.style.String() == style.String() {
-		return
-	}
-	// fill size, expanding as necessary
+	b.data = make([][]*CTextCell, 0)
 	for x := 0; x < size.W; x++ {
-		if len(b.data) <= x {
-			// need more X space
-			b.data = append(b.data, make([]*CTextCell, size.H))
-		}
-		// fill in Y space for this X space
+		b.data = append(b.data, make([]*CTextCell, 0))
 		for y := 0; y < size.H; y++ {
-			if len(b.data[x]) <= y {
-				// add Y space
-				b.data[x] = append(b.data[x], NewRuneCell(' ', style))
-			} else if b.data[x][y] == nil {
-				// fill nil Y space
-				b.data[x][y] = NewRuneCell(' ', style)
-			} else {
-				// clear Y space
-				b.data[x][y].Set(' ')
-				b.data[x][y].SetStyle(style)
-			}
+			b.data[x] = append(b.data[x], NewTextCellFromRune(' ', b.style))
 		}
 	}
-	// truncate excess cells
-	if b.size.W > size.W {
-		// the previous size was larger than this one
-		// truncate X space
-		b.data = b.data[:size.W]
-	}
-	if b.size.H > size.H {
-		// previous size was larger than this one
-		for x := 0; x < size.W; x++ {
-			if len(b.data) <= x {
-				b.data = append(b.data, make([]*CTextCell, size.H))
-			}
-			if len(b.data[x]) >= size.H {
-				// truncate, too long
-				b.data[x] = b.data[x][:size.H]
-			} else {
-				for y := 0; y < size.H; y++ {
-					if len(b.data[x]) <= y {
-						// add Y space
-						b.data[x] = append(b.data[x], NewRuneCell(' ', style))
-					} else if b.data[x][y] == nil {
-						// fill nil Y space
-						b.data[x][y] = NewRuneCell(' ', style)
-					} else {
-						// clear Y space
-						b.data[x][y].Set(' ')
-						b.data[x][y].SetStyle(style)
-					}
-				}
-			}
-		}
-	}
-	// store the size
-	b.size = size
 }
 
 // return the text cell at the given coordinates, nil if not found
 func (b *CSurfaceBuffer) GetCell(x int, y int) TextCell {
-	b.Lock() // lock so that resize floods don't enable race conditions
-	defer b.Unlock()
-	if x >= 0 && y >= 0 && x < b.size.W && y < b.size.H {
+	b.RLock() // lock so that resize floods don't enable race conditions
+	defer b.RUnlock()
+	bSize := b.Size()
+	if x >= 0 && y >= 0 && x < bSize.W && y < bSize.H {
 		return b.data[x][y]
 	}
 	return nil
@@ -174,14 +127,26 @@ func (b *CSurfaceBuffer) GetBgColor(x, y int) (bg paint.Color) {
 	return
 }
 
-// set the cell content at the given coordinates
+// set the cell content at the given (literal) coordinates
 func (b *CSurfaceBuffer) SetCell(x int, y int, r rune, style paint.Style) error {
+	b.Lock()
+	defer b.Unlock()
 	dxLen := len(b.data)
+	if dxLen == 0 {
+		return fmt.Errorf("surface has zero size")
+	}
 	if x >= 0 && x < dxLen {
 		dyLen := len(b.data[x])
 		if y >= 0 && y < dyLen {
-			b.data[x][y].Set(r)
-			b.data[x][y].SetStyle(style)
+			if b.data[x][y] == nil {
+				b.data[x][y] = NewTextCellFromRune(r, style)
+			} else {
+				b.data[x][y].Set(r)
+				b.data[x][y].SetStyle(style)
+			}
+			// wide runes need extra care for their neighbor... sometimes...
+			// not sure how to best figure out if a rune actually consumes more
+			// than one monospace character
 			if count := b.data[x][y].Count(); count > 1 {
 				for i := 1; i < count; i++ {
 					if xi := x + i; xi < dxLen {
@@ -191,9 +156,9 @@ func (b *CSurfaceBuffer) SetCell(x int, y int, r rune, style paint.Style) error 
 			}
 			return nil
 		}
-		return fmt.Errorf("y=%v not in range [0-%d]", y, len(b.data[x])-1)
+		return fmt.Errorf("y=%v not in range [0,%d]", y, len(b.data[x])-1)
 	}
-	return fmt.Errorf("x=%v not in range [0-%d]", x, len(b.data)-1)
+	return fmt.Errorf("x=%v not in range [0,%d]", x, len(b.data)-1)
 }
 
 // given matrix array of text cells, load that data in this canvas space
@@ -203,7 +168,7 @@ func (b *CSurfaceBuffer) LoadData(d [][]TextCell) {
 	for x := 0; x < len(d); x++ {
 		for y := 0; y < len(d[x]); y++ {
 			if y >= len(b.data[x]) {
-				b.data[x] = append(b.data[x], NewRuneCell(d[x][y].Value(), d[x][y].Style()))
+				b.data[x] = append(b.data[x], NewTextCellFromRune(d[x][y].Value(), d[x][y].Style()))
 			} else {
 				b.data[x][y].Set(d[x][y].Value())
 			}
