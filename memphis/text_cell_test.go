@@ -17,13 +17,14 @@ package memphis
 import (
 	"testing"
 
-	"github.com/go-curses/cdk/lib/paint"
 	. "github.com/smartystreets/goconvey/convey"
+
+	"github.com/go-curses/cdk/lib/paint"
 )
 
 func TestTextCell(t *testing.T) {
 	Convey("Basic checks", t, func() {
-		tc := NewRuneCell('*', paint.DefaultMonoStyle)
+		tc := NewTextCellFromRune('*', paint.DefaultMonoStyle)
 		So(tc, ShouldNotBeNil)
 		So(tc.IsSpace(), ShouldEqual, false)
 		So(tc.Width(), ShouldEqual, 1)

@@ -47,7 +47,7 @@ func NewEmptyWordCell() WordCell {
 
 func NewNilWordCell(style paint.Style) WordCell {
 	return &CWordCell{
-		characters: []TextCell{NewRuneCell(rune(0), style)},
+		characters: []TextCell{NewTextCellFromRune(rune(0), style)},
 	}
 }
 
@@ -64,7 +64,7 @@ func (w *CWordCell) Characters() []TextCell {
 func (w *CWordCell) Set(word string, style paint.Style) {
 	w.characters = make([]TextCell, len(word))
 	for i, c := range word {
-		w.characters[i] = NewRuneCell(c, style)
+		w.characters[i] = NewTextCellFromRune(c, style)
 	}
 	return
 }
@@ -79,7 +79,7 @@ func (w *CWordCell) GetCharacter(index int) (char TextCell) {
 func (w *CWordCell) AppendRune(r rune, style paint.Style) {
 	w.characters = append(
 		w.characters,
-		NewRuneCell(r, style),
+		NewTextCellFromRune(r, style),
 	)
 }
 

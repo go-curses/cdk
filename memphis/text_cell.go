@@ -48,7 +48,7 @@ type CTextCell struct {
 	sync.Mutex
 }
 
-func NewRuneCell(char rune, style paint.Style) *CTextCell {
+func NewTextCellFromRune(char rune, style paint.Style) *CTextCell {
 	return NewTextCell(NewTextChar([]byte(string(char))), style)
 }
 

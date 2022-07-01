@@ -149,7 +149,7 @@ func (m *CTango) init() error {
 		case xml.CharData:
 			for idx := 0; idx < len(t); idx++ {
 				v, _ := utf8.DecodeRune(t[idx:])
-				m.marked = append(m.marked, NewRuneCell(v, cStyle))
+				m.marked = append(m.marked, NewTextCellFromRune(v, cStyle))
 				if unicode.IsSpace(v) {
 					if isWord {
 						isWord = false
