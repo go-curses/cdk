@@ -116,6 +116,27 @@ func (r Region) Size() Rectangle {
 	return Rectangle{r.W, r.H}
 }
 
+// ContainsRegion returns true if the given region is present and fully included
+// within this region's space (both origin and far-point contained)
+func (r *Region) ContainsRegion(region Region) (contained bool) {
+	contained = r.HasPoint(region.Origin()) && r.HasPoint(region.FarPoint())
+	return
+}
+
+// OccludesRegion returns true if the given region is present and not fully
+// included within this region's space - (origin contained, far-point not)
+func (r *Region) OccludesRegion(region Region) (occluded bool) {
+	if r.HasPoint(region.Origin()) && !r.HasPoint(region.FarPoint()) {
+		// origin contained, far-point not
+		return true
+	}
+	// if !r.HasPoint(region.Origin()) && r.HasPoint(region.FarPoint()) {
+	// 	// origin not, far-point contained
+	// 	return true
+	// }
+	return
+}
+
 func (r *Region) ClampToRegion(region Region) (clamped bool) {
 	var x, y, w, h int
 	fp := r.FarPoint()
