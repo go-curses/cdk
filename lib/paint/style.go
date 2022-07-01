@@ -43,6 +43,12 @@ func (s Style) String() string {
 	)
 }
 
+func (s Style) Equals(other Style) bool {
+	return s.fg.Hex() == other.fg.Hex() &&
+		s.bg.Hex() == other.bg.Hex() &&
+		s.attrs == other.attrs
+}
+
 var rxParseStyle = regexp.MustCompile(`(?i)^{??(#[a-f0-9]{6}|[a-z]+),(#[a-f0-9]{6}|[a-z]+),(\d+)}??$`)
 
 func ParseStyle(value string) (style Style, err error) {
