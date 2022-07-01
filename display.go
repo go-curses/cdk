@@ -482,7 +482,7 @@ func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
 	if surface, err := memphis.GetSurface(d.ObjectID()); err != nil {
 		d.LogErr(err)
 	} else {
-		surface.Resize(size, d.GetTheme().Content.Normal)
+		surface.Resize(size)
 	}
 	d.Unlock()
 	for _, window := range windows {
@@ -491,7 +491,7 @@ func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
 			if s, err := memphis.GetSurface(window.ObjectID()); err != nil {
 				d.LogErr(err)
 			} else {
-				s.Resize(size, d.GetTheme().Content.Normal)
+				s.Resize(size)
 			}
 			d.Unlock()
 		}
@@ -754,17 +754,17 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		return d.Emit(SignalEventMouse, d, e)
 
 	case *EventResize:
+		origin := ptypes.MakePoint2I(0, 0)
+		alloc := ptypes.MakeRectangle(e.Size())
+		if err := memphis.MakeConfigureSurface(d.ObjectID(), origin, alloc, paint.DefaultColorStyle); err != nil {
+			d.LogErr(err)
+		}
 		// all windows get resize event
-		stopped := false
 		for _, window := range d.GetWindows() {
-			if f := window.ProcessEvent(e); f == enums.EVENT_STOP {
-				stopped = true
-			}
+			window.ProcessEvent(e)
 		}
-		if stopped {
-			d.RequestDraw()
-			d.RequestSync()
-		}
+		d.RequestDraw()
+		d.RequestSync()
 		return d.Emit(SignalEventResize, d, e)
 
 	default:
