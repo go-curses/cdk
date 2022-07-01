@@ -37,11 +37,13 @@ import (
 
 var (
 	// DisplayCallCapacity limits the number of concurrent calls on main threads
-	DisplayCallCapacity = 32
+	DisplayCallCapacity    = 32
+	DisplayEventCapacity   = 1024
+	DisplayRequestCapacity = 64
 	// MainIterateDelay is the event iteration loop delay
 	MainIterateDelay = time.Millisecond * 25
 	// MainRequestDelay is the screen request iteration loop delay
-	MainRequestDelay = time.Millisecond * 100
+	MainRequestDelay = time.Millisecond * 50
 )
 
 const (
@@ -192,10 +194,10 @@ func (d *CDisplay) Init() (already bool) {
 	d.done = make(chan bool)
 	d.queue = make(chan DisplayCallbackFn, DisplayCallCapacity)
 	d.mains = make(chan DisplayCallbackFn, DisplayCallCapacity)
-	d.events = make(chan Event, DisplayCallCapacity)
+	d.events = make(chan Event, DisplayEventCapacity)
 	d.buffer = make([]interface{}, 0)
 	d.inbound = make(chan Event, DisplayCallCapacity)
-	d.requests = make(chan displayRequest, DisplayCallCapacity)
+	d.requests = make(chan displayRequest, DisplayRequestCapacity)
 	d.compress = true
 
 	d.cursor = ptypes.NewPoint2I(0, 0)
