@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/gofrs/uuid"
+
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
-	"github.com/gofrs/uuid"
 )
 
 var (
@@ -60,7 +61,8 @@ func ConfigureSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Rectangle
 	var s Surface
 	if s, err = GetSurface(id); err == nil {
 		s.SetOrigin(origin)
-		s.Resize(size, style)
+		s.SetStyle(style)
+		s.Resize(size)
 	}
 	return
 }
@@ -71,7 +73,8 @@ func MakeConfigureSurface(id uuid.UUID, origin ptypes.Point2I, size ptypes.Recta
 		err = MakeSurface(id, origin, size, style)
 	} else {
 		s.SetOrigin(origin)
-		s.Resize(size, style)
+		s.SetStyle(style)
+		s.Resize(size)
 	}
 	return
 }

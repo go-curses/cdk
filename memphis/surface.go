@@ -30,8 +30,9 @@ import (
 // a Surface is the primary means of drawing to the terminal display within CDK
 type Surface interface {
 	GetStyle() (style paint.Style)
+	SetStyle(style paint.Style)
 	String() string
-	Resize(size ptypes.Rectangle, style paint.Style)
+	Resize(size ptypes.Rectangle)
 	GetContent(x, y int) (textCell TextCell)
 	SetContent(x, y int, char string, s paint.Style) error
 	SetRune(x, y int, r rune, s paint.Style) error
@@ -63,7 +64,6 @@ type Surface interface {
 type CSurface struct {
 	buffer *CSurfaceBuffer
 	origin ptypes.Point2I
-	size   ptypes.Rectangle
 	fill   rune
 }
 
@@ -72,7 +72,6 @@ func NewSurface(origin ptypes.Point2I, size ptypes.Rectangle, style paint.Style)
 	c := &CSurface{
 		buffer: NewSurfaceBuffer(size, style),
 		origin: origin,
-		size:   size,
 		fill:   ' ',
 	}
 	return c
@@ -82,21 +81,29 @@ func (c *CSurface) GetStyle() (style paint.Style) {
 	return c.buffer.Style()
 }
 
+func (c *CSurface) SetStyle(style paint.Style) {
+	c.Lock()
+	defer c.Unlock()
+	c.buffer.Lock()
+	defer c.buffer.Unlock()
+	c.buffer.style = style
+}
+
 // return a string describing the canvas metadata, useful for debugging
 func (c CSurface) String() string {
 	return fmt.Sprintf(
-		"{Origin=%s,Size=%s,Fill=%v,Buffer=%v}",
+		"{Origin=%s,Fill=%v,Buffer=%v}",
 		c.origin,
-		c.size,
 		c.fill,
 		c.buffer.String(),
 	)
 }
 
 // change the size of the canvas, not recommended to do this in practice
-func (c *CSurface) Resize(size ptypes.Rectangle, style paint.Style) {
-	c.buffer.Resize(size, style)
-	c.size = size
+func (c *CSurface) Resize(size ptypes.Rectangle) {
+	c.Lock()
+	defer c.Unlock()
+	c.buffer.Resize(size)
 }
 
 // get the text cell at the given coordinates
@@ -129,17 +136,23 @@ func (c *CSurface) GetOrigin() ptypes.Point2I {
 
 // get the rectangle size of the canvas
 func (c *CSurface) GetSize() ptypes.Rectangle {
-	return c.size
+	c.RLock()
+	defer c.RUnlock()
+	return c.buffer.Size()
 }
 
 // convenience method to get just the width of the canvas
 func (c *CSurface) Width() (width int) {
-	return c.size.W
+	c.RLock()
+	defer c.RUnlock()
+	return c.buffer.Size().W
 }
 
 // convenience method to get just the height of the canvas
 func (c *CSurface) Height() (height int) {
-	return c.size.H
+	c.RLock()
+	defer c.RUnlock()
+	return c.buffer.Size().H
 }
 
 // GetRegion returns the origin and size as a Region type.
@@ -154,7 +167,7 @@ func (c *CSurface) GetRegion() (region ptypes.Region) {
 // given Region for the values. The existing Style is used for the Resize call.
 func (c *CSurface) SetRegion(region ptypes.Region) {
 	c.SetOrigin(region.Origin())
-	c.Resize(region.Size(), c.GetStyle())
+	c.Resize(region.Size())
 }
 
 // returns true if the given canvas is painted the same as this one, can compare
@@ -405,7 +418,8 @@ func (c *CSurface) BoxWithTheme(pos ptypes.Point2I, size ptypes.Rectangle, borde
 // more flexible
 func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{}) {
 	text := fmt.Sprintf(format, argv...)
-	if c.size.Equals(0, 0) {
+	cSize := c.GetSize()
+	if cSize.Equals(0, 0) {
 		log.DebugDF(1, "[DebugBox] (zero-size) info: %v (%v)", text, color)
 		return
 	}
@@ -414,7 +428,7 @@ func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{
 	bs.Border.Normal = bs.Border.Normal.Foreground(color)
 	c.Box(
 		ptypes.MakePoint2I(0, 0),
-		c.size,
+		cSize,
 		true,
 		false,
 		false,
@@ -423,7 +437,7 @@ func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{
 		bs.Border.Normal,
 		bs.Border.BorderRunes,
 	)
-	c.DrawSingleLineText(ptypes.MakePoint2I(c.origin.X+1, c.origin.Y), c.size.W-2, false, enums.JUSTIFY_LEFT, bs.Border.Normal, false, false, text)
+	c.DrawSingleLineText(ptypes.MakePoint2I(c.origin.X+1, c.origin.Y), cSize.W-2, false, enums.JUSTIFY_LEFT, bs.Border.Normal, false, false, text)
 }
 
 // fill the entire canvas according to the given theme
@@ -431,7 +445,7 @@ func (c *CSurface) Fill(theme paint.Theme) {
 	log.TraceF("c.Fill(%v,%v)", theme)
 	c.Box(
 		ptypes.MakePoint2I(0, 0),
-		c.size,
+		c.GetSize(),
 		false, true,
 		theme.Content.Overlay,
 		theme.Content.FillRune,
@@ -444,12 +458,13 @@ func (c *CSurface) Fill(theme paint.Theme) {
 // fill the entire canvas, with or without 'dim' styling, with or without a
 // border
 func (c *CSurface) FillBorder(dim, border bool, theme paint.Theme) {
-	log.TraceF("c.FillBorder(%v,%v): origin=%v, size=%v", border, theme, c.origin, c.size)
+	cSize := c.GetSize()
+	log.TraceF("c.FillBorder(%v,%v): origin=%v, size=%v", border, theme, c.origin, cSize)
 	theme.Content.Normal = theme.Content.Normal.Dim(dim)
 	theme.Border.Normal = theme.Border.Normal.Dim(dim)
 	c.Box(
 		ptypes.MakePoint2I(0, 0),
-		c.size,
+		cSize,
 		border,
 		true,
 		theme.Content.Overlay,
@@ -466,9 +481,10 @@ func (c *CSurface) FillBorderTitle(dim bool, title string, justify enums.Justifi
 	log.TraceF("c.FillBorderTitle(%v,%v,%v)", title, justify, theme)
 	theme.Content.Normal = theme.Content.Normal.Dim(dim)
 	theme.Border.Normal = theme.Border.Normal.Dim(dim)
+	cSize := c.GetSize()
 	c.Box(
 		ptypes.MakePoint2I(0, 0),
-		c.size,
+		cSize,
 		true,
 		true,
 		theme.Content.Overlay,
@@ -477,5 +493,5 @@ func (c *CSurface) FillBorderTitle(dim bool, title string, justify enums.Justifi
 		theme.Border.Normal,
 		theme.Border.BorderRunes,
 	)
-	c.DrawSingleLineText(ptypes.MakePoint2I(1, 0), c.size.W-2, false, justify, theme.Content.Normal.Dim(dim), false, false, title)
+	c.DrawSingleLineText(ptypes.MakePoint2I(1, 0), cSize.W-2, false, justify, theme.Content.Normal.Dim(dim), false, false, title)
 }

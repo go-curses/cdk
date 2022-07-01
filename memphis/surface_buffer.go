@@ -29,7 +29,7 @@ type SurfaceBuffer interface {
 	Size() (size ptypes.Rectangle)
 	Width() (width int)
 	Height() (height int)
-	Resize(size ptypes.Rectangle, style paint.Style)
+	Resize(size ptypes.Rectangle)
 	GetDim(x, y int) bool
 	GetBgColor(x, y int) (bg paint.Color)
 	GetCell(x, y int) (textCell TextCell)
@@ -42,7 +42,6 @@ type SurfaceBuffer interface {
 // concrete implementation of the SurfaceBuffer interface
 type CSurfaceBuffer struct {
 	data  [][]*CTextCell
-	size  ptypes.Rectangle
 	style paint.Style
 
 	sync.Mutex
@@ -53,9 +52,9 @@ func NewSurfaceBuffer(size ptypes.Rectangle, style paint.Style) *CSurfaceBuffer 
 	size.Floor(0, 0)
 	b := &CSurfaceBuffer{
 		data: make([][]*CTextCell, size.W),
-		size: ptypes.MakeRectangle(0, 0),
 	}
-	b.Resize(size, style)
+	b.style = style
+	b.Resize(size)
 	return b
 }
 
@@ -63,7 +62,7 @@ func NewSurfaceBuffer(size ptypes.Rectangle, style paint.Style) *CSurfaceBuffer 
 func (b *CSurfaceBuffer) String() string {
 	return fmt.Sprintf(
 		"{Size=%s}",
-		b.size,
+		b.Size(),
 	)
 }
 
@@ -74,21 +73,18 @@ func (b *CSurfaceBuffer) Style() (style paint.Style) {
 
 // return the rectangle size of the buffer
 func (b *CSurfaceBuffer) Size() (size ptypes.Rectangle) {
-	return b.size
-}
-
-// return just the width of the buffer
-func (b *CSurfaceBuffer) Width() (width int) {
-	return b.size.W
-}
-
-// return just the height of the buffer
-func (b *CSurfaceBuffer) Height() (height int) {
-	return b.size.H
+	b.RLock()
+	defer b.RUnlock()
+	w, h := len(b.data), 0
+	if w > 0 {
+		h = len(b.data[0])
+	}
+	size = ptypes.MakeRectangle(w, h)
+	return
 }
 
 // resize the buffer
-func (b *CSurfaceBuffer) Resize(size ptypes.Rectangle, style paint.Style) {
+func (b *CSurfaceBuffer) Resize(size ptypes.Rectangle) {
 	b.Lock()
 	defer b.Unlock()
 	size.Floor(0, 0)
