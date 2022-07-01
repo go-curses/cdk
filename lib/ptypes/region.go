@@ -64,7 +64,7 @@ func ParseRegion(value string) (point Region, ok bool) {
 }
 
 func (r Region) String() string {
-	return fmt.Sprintf("{x:%v,y:%v,w:%v,h:%v}", r.X, r.Y, r.H, r.W)
+	return fmt.Sprintf("{x:%v,y:%v,w:%v,h:%v}", r.X, r.Y, r.W, r.H)
 }
 
 func (r Region) Clone() (clone Region) {
