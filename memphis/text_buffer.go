@@ -20,6 +20,7 @@ import (
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/math"
 	"github.com/go-curses/cdk/lib/paint"
+	"github.com/go-curses/cdk/log"
 )
 
 var (
@@ -184,7 +185,7 @@ func (b *CTextBuffer) Draw(canvas Surface, singleLine bool, wordWrap enums.WrapM
 	b.Lock()
 	defer b.Unlock()
 	if b.input == nil || b.input.CharacterCount() == 0 {
-		// non-operation
+		log.WarnF("text buffer input nil or zero length")
 		return enums.EVENT_PASS
 	}
 
@@ -196,9 +197,11 @@ func (b *CTextBuffer) Draw(canvas Surface, singleLine bool, wordWrap enums.WrapM
 	lines := b.input.Make(b.mnemonics, wordWrap, ellipsize, justify, maxChars, b.style)
 	size := canvas.GetSize()
 	if size.W <= 0 || size.H <= 0 {
+		log.WarnF("text buffer zero canvas size")
 		return enums.EVENT_PASS
 	}
 	if len(lines) == 0 {
+		log.ErrorF("text buffer zero lines")
 		return enums.EVENT_PASS
 	}
 	lenLines := len(lines)
