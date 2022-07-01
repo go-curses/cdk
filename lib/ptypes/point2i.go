@@ -132,6 +132,24 @@ func (p *Point2I) SubPoint(point Point2I) {
 	p.Y -= point.Y
 }
 
+func (p *Point2I) ClampMax(x, y int) {
+	if p.X > x {
+		p.X = x
+	}
+	if p.Y > y {
+		p.Y = y
+	}
+}
+
+func (p *Point2I) ClampMin(x, y int) {
+	if p.X < x {
+		p.X = x
+	}
+	if p.Y < y {
+		p.Y = y
+	}
+}
+
 // restrict this Point2I instance to be within the boundaries defined by the
 // given region
 func (p *Point2I) ClampToRegion(region Region) (clamped bool) {
