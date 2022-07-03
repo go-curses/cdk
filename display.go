@@ -476,26 +476,21 @@ func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
 		d.RUnlock()
 		return
 	}
-	windows := d.windows
 	w, h = d.screen.Size()
-	size := ptypes.MakeRectangle(w, h)
 	d.RUnlock()
 	d.Lock()
-	if surface, err := memphis.GetSurface(d.ObjectID()); err != nil {
+	defer d.Unlock()
+
+	size := ptypes.MakeRectangle(w, h)
+	if err := memphis.MakeConfigureSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), size, d.GetTheme().Content.Normal); err != nil {
 		d.LogErr(err)
-	} else {
-		surface.Resize(size)
 	}
-	d.Unlock()
-	for _, window := range windows {
+
+	for _, window := range d.windows {
 		if window.GetWindowType() != enums.WINDOW_POPUP {
-			d.Lock()
-			if s, err := memphis.GetSurface(window.ObjectID()); err != nil {
+			if err := memphis.MakeConfigureSurface(window.ObjectID(), ptypes.MakePoint2I(0, 0), size, window.GetTheme().Content.Normal); err != nil {
 				d.LogErr(err)
-			} else {
-				s.Resize(size)
 			}
-			d.Unlock()
 		}
 	}
 	return
