@@ -536,5 +536,7 @@ func (c *CSurface) FillBorderTitle(dim bool, title string, justify enums.Justifi
 		theme.Border.Normal,
 		theme.Border.BorderRunes,
 	)
-	c.DrawSingleLineText(ptypes.MakePoint2I(1, 0), cSize.W-2, false, justify, theme.Content.Normal.Dim(dim), false, false, title)
+	origin := c.GetOrigin()
+	origin.X += 1
+	c.DrawSingleLineText(origin, cSize.W-2, false, justify, theme.Content.Normal.Dim(dim), false, false, title)
 }
