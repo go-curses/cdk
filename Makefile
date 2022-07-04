@@ -136,12 +136,14 @@ local-term:
 	@if [ -d "${TERM_PATH}" ]; then \
 		echo "# adding go.mod local TERM package replacements..."; \
 		go mod edit -replace=github.com/go-curses/term=${TERM_PATH}; \
+		go mod tidy; \
 	fi
 
 unlocal-term:
 	@if [ -d "${TERM_PATH}" ]; then \
 		echo "# removing go.mod local TERM package replacements..."; \
 		go mod edit -dropreplace=github.com/go-curses/term; \
+		go mod tidy; \
 	fi
 
 local: local-term
@@ -159,6 +161,8 @@ local: local-term
 			go mod edit -replace=github.com/go-curses/cdk/lib/$$tgt=${CDK_PATH}/lib/$$tgt ; \
 		fi; \
 	done
+	@echo "# running go mod tidy"
+	@go mod tidy
 
 unlocal: unlocal-term
 	@echo "# removing go.mod local CDK package replacements..."
@@ -175,6 +179,8 @@ unlocal: unlocal-term
 			go mod edit -dropreplace=github.com/go-curses/cdk/lib/$$tgt ; \
 		fi; \
 	done
+	@echo "# running go mod tidy"
+	@go mod tidy
 
 dev: clean
 	@if [ -d examples/${DEV_EXAMPLE} ]; \
