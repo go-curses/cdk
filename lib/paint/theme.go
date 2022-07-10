@@ -68,6 +68,12 @@ var (
 		Down:  RuneDArrow,
 		Right: RuneRArrow,
 	}
+	WideArrowRune = ArrowRuneSet{
+		Up:    RuneTriangleUp,
+		Left:  RuneTriangleLeft,
+		Down:  RuneTriangleDown,
+		Right: RuneTriangleRight,
+	}
 )
 
 var (
