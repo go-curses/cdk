@@ -182,23 +182,31 @@ func (tp *TextProfile) Crop(region ptypes.Region) (cropped string) {
 	if tp.textLen == 0 {
 		return ""
 	}
+
+	far := region.FarPoint()
+
 	for y, line := range tp.data {
-		if y >= region.Y && y <= region.Y+region.H {
+		if y >= region.Y && y <= far.Y {
+			var output string
 			lineLength := len(line)
+
 			if lineLength <= region.X {
-				cropped += "\n"
-				continue
-			}
-			for x, character := range line {
-				if x >= region.X {
-					if x <= region.X+region.W {
-						cropped += string(character)
-					} else {
-						cropped += "\n"
-						break
+				output = "\n"
+			} else {
+				if lineLength > far.X {
+					output = string(line[region.X:far.X])
+				} else {
+					output = string(line[region.X:])
+				}
+
+				if outputLen := len(output); outputLen > 0 {
+					if output[outputLen-1] != '\n' {
+						output += "\n"
 					}
 				}
 			}
+
+			cropped += output
 		}
 	}
 	return
