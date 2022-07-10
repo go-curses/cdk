@@ -17,6 +17,7 @@ package paths
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"time"
@@ -66,6 +67,16 @@ func ReadFile(path string) (content string, err error) {
 		return
 	}
 	return "", fmt.Errorf("not a file or file not found: %v", path)
+}
+
+func WriteFile(path string, content string) (err error) {
+	err = WriteFileWithPerms(path, content, 0644)
+	return
+}
+
+func WriteFileWithPerms(path string, content string, perm fs.FileMode) (err error) {
+	err = ioutil.WriteFile(path, []byte(content), perm)
+	return
 }
 
 func CopyFile(src, dst string) (nBytes int64, err error) {
