@@ -19,6 +19,8 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/mattn/go-runewidth"
 )
 
 type TextChar interface {
@@ -52,7 +54,7 @@ func (c *CTextChar) Set(r rune) {
 
 func (c *CTextChar) SetByte(b []byte) {
 	c.value, c.width = utf8.DecodeRune(b)
-	c.count = len([]rune(string(b)))
+	c.count = runewidth.RuneWidth(rune(string(b)[0]))
 }
 
 func (c *CTextChar) Width() int {

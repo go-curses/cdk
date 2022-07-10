@@ -182,11 +182,11 @@ func (w *CWordLine) applyTypographicWrapNone(ellipsize bool, maxChars int, input
 			if maxChars > -1 && cid+word.Len() > maxChars {
 				wc := NewEmptyWordCell()
 				for _, c := range word.Characters() {
-					if cid+c.Width() > maxChars {
+					if cid+c.Count() > maxChars {
 						break
 					}
 					wc.AppendRune(c.Value(), c.Style())
-					cid += c.Width()
+					cid += c.Count()
 				}
 				if wc.Len() > 0 {
 					output[lid].AppendWordCell(wc)
