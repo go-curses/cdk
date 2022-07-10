@@ -226,8 +226,12 @@ func (c *CSurface) CompositeSurface(src *CSurface) error {
 	dstSize := c.buffer.Size()
 	srcSize := src.buffer.Size()
 
-	if dstSize.W <= 0 || srcSize.W <= 0 || dstSize.H <= 0 || srcSize.H <= 0 {
-		return fmt.Errorf("either canvas has zero size")
+	if (srcSize.W <= 0 || srcSize.H <= 0) && (dstSize.W <= 0 || dstSize.H <= 0) {
+		return fmt.Errorf("source and destination have zero size")
+	} else if srcSize.W <= 0 || srcSize.H <= 0 {
+		return fmt.Errorf("source has zero size")
+	} else if dstSize.W <= 0 || dstSize.H <= 0 {
+		return fmt.Errorf("destination has zero size")
 	}
 
 	dstOrigin := c.GetOrigin()
