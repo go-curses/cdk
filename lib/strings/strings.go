@@ -159,7 +159,7 @@ func MakeObjectName(tag, user, address string) (name string) {
 	return
 }
 
-var _rxDomainName = regexp.MustCompile(`^(?i)[a-z\d][-a-z\d]+?[a-z\d]+(\.[a-z\d][-a-z\d]+?[a-z\d]+)+\.?$`)
+var _rxDomainName = regexp.MustCompile(`^(?i)[a-z\d][-a-z\d]+?[a-z\d]+(\.[a-z\d][-a-z\d]+?[a-z\d]+?)+\.?$`)
 
 func StringIsDomainName(input string) bool {
 	return _rxDomainName.MatchString(input)
