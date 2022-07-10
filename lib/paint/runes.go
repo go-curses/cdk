@@ -63,15 +63,20 @@ const (
 	RuneUpwardsTwoHeadedArrowWithTriangleArrowheads    = '⯭'
 	RuneRightwardsTwoHeadedArrowWithTriangleArrowheads = '⯮'
 	RuneDownwardsTwoHeadedArrowWithTriangleArrowheads  = '⯯'
-	RuneBlackSquareCentred                             = '⯀'
-	RuneBlackMediumUpPointingTriangleCentred           = '⯅'
-	RuneBlackMediumDownPointingTriangleCentred         = '⯆'
-	RuneBlackMediumLeftPointingTriangleCentred         = '⯇'
-	RuneBlackMediumRightPointingTriangleCentred        = '⯈'
-	RuneLeftwardsBlackCircledWhiteArrow                = '⮈'
-	RuneUpwardsBlackCircledWhiteArrow                  = '⮉'
-	RuneRightwardsBlackCircledWhiteArrow               = '⮊'
-	RuneDownwardsBlackCircledWhiteArrow                = '⮋'
+	RuneFilledSquareCentred                            = '⯀'
+	RuneFilledMediumUpPointingTriangleCentred          = '⯅'
+	RuneFilledMediumDownPointingTriangleCentred        = '⯆'
+	RuneFilledMediumLeftPointingTriangleCentred        = '⯇'
+	RuneFilledMediumRightPointingTriangleCentred       = '⯈'
+	RuneLeftwardsFilledCircledHollowArrow              = '⮈'
+	RuneUpwardsFilledCircledHollowArrow                = '⮉'
+	RuneRightwardsFilledCircledHollowArrow             = '⮊'
+	RuneDownwardsFilledCircledHollowArrow              = '⮋'
+
+	RuneTriangleUp    = '▲'
+	RuneTriangleLeft  = '◀'
+	RuneTriangleDown  = '▼'
+	RuneTriangleRight = '▶'
 
 	RuneEllipsis = '…'
 )
@@ -143,15 +148,20 @@ var RuneFallbacks = map[rune]string{
 	RuneUpwardsTwoHeadedArrowWithTriangleArrowheads:    "^",
 	RuneRightwardsTwoHeadedArrowWithTriangleArrowheads: ">",
 	RuneDownwardsTwoHeadedArrowWithTriangleArrowheads:  "v",
-	RuneBlackSquareCentred:                             "#",
-	RuneBlackMediumUpPointingTriangleCentred:           "^",
-	RuneBlackMediumDownPointingTriangleCentred:         "v",
-	RuneBlackMediumLeftPointingTriangleCentred:         "<",
-	RuneBlackMediumRightPointingTriangleCentred:        ">",
-	RuneLeftwardsBlackCircledWhiteArrow:                "<",
-	RuneUpwardsBlackCircledWhiteArrow:                  "^",
-	RuneRightwardsBlackCircledWhiteArrow:               ">",
-	RuneDownwardsBlackCircledWhiteArrow:                "v",
+	RuneFilledSquareCentred:                            "#",
+	RuneFilledMediumUpPointingTriangleCentred:          "^",
+	RuneFilledMediumDownPointingTriangleCentred:        "v",
+	RuneFilledMediumLeftPointingTriangleCentred:        "<",
+	RuneFilledMediumRightPointingTriangleCentred:       ">",
+	RuneLeftwardsFilledCircledHollowArrow:              "<",
+	RuneUpwardsFilledCircledHollowArrow:                "^",
+	RuneRightwardsFilledCircledHollowArrow:             ">",
+	RuneDownwardsFilledCircledHollowArrow:              "v",
+
+	RuneTriangleUp:    "^",
+	RuneTriangleLeft:  "<",
+	RuneTriangleDown:  "v",
+	RuneTriangleRight: ">",
 
 	RuneEllipsis: "…",
 }
