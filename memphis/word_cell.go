@@ -121,10 +121,11 @@ func (w *CWordCell) NewlineCount() (newlineCount int) {
 
 // the total number of characters in this word
 func (w *CWordCell) Len() (count int) {
-	count = 0
-	for _, c := range w.characters {
-		count += c.Count()
-	}
+	count = len(w.characters)
+	// count = 0
+	// for _, c := range w.characters {
+	// 	count += c.Count()
+	// }
 	return
 }
 
