@@ -85,6 +85,8 @@ func (b *CTextBuffer) Set(input string, style paint.Style) {
 }
 
 func (b *CTextBuffer) Input() (raw string) {
+	b.Lock()
+	defer b.Unlock()
 	return b.raw
 }
 
@@ -96,6 +98,8 @@ func (b *CTextBuffer) SetInput(input WordLine) {
 }
 
 func (b *CTextBuffer) Style() paint.Style {
+	b.Lock()
+	defer b.Unlock()
 	return b.style
 }
 
@@ -109,6 +113,8 @@ func (b *CTextBuffer) SetStyle(style paint.Style) {
 }
 
 func (b *CTextBuffer) Mnemonic() (enabled bool) {
+	b.Lock()
+	defer b.Unlock()
 	return b.mnemonics
 }
 
@@ -119,6 +125,8 @@ func (b *CTextBuffer) SetMnemonic(enabled bool) {
 }
 
 func (b *CTextBuffer) CharacterCount() (cellCount int) {
+	b.Lock()
+	defer b.Unlock()
 	if b.input != nil {
 		cellCount = b.input.CharacterCount()
 	}
@@ -126,6 +134,8 @@ func (b *CTextBuffer) CharacterCount() (cellCount int) {
 }
 
 func (b *CTextBuffer) WordCount() (wordCount int) {
+	b.Lock()
+	defer b.Unlock()
 	if b.input != nil {
 		wordCount = b.input.WordCount()
 	}
@@ -133,6 +143,8 @@ func (b *CTextBuffer) WordCount() (wordCount int) {
 }
 
 func (b *CTextBuffer) LineCount() (lineCount int) {
+	b.Lock()
+	defer b.Unlock()
 	if b.input != nil {
 		lineCount = b.input.LineCount()
 	}

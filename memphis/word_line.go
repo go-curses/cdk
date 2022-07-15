@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
+	"github.com/go-curses/cdk/lib/sync"
 )
 
 type WordLine interface {
@@ -47,6 +48,8 @@ type WordLine interface {
 type CWordLine struct {
 	words []WordCell
 	cache *CWordLineCache
+
+	sync.RWMutex
 }
 
 func NewEmptyWordLine() WordLine {
@@ -65,6 +68,8 @@ func NewWordLine(line string, style paint.Style) WordLine {
 }
 
 func (w *CWordLine) SetLine(line string, style paint.Style) {
+	w.Lock()
+	defer w.Unlock()
 	w.cache.Clear()
 	w.words = make([]WordCell, 0)
 	isWord, wasNL := false, false
@@ -95,16 +100,22 @@ func (w *CWordLine) SetLine(line string, style paint.Style) {
 }
 
 func (w *CWordLine) AppendWord(word string, style paint.Style) {
+	w.Lock()
+	defer w.Unlock()
 	w.cache.Clear()
 	w.words = append(w.words, NewWordCell(word, style))
 }
 
 func (w *CWordLine) AppendWordCell(word WordCell) {
+	w.Lock()
+	defer w.Unlock()
 	w.cache.Clear()
 	w.words = append(w.words, word)
 }
 
 func (w *CWordLine) AppendWordRune(wordIndex int, char rune, style paint.Style) error {
+	w.Lock()
+	defer w.Unlock()
 	if wordIndex < len(w.words) {
 		w.cache.Clear()
 		w.words[wordIndex].AppendRune(char, style)
@@ -114,6 +125,8 @@ func (w *CWordLine) AppendWordRune(wordIndex int, char rune, style paint.Style) 
 }
 
 func (w *CWordLine) GetWord(index int) WordCell {
+	w.RLock()
+	defer w.RUnlock()
 	if index < len(w.words) {
 		return w.words[index]
 	}
@@ -121,6 +134,8 @@ func (w *CWordLine) GetWord(index int) WordCell {
 }
 
 func (w *CWordLine) RemoveWord(index int) {
+	w.Lock()
+	defer w.Unlock()
 	if index < len(w.words) {
 		w.cache.Clear()
 		w.words = append(
@@ -132,6 +147,8 @@ func (w *CWordLine) RemoveWord(index int) {
 
 func (w *CWordLine) GetCharacter(index int) TextCell {
 	if index < w.CharacterCount() {
+		w.RLock()
+		defer w.RUnlock()
 		count := 0
 		for _, word := range w.words {
 			for _, c := range word.Characters() {
@@ -147,6 +164,8 @@ func (w *CWordLine) GetCharacter(index int) TextCell {
 
 func (w *CWordLine) SetCharacter(index int, r rune) {
 	if index < w.CharacterCount() {
+		w.Lock()
+		defer w.Unlock()
 		count := 0
 		for _, word := range w.words {
 			for _, c := range word.Characters() {
@@ -162,6 +181,8 @@ func (w *CWordLine) SetCharacter(index int, r rune) {
 
 func (w *CWordLine) GetCharacterStyle(index int) (style paint.Style, ok bool) {
 	if index < w.CharacterCount() {
+		w.RLock()
+		defer w.RUnlock()
 		count := 0
 		for _, word := range w.words {
 			for _, c := range word.Characters() {
@@ -177,6 +198,8 @@ func (w *CWordLine) GetCharacterStyle(index int) (style paint.Style, ok bool) {
 
 func (w *CWordLine) SetCharacterStyle(index int, style paint.Style) {
 	if index < w.CharacterCount() {
+		w.Lock()
+		defer w.Unlock()
 		count := 0
 		for _, word := range w.words {
 			for _, c := range word.Characters() {
@@ -191,14 +214,20 @@ func (w *CWordLine) SetCharacterStyle(index int, style paint.Style) {
 }
 
 func (w *CWordLine) Words() []WordCell {
+	w.RLock()
+	defer w.RUnlock()
 	return w.words
 }
 
 func (w *CWordLine) Len() (wordSpaceCount int) {
+	w.RLock()
+	defer w.RUnlock()
 	return len(w.words)
 }
 
 func (w *CWordLine) CharacterCount() (count int) {
+	w.RLock()
+	defer w.RUnlock()
 	for _, word := range w.words {
 		count += word.Len()
 	}
@@ -206,6 +235,8 @@ func (w *CWordLine) CharacterCount() (count int) {
 }
 
 func (w *CWordLine) WordCount() (wordCount int) {
+	w.RLock()
+	defer w.RUnlock()
 	for _, word := range w.words {
 		if !word.IsSpace() {
 			wordCount++
@@ -215,6 +246,8 @@ func (w *CWordLine) WordCount() (wordCount int) {
 }
 
 func (w *CWordLine) LineCount() (lineCount int) {
+	w.RLock()
+	defer w.RUnlock()
 	for _, word := range w.words {
 		lineCount += word.NewlineCount()
 	}
@@ -222,6 +255,8 @@ func (w *CWordLine) LineCount() (lineCount int) {
 }
 
 func (w *CWordLine) HasSpace() bool {
+	w.RLock()
+	defer w.RUnlock()
 	for _, word := range w.words {
 		if word.IsSpace() {
 			return true
@@ -231,6 +266,8 @@ func (w *CWordLine) HasSpace() bool {
 }
 
 func (w *CWordLine) Value() (s string) {
+	w.RLock()
+	defer w.RUnlock()
 	for _, c := range w.words {
 		s += c.Value()
 	}
@@ -238,6 +275,8 @@ func (w *CWordLine) Value() (s string) {
 }
 
 func (w *CWordLine) String() (s string) {
+	w.RLock()
+	defer w.RUnlock()
 	s = "{"
 	for i, c := range w.words {
 		if i > 0 {
@@ -257,6 +296,8 @@ func (w *CWordLine) Make(mnemonic bool, wrap enums.WrapMode, ellipsize bool, jus
 		lines = append(lines, NewEmptyWordLine())
 		cid, wid, lid := 0, 0, 0
 		mnemonicFound := false
+		w.RLock()
+		defer w.RUnlock()
 		for _, word := range w.words {
 			for wcId, c := range word.Characters() {
 				switch c.Value() {
