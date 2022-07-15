@@ -90,6 +90,8 @@ type OffScreen interface {
 	Screen
 }
 
+var _ (OffScreen) = (*COffScreen)(nil)
+
 // OffscreenCell represents a simulated screen cell.  The purpose of this
 // is to track on screen content.
 type OffscreenCell struct {
@@ -580,6 +582,24 @@ func (o *COffScreen) Import(cb *CellBuffer) {
 	}
 }
 
+func (o *COffScreen) HostClipboardEnabled() (enabled bool) {
+	log.WarnF("unimplemented")
+	return
+}
+
 func (o *COffScreen) CopyToClipboard(s string) {
-	log.WarnF("unimplemented for offscreens")
+	log.WarnF("unimplemented")
+}
+
+func (o *COffScreen) PasteFromClipboard() (s string, ok bool) {
+	log.WarnF("unimplemented")
+	return
+}
+
+func (o *COffScreen) EnableHostClipboard(enabled bool) {
+	log.WarnF("unimplemented")
+}
+
+func (o *COffScreen) EnableTermClipboard(enabled bool) {
+	log.WarnF("unimplemented")
 }
