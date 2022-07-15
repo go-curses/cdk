@@ -86,12 +86,8 @@ func (b *CTextBuffer) Set(input string, style paint.Style) {
 }
 
 func (b *CTextBuffer) Select(start, end int) {
-	count := b.CharacterCount()
 	b.Lock()
 	defer b.Unlock()
-	if end >= count {
-		end = count - 1
-	}
 	for i := start; i <= end; i++ {
 		if style, ok := b.input.GetCharacterStyle(i); ok {
 			style = style.Reverse(true)
