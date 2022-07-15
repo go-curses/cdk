@@ -19,6 +19,7 @@ import (
 	"unicode"
 
 	"github.com/go-curses/cdk/lib/enums"
+	cmath "github.com/go-curses/cdk/lib/math"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/sync"
 )
@@ -149,14 +150,15 @@ func (w *CWordLine) GetCharacter(index int) TextCell {
 	if index < w.CharacterCount() {
 		w.RLock()
 		defer w.RUnlock()
-		count := 0
+		count := -1
 		for _, word := range w.words {
-			for _, c := range word.Characters() {
-				if count == index {
-					return c
-				}
-				count++
+			characters := word.Characters()
+			numCharacters := len(characters)
+			if count <= index && index <= count+numCharacters {
+				idx := cmath.ClampI(index-count-1, 0, numCharacters)
+				return characters[idx]
 			}
+			count += numCharacters
 		}
 	}
 	return nil
@@ -164,51 +166,32 @@ func (w *CWordLine) GetCharacter(index int) TextCell {
 
 func (w *CWordLine) SetCharacter(index int, r rune) {
 	if index < w.CharacterCount() {
-		w.Lock()
-		defer w.Unlock()
-		count := 0
-		for _, word := range w.words {
-			for _, c := range word.Characters() {
-				if count == index {
-					c.Set(r)
-					return
-				}
-				count++
-			}
+		if character := w.GetCharacter(index); character != nil {
+			w.Lock()
+			defer w.Unlock()
+			character.Set(r)
 		}
 	}
 }
 
 func (w *CWordLine) GetCharacterStyle(index int) (style paint.Style, ok bool) {
 	if index < w.CharacterCount() {
-		w.RLock()
-		defer w.RUnlock()
-		count := 0
-		for _, word := range w.words {
-			for _, c := range word.Characters() {
-				if count == index {
-					return c.Style(), true
-				}
-				count++
-			}
+		if character := w.GetCharacter(index); character != nil {
+			w.RLock()
+			defer w.RUnlock()
+			style = character.Style()
+			ok = true
 		}
 	}
-	return paint.Style{}, false
+	return
 }
 
 func (w *CWordLine) SetCharacterStyle(index int, style paint.Style) {
 	if index < w.CharacterCount() {
-		w.Lock()
-		defer w.Unlock()
-		count := 0
-		for _, word := range w.words {
-			for _, c := range word.Characters() {
-				if count == index {
-					c.SetStyle(style)
-					return
-				}
-				count++
-			}
+		if character := w.GetCharacter(index); character != nil {
+			w.Lock()
+			defer w.Unlock()
+			character.SetStyle(style)
 		}
 	}
 }
