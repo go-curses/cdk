@@ -228,6 +228,7 @@ type Screen interface {
 
 	Export() *CellBuffer
 	Import(cb *CellBuffer)
+	CopyToClipboard(s string)
 }
 
 var (
