@@ -34,5 +34,22 @@ func MakeRange(start, end int) Range {
 }
 
 func (r Range) String() string {
-	return fmt.Sprintf("w:%v,h:%v", r.Start, r.End)
+	return fmt.Sprintf("{start:%v,end:%v}", r.Start, r.End)
+}
+
+// Clone returns a new Range structure with the same values as this structure
+func (r Range) Clone() (clone Range) {
+	clone.Start = r.Start
+	clone.End = r.End
+	return
+}
+
+// NewClone returns a new Range instance with the same values as this structure
+func (r Range) NewClone() (clone *Range) {
+	clone = NewRange(r.Start, r.End)
+	return
+}
+
+func (r Range) InRange(v int) bool {
+	return r.Start >= v && v <= r.End
 }
