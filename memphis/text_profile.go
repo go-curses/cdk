@@ -175,6 +175,32 @@ func (tp *TextProfile) GetPositionFromPoint(point ptypes.Point2I) (position int)
 	return
 }
 
+func (tp *TextProfile) GetCropSelect(selection ptypes.Range, region ptypes.Region) (cropped ptypes.Range) {
+	tp.lock.RLock()
+	defer tp.lock.RUnlock()
+
+	cropped = ptypes.MakeRange(-1, -1)
+	origin := region.Origin()
+	originPos := tp.GetPositionFromPoint(origin)
+	far := region.FarPoint()
+	farPos := tp.GetPositionFromPoint(far)
+
+	if selection.Start <= originPos {
+		cropped.Start = 0
+	} else {
+		cropped.Start = selection.Start - originPos
+	}
+
+	span := farPos - originPos
+
+	if selection.End >= farPos {
+		cropped.End = span
+	} else {
+		cropped.End = span - (farPos - selection.End)
+	}
+	return
+}
+
 func (tp *TextProfile) Crop(region ptypes.Region) (cropped string) {
 	tp.lock.RLock()
 	defer tp.lock.RUnlock()
