@@ -79,6 +79,7 @@ type Display interface {
 	Colors() (numberOfColors int)
 	CaptureCtrlC()
 	ReleaseCtrlC()
+	GetClipboard() (clipboard Clipboard)
 	DefaultTheme() paint.Theme
 	FocusedWindow() Window
 	FocusWindow(w Window)
@@ -122,6 +123,7 @@ type CDisplay struct {
 	title string
 
 	captureCtrlC bool
+	clipboard    *CClipboard
 
 	windows []Window
 
@@ -202,6 +204,8 @@ func (d *CDisplay) Init() (already bool) {
 
 	d.cursor = ptypes.NewPoint2I(0, 0)
 	d.cursorMoving = false
+
+	d.clipboard = nil
 
 	d.priorEvent = nil
 	d.eventFocus = nil
@@ -457,6 +461,21 @@ func (d *CDisplay) ReleaseCtrlC() {
 	d.Lock()
 	defer d.Unlock()
 	d.captureCtrlC = false
+}
+
+func (d *CDisplay) GetClipboard() (clipboard Clipboard) {
+	d.RLock()
+	defer d.RUnlock()
+	if d.clipboard == nil {
+		if d.screen != nil {
+			d.RUnlock()
+			d.Lock()
+			d.clipboard = newClipboard(d.screen)
+			d.Unlock()
+			d.RLock()
+		}
+	}
+	return d.clipboard
 }
 
 func (d *CDisplay) DefaultTheme() paint.Theme {
