@@ -128,7 +128,7 @@ func (tp *TextProfile) GetPointFromPosition(position int) (point ptypes.Point2I)
 	}
 
 	if position > tp.textLen {
-		position = tp.textLen - 1
+		position = tp.textLen
 	} else if position < 0 {
 		position = 0
 	}
@@ -151,25 +151,23 @@ func (tp *TextProfile) GetPositionFromPoint(point ptypes.Point2I) (position int)
 	tp.lock.RLock()
 	defer tp.lock.RUnlock()
 
-	if lookupLength := len(tp.lookupPosition); lookupLength > 0 {
+	if yLookupLength := len(tp.lookupPosition); yLookupLength > 0 {
 
-		if point.Y < 0 || point.Y >= lookupLength {
-			point.Y = lookupLength - 1
+		if point.Y < 0 || point.Y >= yLookupLength {
+			point.Y = yLookupLength - 1
 		}
 
 		if xLookupLength := len(tp.lookupPosition[point.Y]); xLookupLength > 0 {
+			extra := 0
+
 			if point.X < 0 || point.X >= xLookupLength {
 				point.X = xLookupLength - 1
-
-				switch tp.data[point.Y][point.X] {
-				case 10, 13:
-				default:
-					position = tp.lookupPosition[point.Y][point.X] + 1
-					return
+				if point.Y == yLookupLength-1 {
+					extra = 1
 				}
 			}
 
-			position = tp.lookupPosition[point.Y][point.X]
+			position = tp.lookupPosition[point.Y][point.X] + extra
 		} else {
 			position = tp.textLen
 		}
