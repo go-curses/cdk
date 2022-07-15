@@ -17,6 +17,7 @@ package cdk
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/atotto/clipboard"
 	"github.com/jackdoe/go-gpmctl"
 	"golang.org/x/text/transform"
 
@@ -228,7 +230,12 @@ type Screen interface {
 
 	Export() *CellBuffer
 	Import(cb *CellBuffer)
+
+	HostClipboardEnabled() (enabled bool)
 	CopyToClipboard(s string)
+	PasteFromClipboard() (s string, ok bool)
+	EnableHostClipboard(enabled bool)
+	EnableTermClipboard(enabled bool)
 }
 
 var (
@@ -332,6 +339,8 @@ type CScreen struct {
 	disablePaste string
 	gpmRunning   bool
 
+	useHostClipboard bool
+	useTermClipboard bool
 	sync.Mutex
 }
 
@@ -370,6 +379,8 @@ func (d *CScreen) GetTtyCloseWithStiRead() (enabled bool) {
 }
 
 func (d *CScreen) initReal() error {
+	d.useHostClipboard = false
+	d.useTermClipboard = true
 	d.evCh = make(chan Event, EventQueueSize)
 	d.inDoneQ = make(chan struct{})
 	d.keyChan = make(chan []byte, EventKeyQueueSize)
@@ -1900,4 +1911,50 @@ func (d *CScreen) Import(cb *CellBuffer) {
 	for idx, cell := range cb.cells {
 		d.cells.cells[idx] = cell
 	}
+}
+
+func (d *CScreen) HostClipboardEnabled() (enabled bool) {
+	enabled = d.useHostClipboard
+	return
+}
+
+func (d *CScreen) CopyToClipboard(s string) {
+	if d.useHostClipboard {
+		if err := clipboard.WriteAll(s); err != nil {
+			log.Error(err)
+		} else {
+			log.DebugF("copy sent (github.com/atotto/clipboard): %v", s)
+			return
+		}
+	}
+	if d.useTermClipboard {
+		b64 := base64.StdEncoding.EncodeToString([]byte(s))
+		d.TPuts("\x1b]52;c;" + b64 + "\x07")
+		log.DebugF("copy sent (OSC-52 terminal sequence): %v", s)
+	}
+}
+
+func (d *CScreen) PasteFromClipboard() (s string, ok bool) {
+	if d.useHostClipboard {
+		var err error
+		if s, err = clipboard.ReadAll(); err != nil {
+			log.Error(err)
+		} else {
+			log.DebugF("paste received (github.com/atotto/clipboard): %v", s)
+			ok = true
+		}
+	}
+	return
+}
+
+func (d *CScreen) EnableHostClipboard(enabled bool) {
+	d.Lock()
+	defer d.Unlock()
+	d.useHostClipboard = enabled
+}
+
+func (d *CScreen) EnableTermClipboard(enabled bool) {
+	d.Lock()
+	defer d.Unlock()
+	d.useTermClipboard = enabled
 }
