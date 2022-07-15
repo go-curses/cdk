@@ -129,6 +129,8 @@ func (tp *TextProfile) GetPointFromPosition(position int) (point ptypes.Point2I)
 
 	if position > tp.textLen {
 		position = tp.textLen - 1
+	} else if position < 0 {
+		position = 0
 	}
 
 	if position == tp.textLen {
@@ -259,6 +261,9 @@ func (tp *TextProfile) Delete(startPos int, endPos int) (modified string, ok boo
 		tp.lock.RUnlock()
 		modified = tp.text
 		return
+	}
+	if startPos < 0 {
+		startPos = 0
 	}
 	if endPos >= tp.textLen {
 		modified = tp.text[:startPos]
