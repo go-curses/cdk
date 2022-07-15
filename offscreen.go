@@ -20,10 +20,12 @@ import (
 	"os"
 	"unicode/utf8"
 
+	"golang.org/x/text/transform"
+
 	ccharset "github.com/go-curses/cdk/charset"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/sync"
-	"golang.org/x/text/transform"
+	"github.com/go-curses/cdk/log"
 
 	cstrings "github.com/go-curses/cdk/lib/strings"
 )
@@ -576,4 +578,8 @@ func (o *COffScreen) Import(cb *CellBuffer) {
 	for idx, cell := range cb.cells {
 		o.back.cells[idx] = cell
 	}
+}
+
+func (o *COffScreen) CopyToClipboard(s string) {
+	log.WarnF("unimplemented for offscreens")
 }
