@@ -212,6 +212,34 @@ func (tp *TextProfile) Crop(region ptypes.Region) (cropped string) {
 	return
 }
 
+func (tp *TextProfile) Select(start, end int) (selected string) {
+	tp.lock.RLock()
+	defer tp.lock.RUnlock()
+	if tp.textLen == 0 {
+		return
+	}
+
+	if start < 0 {
+		start = 0
+	}
+	if end < 0 {
+		end = tp.textLen - 1
+	} else {
+		end += 1
+	}
+
+	if start < tp.textLen {
+		if end != start && end > start && end < tp.textLen {
+			selected = tp.text[start:end]
+		} else if end == start {
+			selected = string(tp.text[start])
+		} else {
+			selected = tp.text[start:]
+		}
+	}
+	return
+}
+
 func (tp *TextProfile) Insert(text string, position int) (modified string, ok bool) {
 	tp.lock.RLock()
 	if position < 0 || position >= tp.textLen {

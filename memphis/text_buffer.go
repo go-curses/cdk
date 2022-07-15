@@ -30,6 +30,7 @@ var (
 type TextBuffer interface {
 	Clone() TextBuffer
 	Set(input string, style paint.Style)
+	Select(start, end int)
 	Input() (raw string)
 	SetInput(input WordLine)
 	Style() paint.Style
@@ -82,6 +83,21 @@ func (b *CTextBuffer) Set(input string, style paint.Style) {
 	b.raw = input
 	b.input = NewWordLine(input, style)
 	b.Unlock()
+}
+
+func (b *CTextBuffer) Select(start, end int) {
+	count := b.CharacterCount()
+	b.Lock()
+	defer b.Unlock()
+	if end >= count {
+		end = count - 1
+	}
+	for i := start; i <= end; i++ {
+		if style, ok := b.input.GetCharacterStyle(i); ok {
+			style = style.Reverse(true)
+			b.input.SetCharacterStyle(i, style)
+		}
+	}
 }
 
 func (b *CTextBuffer) Input() (raw string) {
