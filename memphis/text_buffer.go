@@ -20,6 +20,7 @@ import (
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/math"
 	"github.com/go-curses/cdk/lib/paint"
+	"github.com/go-curses/cdk/lib/ptypes"
 	"github.com/go-curses/cdk/log"
 )
 
@@ -51,6 +52,7 @@ type CTextBuffer struct {
 	input     WordLine
 	style     paint.Style
 	mnemonics bool
+	selection *ptypes.Range
 
 	sync.Mutex
 }
@@ -82,12 +84,14 @@ func (b *CTextBuffer) Set(input string, style paint.Style) {
 	b.Lock()
 	b.raw = input
 	b.input = NewWordLine(input, style)
+	b.selection = nil
 	b.Unlock()
 }
 
 func (b *CTextBuffer) Select(start, end int) {
 	b.Lock()
 	defer b.Unlock()
+	b.selection = ptypes.NewRange(start, end)
 	for i := start; i <= end; i++ {
 		if style, ok := b.input.GetCharacterStyle(i); ok {
 			style = style.Reverse(true)
