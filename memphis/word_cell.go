@@ -28,6 +28,7 @@ type WordCell interface {
 	IsNil() bool
 	IsSpace() bool
 	HasSpace() bool
+	IsNewline() bool
 	NewlineCount() (newlineCount int)
 	Len() (count int)
 	CompactLen() (count int)
@@ -105,6 +106,17 @@ func (w *CWordCell) HasSpace() bool {
 	for _, c := range w.characters {
 		if c.IsSpace() {
 			return true
+		}
+	}
+	return false
+}
+
+func (w *CWordCell) IsNewline() bool {
+	if len(w.characters) > 0 {
+		for _, c := range w.characters {
+			if !c.IsNewline() {
+				return false
+			}
 		}
 	}
 	return false
