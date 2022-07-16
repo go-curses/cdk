@@ -110,7 +110,7 @@ func (tp *TextProfile) Set(text string) {
 
 		switch character {
 		case 10, 13:
-			// newline, wrap point to starto of next line
+			// newline, wrap point to start of next line
 			tp.lookupPosition = append(tp.lookupPosition, []int{})
 			point.Y = math.FloorI(len(tp.lookupPosition)-1, 0)
 			point.X = 0
