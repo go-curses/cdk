@@ -442,8 +442,11 @@ func (d *CScreen) initReal() error {
 	d.resize()
 	d.Unlock()
 
-	go d.mainLoop()
-	go d.inputLoop()
+	// go d.mainLoop()
+	// go d.inputLoop()
+
+	Go(d.mainLoop)
+	Go(d.inputLoop)
 
 	return nil
 }
