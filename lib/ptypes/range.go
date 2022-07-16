@@ -51,5 +51,9 @@ func (r Range) NewClone() (clone *Range) {
 }
 
 func (r Range) InRange(v int) bool {
-	return r.Start >= v && v <= r.End
+	return r.Start <= v && v <= r.End
+}
+
+func (r Range) Width() int {
+	return r.End - r.Start
 }
