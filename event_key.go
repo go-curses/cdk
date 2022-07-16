@@ -91,7 +91,10 @@ func (ev *EventKey) Modifiers() ModMask {
 // when printing the event, for example.
 func (ev *EventKey) Name() string {
 	s := ""
-	m := []string{}
+	var m []string
+	if ev.mod&ModCtrl != 0 {
+		m = append(m, "Ctrl")
+	}
 	if ev.mod&ModShift != 0 {
 		m = append(m, "Shift")
 	}
@@ -100,9 +103,6 @@ func (ev *EventKey) Name() string {
 	}
 	if ev.mod&ModMeta != 0 {
 		m = append(m, "Meta")
-	}
-	if ev.mod&ModCtrl != 0 {
-		m = append(m, "Ctrl")
 	}
 
 	ok := false
