@@ -37,6 +37,7 @@ type Surface interface {
 	GetContent(x, y int) (textCell TextCell)
 	SetContent(x, y int, char string, s paint.Style) error
 	SetRune(x, y int, r rune, s paint.Style) error
+	SetRuneStyle(x, y int, s paint.Style) error
 	SetOrigin(origin ptypes.Point2I)
 	GetOrigin() ptypes.Point2I
 	GetSize() ptypes.Rectangle
@@ -134,6 +135,17 @@ func (c *CSurface) SetRune(x, y int, r rune, s paint.Style) error {
 	c.Lock()
 	defer c.Unlock()
 	return c.buffer.SetCell(x, y, r, s)
+}
+
+// set the style of the cell at the given coordinates
+func (c *CSurface) SetRuneStyle(x, y int, s paint.Style) error {
+	c.Lock()
+	defer c.Unlock()
+	if cell := c.buffer.GetCell(x, y); cell != nil {
+		cell.SetStyle(s)
+		return nil
+	}
+	return fmt.Errorf("text cell not found: x=%v,y=%v", x, y)
 }
 
 // set the origin (top-left corner) position of the canvas, used when
