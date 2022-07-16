@@ -212,7 +212,8 @@ func (b *CTextBuffer) PlainTextInfo(wordWrap enums.WrapMode, ellipsize bool, jus
 func (b *CTextBuffer) Draw(canvas Surface, singleLine bool, wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, vAlign enums.VerticalAlignment) enums.EventFlag {
 	b.Lock()
 	defer b.Unlock()
-	if b.input == nil || b.input.CharacterCount() == 0 {
+	characterCount := b.input.CharacterCount()
+	if b.input == nil || characterCount == 0 {
 		log.WarnF("text buffer input nil or zero length")
 		return enums.EVENT_PASS
 	}
@@ -262,24 +263,43 @@ func (b *CTextBuffer) Draw(canvas Surface, singleLine bool, wordWrap enums.WrapM
 	default:
 	}
 
+	count := 0
 	y := atCanvasLine
 	for lid := fromInputLine; lid < lenLines; lid++ {
-		if lid >= len(lines) {
+		if lid >= lenLines {
 			break
 		}
 		if y >= size.H {
 			break
 		}
 		x := 0
-		for _, word := range lines[lid].Words() {
-			for _, c := range word.Characters() {
+		words := lines[lid].Words()
+		for _, word := range words {
+			characters := word.Characters()
+			for _, c := range characters {
 				if x <= size.W {
 					_ = canvas.SetRune(x, y, c.Value(), c.Style())
 					x++
+					count++
 				}
 			}
 		}
 		y++
+
+		if b.selection != nil {
+			if count < characterCount && y+lid <= lenLines {
+				if b.selection.InRange(count) {
+					ey := y - 1
+					for ex := x; ex < size.W; ex++ {
+						if c := canvas.GetContent(ex, ey); c != nil {
+							_ = canvas.SetRune(ex, ey, c.Value(), c.Style().Reverse(true))
+						}
+					}
+				}
+			}
+		}
+
+		count++
 		if singleLine {
 			break
 		}
