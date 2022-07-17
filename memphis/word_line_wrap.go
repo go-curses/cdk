@@ -47,33 +47,19 @@ func (w *CWordLine) applyTypographicWrapWord(maxChars int, input []WordLine) (ou
 		}
 		for _, word := range line.Words() {
 			wordLen := word.Len()
-			if word.IsSpace() && wordLen > 1 {
-				wordLen = 1
-			}
 			if maxChars > -1 && cid+wordLen > maxChars {
 				output = append(output, NewEmptyWordLine())
 				lid = len(output) - 1
 				wid = -1
 				cid = 0
-				if !word.IsSpace() {
-					output[lid].AppendWordCell(word)
-					wid = output[lid].Len() - 1
-					cid += word.Len()
-				}
+				output[lid].AppendWordCell(word)
+				wid = output[lid].Len() - 1
+				cid += word.Len()
 			} else if word.IsSpace() && maxChars > -1 && cid+wordLen+1 > maxChars {
 				// continue
 			} else {
-				if word.IsSpace() {
-					if c := word.GetCharacter(0); c != nil {
-						wc := NewEmptyWordCell()
-						wc.AppendRune(c.Value(), c.Style())
-						output[lid].AppendWordCell(wc)
-						cid += wc.Len()
-					}
-				} else {
-					output[lid].AppendWordCell(word)
-					cid += word.Len()
-				}
+				output[lid].AppendWordCell(word)
+				cid += word.Len()
 			}
 			wid++
 		}
@@ -128,40 +114,25 @@ func (w *CWordLine) applyTypographicWrapChar(maxChars int, input []WordLine) (ou
 			output = append(output, NewEmptyWordLine())
 		}
 		for _, word := range line.Words() {
-			if word.IsSpace() {
-				if maxChars > -1 && cid+1 > maxChars {
-					output = append(output, NewEmptyWordLine())
-					lid = len(output) - 1
-					wid = 0
-					cid = 0
-				}
-				if c := word.GetCharacter(0); c != nil {
-					wc := NewEmptyWordCell()
-					wc.AppendRune(c.Value(), c.Style())
-					output[lid].AppendWordCell(wc)
-					cid += wc.Len()
-				}
-			} else {
-				if maxChars > -1 && cid+word.Len() > maxChars {
-					firstHalf, secondHalf := NewEmptyWordCell(), NewEmptyWordCell()
-					for _, c := range word.Characters() {
-						if cid < maxChars {
-							firstHalf.AppendRune(c.Value(), c.Style())
-						} else {
-							secondHalf.AppendRune(c.Value(), c.Style())
-						}
-						cid++
+			if maxChars > -1 && cid+word.Len() > maxChars {
+				firstHalf, secondHalf := NewEmptyWordCell(), NewEmptyWordCell()
+				for _, c := range word.Characters() {
+					if cid < maxChars {
+						firstHalf.AppendRune(c.Value(), c.Style())
+					} else {
+						secondHalf.AppendRune(c.Value(), c.Style())
 					}
-					output[lid].AppendWordCell(firstHalf)
-					output = append(output, NewEmptyWordLine())
-					lid = len(output) - 1
-					output[lid].AppendWordCell(secondHalf)
-					wid = 0
-					cid = 0
-				} else {
-					output[lid].AppendWordCell(word)
-					cid += word.Len()
+					cid++
 				}
+				output[lid].AppendWordCell(firstHalf)
+				output = append(output, NewEmptyWordLine())
+				lid = len(output) - 1
+				output[lid].AppendWordCell(secondHalf)
+				wid = 0
+				cid = 0
+			} else {
+				output[lid].AppendWordCell(word)
+				cid += word.Len()
 			}
 			wid++
 		}
