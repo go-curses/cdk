@@ -79,6 +79,7 @@ type Display interface {
 	Colors() (numberOfColors int)
 	CaptureCtrlC()
 	ReleaseCtrlC()
+	CapturedCtrlC() bool
 	GetClipboard() (clipboard Clipboard)
 	DefaultTheme() paint.Theme
 	FocusedWindow() Window
@@ -461,6 +462,12 @@ func (d *CDisplay) ReleaseCtrlC() {
 	d.Lock()
 	defer d.Unlock()
 	d.captureCtrlC = false
+}
+
+func (d *CDisplay) CapturedCtrlC() bool {
+	d.RLock()
+	defer d.RUnlock()
+	return d.captureCtrlC
 }
 
 func (d *CDisplay) GetClipboard() (clipboard Clipboard) {
