@@ -26,6 +26,7 @@ import (
 type SurfaceBuffer interface {
 	String() string
 	Style() (style paint.Style)
+	SetStyle(style paint.Style)
 	Size() (size ptypes.Rectangle)
 	Width() (width int)
 	Height() (height int)
@@ -83,6 +84,13 @@ func (b *CSurfaceBuffer) Size() (size ptypes.Rectangle) {
 	}
 	size = ptypes.MakeRectangle(w, h)
 	return
+}
+
+// return the rectangle size of the buffer
+func (b *CSurfaceBuffer) SetStyle(style paint.Style) {
+	b.RLock()
+	defer b.RUnlock()
+	b.style = style
 }
 
 // resize the buffer
