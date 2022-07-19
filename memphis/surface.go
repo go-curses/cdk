@@ -497,7 +497,7 @@ func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{
 
 // fill the entire canvas according to the given theme
 func (c *CSurface) Fill(theme paint.Theme) {
-	log.TraceF("c.Fill(%v,%v)", theme)
+	log.TraceF("c.Fill(%v)", theme)
 	c.Box(
 		ptypes.MakePoint2I(0, 0),
 		c.GetSize(),
