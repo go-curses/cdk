@@ -17,9 +17,10 @@ package cdk
 import (
 	"testing"
 
+	. "github.com/smartystreets/goconvey/convey"
+
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestObject(t *testing.T) {
@@ -29,9 +30,9 @@ func TestObject(t *testing.T) {
 		So(o.Init(), ShouldEqual, false)
 		So(o.Init(), ShouldEqual, true)
 		// normal testing
-		So(o.GetTheme().String(), ShouldEqual, paint.DefaultColorTheme.String())
-		o.SetTheme(paint.DefaultMonoTheme)
-		So(o.GetTheme().String(), ShouldEqual, paint.DefaultMonoTheme.String())
+		So(o.GetTheme().String(), ShouldEqual, paint.GetDefaultColorTheme().String())
+		o.SetTheme(paint.GetDefaultMonoTheme())
+		So(o.GetTheme().String(), ShouldEqual, paint.GetDefaultMonoTheme().String())
 		So(o.IsProperty("testing"), ShouldEqual, false)
 		So(o.InstallProperty("debug", BoolProperty, true, false), ShouldNotBeNil)
 		So(o.InstallProperty("testing", BoolProperty, true, false), ShouldBeNil)
