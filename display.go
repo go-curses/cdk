@@ -81,7 +81,6 @@ type Display interface {
 	ReleaseCtrlC()
 	CapturedCtrlC() bool
 	GetClipboard() (clipboard Clipboard)
-	DefaultTheme() paint.Theme
 	FocusedWindow() Window
 	FocusWindow(w Window)
 	FocusNextWindow()
@@ -211,15 +210,14 @@ func (d *CDisplay) Init() (already bool) {
 	d.priorEvent = nil
 	d.eventFocus = nil
 	d.windows = make([]Window, 0)
-	d.SetTheme(paint.DefaultColorTheme)
 
 	d.runLock = &sync.RWMutex{}
 	d.eventMutex = &sync.Mutex{}
 	d.drawMutex = &sync.Mutex{}
 
-	if err := memphis.MakeSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), ptypes.MakeRectangle(0, 0), paint.DefaultColorStyle); err != nil {
-		d.LogErr(err)
-	}
+	theme, _ := paint.GetDefaultTheme(paint.DisplayTheme)
+	d.SetTheme(theme)
+
 	return false
 }
 
@@ -324,14 +322,17 @@ func (d *CDisplay) CaptureDisplay() (err error) {
 			return fmt.Errorf("error initializing new tty path screen: %v", err)
 		}
 	}
+	theme, _ := paint.GetDefaultTheme(paint.DisplayTheme)
 	enabled, _ := d.CallEnabled()
 	d.screen.TtyCloseWithStiRead(enabled)
-	d.screen.SetStyle(paint.DefaultColorStyle)
 	d.screen.EnableMouse()
 	d.screen.EnablePaste()
+	d.screen.SetStyle(theme.Content.Normal)
 	d.screen.Clear()
 	d.captured = true
 	d.Unlock()
+	d.SetTheme(theme)
+
 	d.Emit(SignalDisplayCaptured, d)
 	return
 }
@@ -485,18 +486,16 @@ func (d *CDisplay) GetClipboard() (clipboard Clipboard) {
 	return d.clipboard
 }
 
-func (d *CDisplay) DefaultTheme() paint.Theme {
-	d.RLock()
-	defer d.RUnlock()
+func (d *CDisplay) SetTheme(theme paint.Theme) {
+	d.CObject.SetTheme(theme)
+	d.Lock()
+	defer d.Unlock()
 	if d.screen != nil {
-		if d.screen.Colors() <= 0 {
-			return paint.DefaultMonoTheme
-		}
+		d.screen.SetStyle(d.GetTheme().Content.Normal)
 	}
-	return paint.DefaultColorTheme
 }
 
-func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
+func (d *CDisplay) resizeWindowSurfacesOnStartupCompleted() (w, h int) {
 	d.RLock()
 	if d.screen == nil {
 		d.RUnlock()
@@ -507,18 +506,23 @@ func (d *CDisplay) resizeWindowSurfaces() (w, h int) {
 	d.Lock()
 	defer d.Unlock()
 
+	theme := d.GetTheme()
+	style := theme.Content.Normal
+
 	size := ptypes.MakeRectangle(w, h)
-	if err := memphis.MakeConfigureSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), size, d.GetTheme().Content.Normal); err != nil {
+	if err := memphis.MakeConfigureSurface(d.ObjectID(), ptypes.MakePoint2I(0, 0), size, style); err != nil {
 		d.LogErr(err)
 	}
 
 	for _, window := range d.windows {
 		if window.GetWindowType() != enums.WINDOW_POPUP {
-			if err := memphis.MakeConfigureSurface(window.ObjectID(), ptypes.MakePoint2I(0, 0), size, window.GetTheme().Content.Normal); err != nil {
+			wStyle := window.GetTheme().Content.Normal
+			if err := memphis.MakeConfigureSurface(window.ObjectID(), ptypes.MakePoint2I(0, 0), size, wStyle); err != nil {
 				d.LogErr(err)
 			}
 		}
 	}
+
 	return
 }
 
@@ -601,7 +605,8 @@ func (d *CDisplay) MapWindowWithRegion(w Window, region ptypes.Region) {
 	log.DebugDF(1, "mapping window: %v, with region: %v", w.ObjectName(), region)
 	index := d.findMappedWindowIndex(w)
 	w.SetDisplay(d)
-	if err := memphis.MakeConfigureSurface(w.ObjectID(), region.Origin(), region.Size(), w.GetTheme().Content.Normal); err != nil {
+	style := w.GetTheme().Content.Normal
+	if err := memphis.MakeConfigureSurface(w.ObjectID(), region.Origin(), region.Size(), style); err != nil {
 		d.LogErr(err)
 	}
 	d.Lock()
@@ -779,7 +784,8 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	case *EventResize:
 		origin := ptypes.MakePoint2I(0, 0)
 		alloc := ptypes.MakeRectangle(e.Size())
-		if err := memphis.MakeConfigureSurface(d.ObjectID(), origin, alloc, paint.DefaultColorStyle); err != nil {
+		style := d.GetTheme().Content.Normal
+		if err := memphis.MakeConfigureSurface(d.ObjectID(), origin, alloc, style); err != nil {
 			d.LogErr(err)
 		}
 		// all windows get resize event
@@ -810,6 +816,8 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 	// d.Lock()
 	windows := d.windows
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
+		theme := d.GetTheme()
+		surface.Fill(theme)
 		for i := len(windows) - 1; i >= 0; i-- {
 			windows[i].Draw()
 			if err := surface.Composite(windows[i].ObjectID()); err != nil {
@@ -935,7 +943,7 @@ func (d *CDisplay) setRunning(isRunning bool) {
 
 // StartupComplete emits SignalStartupComplete
 func (d *CDisplay) StartupComplete() {
-	w, h := d.resizeWindowSurfaces()
+	w, h := d.resizeWindowSurfacesOnStartupCompleted()
 	d.Emit(SignalStartupComplete)
 	d.ProcessEvent(NewEventResize(w, h))
 }
