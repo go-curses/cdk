@@ -332,10 +332,8 @@ func (c *CSurface) DrawText(pos ptypes.Point2I, size ptypes.Rectangle, justify e
 		size.W = cSize.W
 	}
 	v := NewSurface(pos, size, style)
-	theme := paint.DefaultColorTheme
-	theme.Content.Normal = style
-	theme.Content.FillRune = rune(0)
-	v.Fill(theme)
+	v.Fill(paint.MakeStyledColorFillTheme(style))
+
 	tb.Draw(v, singleLineMode, wrap, ellipsize, justify, enums.ALIGN_TOP)
 	if err := c.CompositeSurface(v); err != nil {
 		log.ErrorF("composite error: %v", err)
@@ -481,7 +479,7 @@ func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{
 		return
 	}
 	log.DebugDF(1, "[DebugBox] info: %v (%v)", text, color)
-	bs := paint.DefaultMonoTheme // intentionally mono
+	bs := paint.GetDefaultMonoTheme() // intentionally mono
 	bs.Border.Normal = bs.Border.Normal.Foreground(color)
 	c.Box(
 		ptypes.MakePoint2I(0, 0),
