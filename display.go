@@ -1068,8 +1068,12 @@ func (d *CDisplay) screenRequestWorker(ctx context.Context) {
 	// this happens in its own go thread
 screenRequestWorkerLoop:
 	for d.IsRunning() {
-		var buffered []displayRequest
 		max := len(d.requests)
+		if max == 0 {
+			time.Sleep(MainIterateDelay)
+			continue
+		}
+		var buffered []displayRequest
 		for i := 0; i < max; i++ {
 			r := <-d.requests
 			found := false
