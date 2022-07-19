@@ -118,7 +118,7 @@ func (cb *CellBuffer) Invalidate() {
 	// defer cb.Unlock()
 	for i := range cb.cells {
 		cb.cells[i].Lock()
-		cb.cells[i].lastMain = rune(0)
+		cb.cells[i].lastMain = rune(-1)
 		cb.cells[i].Unlock()
 	}
 }
@@ -132,7 +132,7 @@ func (cb *CellBuffer) Dirty(x, y int) bool {
 		c := cb.cells[(y*cb.w)+x]
 		c.Lock()
 		defer c.Unlock()
-		if c.lastMain == rune(0) {
+		if c.lastMain == rune(-1) {
 			return true
 		}
 		if c.lastMain != c.currMain {
