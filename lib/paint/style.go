@@ -20,6 +20,13 @@ import (
 	"strconv"
 )
 
+// StyleDefault represents a default style, based upon the context.
+// It is the zero value.
+var StyleDefault Style
+
+// StyleInvalid is just an arbitrary invalid style used internally.
+var StyleInvalid = Style{attrs: AttrInvalid}
+
 // Style represents a complete text style, including both foreground color,
 // background color, and additional attributes such as "bold" or "underline".
 //
@@ -32,21 +39,6 @@ type Style struct {
 	fg    Color
 	bg    Color
 	attrs AttrMask
-}
-
-func (s Style) String() string {
-	return fmt.Sprintf(
-		"{%v,%v,%v}",
-		s.fg.String(),
-		s.bg.String(),
-		s.attrs,
-	)
-}
-
-func (s Style) Equals(other Style) bool {
-	return s.fg.Hex() == other.fg.Hex() &&
-		s.bg.Hex() == other.bg.Hex() &&
-		s.attrs == other.attrs
 }
 
 var rxParseStyle = regexp.MustCompile(`(?i)^{??(#[a-f0-9]{6}|[a-z]+),(#[a-f0-9]{6}|[a-z]+),(\d+)}??$`)
@@ -81,18 +73,27 @@ func ParseStyle(value string) (style Style, err error) {
 	return StyleDefault, fmt.Errorf("invalid style value: %v", value)
 }
 
-// StyleDefault represents a default style, based upon the context.
-// It is the zero value.
-var StyleDefault Style
+func (s Style) String() string {
+	return fmt.Sprintf(
+		"{%v,%v,%v}",
+		s.fg.String(),
+		s.bg.String(),
+		s.attrs,
+	)
+}
 
-// StyleInvalid is just an arbitrary invalid style used internally.
-var StyleInvalid = Style{attrs: AttrInvalid}
+func (s Style) Equals(other Style) bool {
+	return s.fg.Hex() == other.fg.Hex() &&
+		s.bg.Hex() == other.bg.Hex() &&
+		s.attrs == other.attrs
+}
 
 // Foreground returns a new style based on s, with the foreground color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Foreground(c Color) Style {
+	s.fg = c
 	return Style{
-		fg:    c,
+		fg:    s.fg,
 		bg:    s.bg,
 		attrs: s.attrs,
 	}
@@ -101,9 +102,10 @@ func (s Style) Foreground(c Color) Style {
 // Background returns a new style based on s, with the background color set
 // as requested.  ColorDefault can be used to select the global default.
 func (s Style) Background(c Color) Style {
+	s.bg = c
 	return Style{
 		fg:    s.fg,
-		bg:    c,
+		bg:    s.bg,
 		attrs: s.attrs,
 	}
 }
@@ -116,16 +118,18 @@ func (s Style) Decompose() (fg Color, bg Color, attr AttrMask) {
 
 func (s Style) setAttrs(attrs AttrMask, on bool) Style {
 	if on {
+		s.attrs |= attrs
 		return Style{
 			fg:    s.fg,
 			bg:    s.bg,
-			attrs: s.attrs | attrs,
+			attrs: s.attrs,
 		}
 	}
+	s.attrs &^= attrs
 	return Style{
 		fg:    s.fg,
 		bg:    s.bg,
-		attrs: s.attrs &^ attrs,
+		attrs: s.attrs,
 	}
 }
 
@@ -182,9 +186,10 @@ func (s Style) Strike(on bool) Style {
 // Attributes returns a new style based on s, with its attributes set as
 // specified.
 func (s Style) Attributes(attrs AttrMask) Style {
+	s.attrs = attrs
 	return Style{
 		fg:    s.fg,
 		bg:    s.bg,
-		attrs: attrs,
+		attrs: s.attrs,
 	}
 }
