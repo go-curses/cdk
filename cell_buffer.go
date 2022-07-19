@@ -15,11 +15,10 @@
 package cdk
 
 import (
-	"sync"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/log"
-	"github.com/mattn/go-runewidth"
 )
 
 // CellBuffer represents a two dimensional array of character cells.
@@ -34,7 +33,7 @@ type CellBuffer struct {
 	cells []*cell
 	valid bool
 
-	sync.Mutex
+	// sync.RWMutex
 }
 
 func NewCellBuffer() *CellBuffer {
@@ -55,8 +54,8 @@ func (cb *CellBuffer) init() bool {
 // SetCell sets the contents (primary rune, combining runes,
 // and style) for a cell at a given location.
 func (cb *CellBuffer) SetCell(x int, y int, mainc rune, combc []rune, style paint.Style) {
-	cb.Lock()
-	defer cb.Unlock()
+	// cb.Lock()
+	// defer cb.Unlock()
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		idx := (y * cb.w) + x
 		if len(cb.cells) <= idx {
@@ -84,6 +83,8 @@ func (cb *CellBuffer) SetCell(x int, y int, mainc rune, combc []rune, style pain
 // nil), the style, and the display width in cells.  (The width can be
 // either 1, normally, or 2 for East Asian full-width characters.)
 func (cb *CellBuffer) GetCell(x, y int) (mainc rune, combc []rune, style paint.Style, width int) {
+	// cb.RLock()
+	// defer cb.RUnlock()
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		idx := (y * cb.w) + x
 		if len(cb.cells) <= idx {
@@ -104,6 +105,8 @@ func (cb *CellBuffer) GetCell(x, y int) (mainc rune, combc []rune, style paint.S
 
 // Size returns the (width, height) in cells of the buffer.
 func (cb *CellBuffer) Size() (w, h int) {
+	// cb.RLock()
+	// defer cb.RUnlock()
 	w, h = cb.w, cb.h
 	return
 }
@@ -111,8 +114,8 @@ func (cb *CellBuffer) Size() (w, h int) {
 // Invalidate marks all characters within the buffer as dirty.
 func (cb *CellBuffer) Invalidate() {
 	log.TraceF("processing invalidation")
-	cb.Lock()
-	defer cb.Unlock()
+	// cb.Lock()
+	// defer cb.Unlock()
 	for i := range cb.cells {
 		cb.cells[i].Lock()
 		cb.cells[i].lastMain = rune(0)
@@ -179,8 +182,8 @@ func (cb *CellBuffer) Resize(w, h int) {
 	if cb.h == h && cb.w == w {
 		return
 	}
-	cb.Lock()
-	defer cb.Unlock()
+	// cb.Lock()
+	// defer cb.Unlock()
 	if w == 0 || h == 0 {
 		cb.cells = make([]*cell, 0)
 		return
@@ -215,8 +218,8 @@ func (cb *CellBuffer) Resize(w, h int) {
 // support combining characters, or characters with a width larger than one.
 func (cb *CellBuffer) Fill(r rune, style paint.Style) {
 	log.TraceF("rune=%v, style=%v", r, style)
-	cb.Lock()
-	defer cb.Unlock()
+	// cb.Lock()
+	// defer cb.Unlock()
 	for _, c := range cb.cells {
 		c.Lock()
 		c.currMain = r
