@@ -90,9 +90,7 @@ func (c *CSurface) GetStyle() (style paint.Style) {
 func (c *CSurface) SetStyle(style paint.Style) {
 	c.Lock()
 	defer c.Unlock()
-	c.buffer.Lock()
-	defer c.buffer.Unlock()
-	c.buffer.style = style
+	c.buffer.SetStyle(style)
 }
 
 // return a string describing the canvas metadata, useful for debugging
