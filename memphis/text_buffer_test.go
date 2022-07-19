@@ -17,35 +17,36 @@ package memphis
 import (
 	"testing"
 
+	. "github.com/smartystreets/goconvey/convey"
+
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestTextBuffer(t *testing.T) {
 	Convey("Text Buffers with...", t, func() {
 		Convey("Basic checks", func() {
-			tb := NewEmptyTextBuffer(paint.DefaultMonoStyle, false)
+			tb := NewEmptyTextBuffer(paint.GetDefaultMonoStyle(), false)
 			So(tb, ShouldNotBeNil)
-			So(tb.Style().String(), ShouldEqual, paint.DefaultMonoStyle.String())
+			So(tb.Style().String(), ShouldEqual, paint.GetDefaultMonoStyle().String())
 			So(tb.CharacterCount(), ShouldEqual, 0)
 			So(tb.WordCount(), ShouldEqual, 0)
-			tb = NewTextBuffer("test", paint.DefaultMonoStyle, false)
+			tb = NewTextBuffer("test", paint.GetDefaultMonoStyle(), false)
 			So(tb, ShouldNotBeNil)
 			So(tb.CharacterCount(), ShouldEqual, 4)
 			So(tb.WordCount(), ShouldEqual, 1)
 		})
 		Convey("Draw checks", func() {
-			tb := NewEmptyTextBuffer(paint.DefaultMonoStyle, false)
+			tb := NewEmptyTextBuffer(paint.GetDefaultMonoStyle(), false)
 			So(tb, ShouldNotBeNil)
-			canvas := NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.DefaultMonoTheme.Content.Normal)
+			canvas := NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.GetDefaultMonoTheme().Content.Normal)
 			f := tb.Draw(canvas, true, enums.WRAP_NONE, false, enums.JUSTIFY_LEFT, enums.ALIGN_TOP)
 			So(f, ShouldEqual, enums.EVENT_PASS)
 
-			tb = NewTextBuffer("test", paint.DefaultMonoStyle, false)
+			tb = NewTextBuffer("test", paint.GetDefaultMonoStyle(), false)
 			So(tb, ShouldNotBeNil)
-			canvas = NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.DefaultMonoTheme.Content.Normal)
+			canvas = NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.GetDefaultMonoTheme().Content.Normal)
 			f = tb.Draw(canvas, true, enums.WRAP_NONE, false, enums.JUSTIFY_LEFT, enums.ALIGN_TOP)
 			So(f, ShouldEqual, enums.EVENT_STOP)
 			val := ""
@@ -60,7 +61,7 @@ func TestTextBuffer(t *testing.T) {
 			So(val, ShouldEqual, "test")
 			So(numSpaces, ShouldEqual, 6)
 
-			canvas = NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.DefaultMonoTheme.Content.Normal)
+			canvas = NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.GetDefaultMonoTheme().Content.Normal)
 			f = tb.Draw(canvas, true, enums.WRAP_NONE, false, enums.JUSTIFY_LEFT, enums.ALIGN_BOTTOM)
 			So(f, ShouldEqual, enums.EVENT_STOP)
 			val = ""
@@ -75,7 +76,7 @@ func TestTextBuffer(t *testing.T) {
 			So(val, ShouldEqual, "test")
 			So(numSpaces, ShouldEqual, 6)
 
-			canvas = NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.DefaultMonoTheme.Content.Normal)
+			canvas = NewSurface(ptypes.Point2I{}, ptypes.Rectangle{10, 3}, paint.GetDefaultMonoTheme().Content.Normal)
 			f = tb.Draw(canvas, true, enums.WRAP_NONE, false, enums.JUSTIFY_LEFT, enums.ALIGN_MIDDLE)
 			So(f, ShouldEqual, enums.EVENT_STOP)
 			val = ""

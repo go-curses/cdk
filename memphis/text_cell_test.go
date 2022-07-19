@@ -24,11 +24,11 @@ import (
 
 func TestTextCell(t *testing.T) {
 	Convey("Basic checks", t, func() {
-		tc := NewTextCellFromRune('*', paint.DefaultMonoStyle)
+		tc := NewTextCellFromRune('*', paint.GetDefaultMonoStyle())
 		So(tc, ShouldNotBeNil)
 		So(tc.IsSpace(), ShouldEqual, false)
 		So(tc.Width(), ShouldEqual, 1)
-		So(tc.Style().String(), ShouldEqual, paint.DefaultMonoStyle.String())
+		So(tc.Style().String(), ShouldEqual, paint.GetDefaultMonoStyle().String())
 		So(tc.Dirty(), ShouldEqual, false)
 		So(tc.Value(), ShouldEqual, '*')
 		So(tc.String(), ShouldEqual, "{Char=*,Style={unnamed[-1],unnamed[-1],16}}")
@@ -39,8 +39,8 @@ func TestTextCell(t *testing.T) {
 		tc.SetByte([]byte{'0'})
 		So(tc.IsSpace(), ShouldEqual, false)
 		So(tc.Dirty(), ShouldEqual, true)
-		tc.SetStyle(paint.DefaultColorStyle)
+		tc.SetStyle(paint.GetDefaultColorStyle())
 		So(tc.Dirty(), ShouldEqual, true)
-		So(tc.Style().String(), ShouldEqual, paint.DefaultColorStyle.String())
+		So(tc.Style().String(), ShouldEqual, paint.GetDefaultColorStyle().String())
 	})
 }
