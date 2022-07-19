@@ -55,16 +55,14 @@ func NewTextCell(char *CTextChar, style paint.Style) *CTextCell {
 	return &CTextCell{
 		char:  char,
 		style: style,
-		dirty: false,
+		dirty: true,
 	}
 }
 
 func (t *CTextCell) Equals(mc rune, style paint.Style, width int) bool {
 	// t.RLock()
 	// defer t.RUnlock()
-	tfg, tbg, tattrs := t.style.Decompose()
-	sfg, sbg, sattrs := style.Decompose()
-	if tfg != sfg || tbg != sbg || tattrs != sattrs {
+	if !t.style.Equals(style) {
 		return false
 	}
 	if t.char.Width() != width {
