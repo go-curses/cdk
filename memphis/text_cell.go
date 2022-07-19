@@ -16,7 +16,6 @@ package memphis
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/go-curses/cdk/lib/paint"
 )
@@ -37,7 +36,7 @@ type TextCell interface {
 	IsSpace() bool
 	IsNewline() bool
 
-	sync.Locker
+	// sync.Locker
 }
 
 type CTextCell struct {
@@ -45,7 +44,7 @@ type CTextCell struct {
 	style paint.Style
 	dirty bool
 
-	sync.Mutex
+	// sync.RWMutex
 }
 
 func NewTextCellFromRune(char rune, style paint.Style) *CTextCell {
@@ -61,6 +60,8 @@ func NewTextCell(char *CTextChar, style paint.Style) *CTextCell {
 }
 
 func (t *CTextCell) Equals(mc rune, style paint.Style, width int) bool {
+	// t.RLock()
+	// defer t.RUnlock()
 	tfg, tbg, tattrs := t.style.Decompose()
 	sfg, sbg, sattrs := style.Decompose()
 	if tfg != sfg || tbg != sbg || tattrs != sattrs {
@@ -76,47 +77,59 @@ func (t *CTextCell) Equals(mc rune, style paint.Style, width int) bool {
 }
 
 func (t *CTextCell) Dirty() bool {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.dirty
 }
 
 func (t *CTextCell) Set(r rune) {
-	t.Lock()
-	defer t.Unlock()
+	// t.Lock()
+	// defer t.Unlock()
 	t.char.Set(r)
 	t.dirty = true
 }
 
 func (t *CTextCell) SetByte(b []byte) {
-	t.Lock()
-	defer t.Unlock()
+	// t.Lock()
+	// defer t.Unlock()
 	t.char.SetByte(b)
 	t.dirty = true
 }
 
 func (t *CTextCell) SetStyle(style paint.Style) {
-	t.Lock()
-	defer t.Unlock()
+	// t.Lock()
+	// defer t.Unlock()
 	t.style = style
 	t.dirty = true
 }
 
 func (t *CTextCell) Width() int {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.Width()
 }
 
 func (t *CTextCell) Count() int {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.Count()
 }
 
 func (t *CTextCell) Value() rune {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.Value()
 }
 
 func (t *CTextCell) StringValue() string {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.String()
 }
 
 func (t *CTextCell) String() string {
+	// t.RLock()
+	// defer t.RUnlock()
 	return fmt.Sprintf(
 		"{Char=%s,Style=%s}",
 		t.char.String(),
@@ -125,17 +138,25 @@ func (t *CTextCell) String() string {
 }
 
 func (t *CTextCell) Style() paint.Style {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.style
 }
 
 func (t *CTextCell) IsNil() bool {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.Value() == rune(0)
 }
 
 func (t *CTextCell) IsSpace() bool {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.IsSpace()
 }
 
 func (t *CTextCell) IsNewline() bool {
+	// t.RLock()
+	// defer t.RUnlock()
 	return t.char.IsNewline()
 }
