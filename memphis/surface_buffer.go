@@ -99,11 +99,41 @@ func (b *CSurfaceBuffer) Resize(size ptypes.Rectangle) {
 	defer b.Unlock()
 
 	size.Floor(0, 0)
-	b.data = make([][]*CTextCell, 0)
+
+	if size.Equals(0, 0) || size.W == 0 || size.H == 0 {
+		b.data = make([][]*CTextCell, 0)
+		return
+	}
+
+	if b.data == nil {
+		b.data = make([][]*CTextCell, 0)
+	}
+
+	if size.W == len(b.data) {
+		if size.H == len(b.data[0]) {
+			// same size
+			return
+		}
+	} else if size.W < len(b.data) {
+		b.data = b.data[:size.W]
+		for x, _ := range b.data {
+			if size.H < len(b.data[x]) {
+				b.data[x] = b.data[x][:size.H]
+			}
+		}
+		// shrunk
+		return
+	}
+
+	// grow
 	for x := 0; x < size.W; x++ {
-		b.data = append(b.data, make([]*CTextCell, 0))
+		if x >= len(b.data) {
+			b.data = append(b.data, make([]*CTextCell, 0))
+		}
 		for y := 0; y < size.H; y++ {
-			b.data[x] = append(b.data[x], NewTextCellFromRune(' ', b.style))
+			if y >= len(b.data[x]) {
+				b.data[x] = append(b.data[x], NewTextCellFromRune(' ', b.style))
+			}
 		}
 	}
 }
