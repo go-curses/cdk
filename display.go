@@ -1040,20 +1040,15 @@ processEventWorkerLoop:
 			break processEventWorkerLoop
 
 		case evt := <-d.inbound:
-			select {
-			case <-ctx.Done():
-				break processEventWorkerLoop
-			default: // nop
-			}
 			if evt != nil {
 				// store the instance by type rather than the Event interface
-				d.Lock()
 				switch t := evt.(type) {
 				default:
+					d.Lock()
 					d.buffer = append(d.buffer, t)
+					d.loopNow <- true
+					d.Unlock()
 				}
-				d.loopNow <- true
-				d.Unlock()
 			} else {
 				// nil event, quit?
 				break
