@@ -151,7 +151,6 @@ type CDisplay struct {
 	buffer   []interface{}
 	inbound  chan Event
 	compress bool
-	lastDraw time.Time
 	lastLoop time.Time
 	loopNow  chan bool
 
@@ -199,7 +198,6 @@ func (d *CDisplay) Init() (already bool) {
 	d.buffer = make([]interface{}, 0)
 	d.inbound = make(chan Event, DisplayInboundCapacity)
 	d.compress = true
-	d.lastDraw = time.Unix(0, 0)
 	d.lastLoop = time.Unix(0, 0)
 	d.loopNow = make(chan bool, DisplayLoopCapacity)
 
@@ -730,13 +728,6 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 
 	if req, ok := evt.(*EventRender); ok {
 		d.Lock()
-		now := time.Now()
-		then := time.UnixMilli(now.UnixMilli() - MainDrawInterval)
-		if d.lastDraw.After(then) {
-			d.Unlock()
-			return enums.EVENT_STOP
-		}
-		d.lastDraw = now
 		hasScreen := d.screen != nil
 		d.Unlock()
 		if hasScreen {
