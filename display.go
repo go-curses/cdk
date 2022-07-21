@@ -1239,47 +1239,47 @@ func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 	d.Unlock()
 
 	var render *EventRender
-	var pending []interface{}
+	pending := make([]interface{}, 0)
 
-	if d.GetCompressEvents() {
-		pending = make([]interface{}, 0)
+	for _, e := range buffer {
+		switch t := e.(type) {
+		case *EventPaste, *EventKey:
+			// never compress paste or keys
+			pending = append(pending, t)
 
-		for _, e := range buffer {
-			last := len(pending) - 1
+		case *EventRender:
+			// always compress render into a single request event
+			if render == nil {
+				render = t
+			} else if t.Draw() && !render.Draw() {
+				render = NewEventRender(true, render.Show(), render.Sync())
+			} else if t.Show() && !render.Show() && !render.Sync() {
+				render = NewEventRender(render.Draw(), true, render.Sync())
+			} else if t.Sync() && !render.Sync() {
+				render = NewEventRender(render.Draw(), false, true)
+			}
 
-			switch t := e.(type) {
-			case *EventPaste, *EventKey:
-				// never compress paste or keys
-				pending = append(pending, t)
-
-			case *EventRender:
-				// compress render into a single request event
-				if render == nil {
-					render = t
-				} else if t.Draw() && !render.Draw() {
-					render = NewEventRender(true, render.Show(), render.Sync())
-				} else if t.Show() && !render.Show() && !render.Sync() {
-					render = NewEventRender(render.Draw(), true, render.Sync())
-				} else if t.Sync() && !render.Sync() {
-					render = NewEventRender(render.Draw(), false, true)
-				}
-
-			default:
+		default:
+			if d.GetCompressEvents() {
+				last := len(pending) - 1
 				if last <= 0 {
 					pending = append(pending, t)
 				} else {
+					// only compressing repeats
 					thisType := fmt.Sprintf("%T", t)
 					lastType := fmt.Sprintf("%T", pending[last])
-					if thisType != lastType {
+					if thisType == lastType {
+						pending[last] = t
+					} else {
 						pending = append(pending, t)
 					}
 				}
+			} else {
+				pending = append(pending, t)
 			}
 		}
-
-	} else {
-		pending = buffer
 	}
+
 	buffer = nil
 
 	stopped := false
