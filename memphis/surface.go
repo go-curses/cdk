@@ -284,7 +284,10 @@ func (c *CSurface) Composite(id uuid.UUID) (err error) {
 }
 
 // render this canvas upon the given display
-func (c *CSurface) Render(display Renderer) error {
+func (c *CSurface) Render(screen Renderer) error {
+	if screen == nil {
+		return fmt.Errorf("screen given is nil, render is a nop")
+	}
 	origin := c.GetOrigin()
 	size := c.GetSize()
 	c.Lock()
@@ -294,9 +297,9 @@ func (c *CSurface) Render(display Renderer) error {
 			cell := c.buffer.GetCell(x, y)
 			if cell != nil {
 				if cell.Dirty() {
-					mc, _, style, width := display.GetContent(x, y)
+					mc, _, style, width := screen.GetContent(x, y)
 					if !cell.Equals(mc, style, width) {
-						display.SetContent(origin.X+x, origin.Y+y, cell.Value(), nil, cell.Style())
+						screen.SetContent(origin.X+x, origin.Y+y, cell.Value(), nil, cell.Style())
 					}
 				}
 			} else {
