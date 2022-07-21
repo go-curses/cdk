@@ -37,13 +37,16 @@ import (
 
 var (
 	// DisplayCallCapacity limits the number of concurrent calls on main threads
-	DisplayCallCapacity    = 32
+	DisplayCallCapacity    = 128
 	DisplayEventCapacity   = 1024
-	DisplayRequestCapacity = 128
+	DisplayMainsCapacity   = 128
+	DisplayInboundCapacity = 1024
 	// MainIterateDelay is the event iteration loop delay
 	MainIterateDelay = time.Millisecond * 25
-	// MainRequestDelay is the screen request iteration loop delay
-	MainRequestDelay = time.Millisecond * 25
+	// MainDrawInterval is the interval between renders (milliseconds)
+	MainDrawInterval    int64 = 50
+	MainLoopInterval    int64 = 10
+	DisplayLoopCapacity       = 1024
 )
 
 const (
@@ -147,15 +150,11 @@ type CDisplay struct {
 	events   chan Event
 	buffer   []interface{}
 	inbound  chan Event
-	requests chan displayRequest
 	compress bool
+	lastDraw time.Time
+	lastLoop time.Time
+	loopNow  chan bool
 
-	requestingDraw bool
-	requestingShow bool
-	requestingSync bool
-	requestingQuit bool
-
-	runLock    *sync.RWMutex
 	eventMutex *sync.Mutex
 	drawMutex  *sync.Mutex
 }
@@ -195,12 +194,14 @@ func (d *CDisplay) Init() (already bool) {
 	d.running = false
 	d.done = make(chan bool)
 	d.queue = make(chan DisplayCallbackFn, DisplayCallCapacity)
-	d.mains = make(chan DisplayCallbackFn, DisplayCallCapacity)
+	d.mains = make(chan DisplayCallbackFn, DisplayMainsCapacity)
 	d.events = make(chan Event, DisplayEventCapacity)
 	d.buffer = make([]interface{}, 0)
-	d.inbound = make(chan Event, DisplayCallCapacity)
-	d.requests = make(chan displayRequest, DisplayRequestCapacity)
+	d.inbound = make(chan Event, DisplayInboundCapacity)
 	d.compress = true
+	d.lastDraw = time.Unix(0, 0)
+	d.lastLoop = time.Unix(0, 0)
+	d.loopNow = make(chan bool, DisplayLoopCapacity)
 
 	d.cursor = ptypes.NewPoint2I(0, 0)
 	d.cursorMoving = false
@@ -211,7 +212,6 @@ func (d *CDisplay) Init() (already bool) {
 	d.eventFocus = nil
 	d.windows = make([]Window, 0)
 
-	d.runLock = &sync.RWMutex{}
 	d.eventMutex = &sync.Mutex{}
 	d.drawMutex = &sync.Mutex{}
 
@@ -237,7 +237,6 @@ func (d *CDisplay) closeChannels() {
 		close(d.queue)
 		close(d.mains)
 		close(d.inbound)
-		close(d.requests)
 	})
 }
 
@@ -724,6 +723,43 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		d.eventMutex.Unlock()
 	}()
 
+	if _, ok := evt.(*EventQuit); ok {
+		d.done <- true
+		return enums.EVENT_STOP
+	}
+
+	if req, ok := evt.(*EventRender); ok {
+		d.Lock()
+		now := time.Now()
+		then := time.UnixMilli(now.UnixMilli() - MainDrawInterval)
+		if d.lastDraw.After(then) {
+			d.Unlock()
+			return enums.EVENT_STOP
+		}
+		d.lastDraw = now
+		hasScreen := d.screen != nil
+		d.Unlock()
+		if hasScreen {
+			if req.Draw() {
+				d.renderScreen()
+			}
+			if req.Sync() {
+				d.Lock()
+				if d.screen != nil {
+					d.screen.Sync()
+				}
+				d.Unlock()
+			} else if req.Show() {
+				d.Lock()
+				if d.screen != nil {
+					d.screen.Show()
+				}
+				d.Unlock()
+			}
+		}
+		return enums.EVENT_STOP
+	}
+
 	if d.eventFocus != nil {
 		if sensitive, ok := d.eventFocus.Self().(Sensitive); ok {
 			return sensitive.ProcessEvent(evt)
@@ -736,25 +772,39 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	case *EventPaste:
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
+				d.RequestDraw()
+				d.RequestShow()
 				return enums.EVENT_STOP
 			}
 		}
-		return d.Emit(SignalEventError, d, e)
+		if f := d.Emit(SignalEventPaste, d, e); f == enums.EVENT_STOP {
+			d.RequestDraw()
+			d.RequestShow()
+			return enums.EVENT_STOP
+		}
+		return enums.EVENT_PASS
 
 	case *EventError:
 		d.LogError("EventError: %v", e)
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
+				d.RequestDraw()
+				d.RequestShow()
 				return enums.EVENT_STOP
 			}
 		}
-		return d.Emit(SignalEventError, d, e)
+		if f := d.Emit(SignalEventError, d, e); f == enums.EVENT_STOP {
+			d.RequestDraw()
+			d.RequestShow()
+			return enums.EVENT_STOP
+		}
+		return enums.EVENT_PASS
 
 	case *EventKey:
 		if d.captureCtrlC {
 			switch e.Rune() {
 			case rune(KeyCtrlC):
-				d.LogTrace("display captured CtrlC")
+				d.LogTrace("display captured <Ctrl+C>")
 				if f := d.Emit(SignalInterrupt, d); f == enums.EVENT_STOP {
 					return enums.EVENT_STOP
 				}
@@ -764,10 +814,17 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		}
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
+				d.RequestDraw()
+				d.RequestShow()
 				return enums.EVENT_STOP
 			}
 		}
-		return d.Emit(SignalEventKey, d, e)
+		if f := d.Emit(SignalEventKey, d, e); f == enums.EVENT_STOP {
+			d.RequestDraw()
+			d.RequestShow()
+			return enums.EVENT_STOP
+		}
+		return enums.EVENT_PASS
 
 	case *EventMouse:
 		d.Lock()
@@ -776,10 +833,17 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		d.Unlock()
 		if w := d.FocusedWindow(); w != nil {
 			if f := w.ProcessEvent(e); f == enums.EVENT_STOP {
+				d.RequestDraw()
+				d.RequestShow()
 				return enums.EVENT_STOP
 			}
 		}
-		return d.Emit(SignalEventMouse, d, e)
+		if f := d.Emit(SignalEventMouse, d, e); f == enums.EVENT_STOP {
+			d.RequestDraw()
+			d.RequestShow()
+			return enums.EVENT_STOP
+		}
+		return enums.EVENT_PASS
 
 	case *EventResize:
 		origin := ptypes.MakePoint2I(0, 0)
@@ -792,29 +856,39 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 		for _, window := range d.GetWindows() {
 			window.ProcessEvent(e)
 		}
+		f := d.Emit(SignalEventResize, d, e)
 		d.RequestDraw()
 		d.RequestSync()
-		return d.Emit(SignalEventResize, d, e)
+		return f
 
 	default:
-		d.LogWarn("received unknown event: %T %v", e, e)
+		d.LogWarn("processing unknown event: (%T)%v", e, e)
 	}
+
 	if w := d.FocusedWindow(); w != nil {
 		if f := w.ProcessEvent(evt); f == enums.EVENT_STOP {
+			d.RequestDraw()
+			d.RequestShow()
 			return enums.EVENT_STOP
 		}
 	}
-	return d.Emit(SignalEvent, d, evt)
+	if f := d.Emit(SignalEvent, d, evt); f == enums.EVENT_STOP {
+		d.RequestDraw()
+		d.RequestShow()
+		return enums.EVENT_STOP
+	}
+	return enums.EVENT_PASS
 }
 
 func (d *CDisplay) renderScreen() enums.EventFlag {
-	if !d.DisplayCaptured() {
+	if !d.DisplayCaptured() || !d.IsRunning() {
 		return enums.EVENT_PASS
 	}
 	d.drawMutex.Lock()
 	defer d.drawMutex.Unlock()
-	// d.Lock()
+	d.Lock()
 	windows := d.windows
+	d.Unlock()
 	if surface, err := memphis.GetSurface(d.ObjectID()); err == nil {
 		theme := d.GetTheme()
 		surface.Fill(theme)
@@ -824,13 +898,15 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 				d.LogErr(err)
 			}
 		}
-		if err := surface.Render(d.screen); err != nil {
-			d.LogErr(err)
+		d.Lock()
+		if d.screen != nil {
+			if err := surface.Render(d.screen); err != nil {
+				d.LogErr(err)
+			}
 		}
-		// d.Unlock()
+		d.Unlock()
 		return enums.EVENT_STOP
 	}
-	// d.Unlock()
 	d.LogError("missing surface for display: %v", d.ObjectID())
 	return enums.EVENT_PASS
 }
@@ -838,106 +914,42 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 // RequestDraw asks the Display to process a SignalDraw event cycle, this does
 // not actually render the contents to in Screen, just update
 func (d *CDisplay) RequestDraw() {
-	d.RLock()
-	req := d.requestingDraw
-	d.RUnlock()
-	if !req {
-		d.Lock()
-		d.requestingDraw = true
-		d.Unlock()
-		_ = d.AsyncCall(func(_ Display) error {
-			if d.IsRunning() {
-				d.requests <- displayDrawRequest
-				d.Lock()
-				d.requestingDraw = false
-				d.Unlock()
-			} else {
-				log.TraceF("application not running")
-			}
-			return nil
-		})
+	if d.IsRunning() {
+		_ = d.PostEvent(NewEventDraw())
 	}
 }
 
 // RequestShow asks the Display to render pending Screen changes
 func (d *CDisplay) RequestShow() {
-	d.RLock()
-	req := d.requestingShow
-	d.RUnlock()
-	if !req {
-		d.Lock()
-		d.requestingShow = true
-		d.Unlock()
-		_ = d.AsyncCall(func(_ Display) error {
-			if d.IsRunning() {
-				d.requests <- displayShowRequest
-				d.Lock()
-				d.requestingShow = false
-				d.Unlock()
-			} else {
-				log.TraceF("application not running")
-			}
-			return nil
-		})
+	if d.IsRunning() {
+		_ = d.PostEvent(NewEventShow())
 	}
 }
 
 // RequestSync asks the Display to render everything in the Screen
 func (d *CDisplay) RequestSync() {
-	d.RLock()
-	req := d.requestingSync
-	d.RUnlock()
-	if !req {
-		d.Lock()
-		d.requestingSync = true
-		d.Unlock()
-		_ = d.AsyncCall(func(_ Display) error {
-			if d.IsRunning() {
-				d.requests <- displaySyncRequest
-				d.Lock()
-				d.requestingSync = false
-				d.Unlock()
-			} else {
-				log.TraceF("application not running")
-			}
-			return nil
-		})
+	if d.IsRunning() {
+		_ = d.PostEvent(NewEventShow())
 	}
 }
 
 // RequestQuit asks the Display to quit nicely
 func (d *CDisplay) RequestQuit() {
-	d.RLock()
-	req := d.requestingQuit
-	d.RUnlock()
-	if !req {
-		d.Lock()
-		d.requestingQuit = true
-		d.Unlock()
-		_ = d.AsyncCall(func(_ Display) error {
-			if d.IsRunning() {
-				d.requests <- displayQuitRequest
-				d.Lock()
-				d.requestingQuit = false
-				d.Unlock()
-			} else {
-				log.TraceF("application not running")
-			}
-			return nil
-		})
+	if d.IsRunning() {
+		_ = d.PostEvent(NewEventQuit())
 	}
 }
 
 // IsRunning returns TRUE if the main thread is currently running.
 func (d *CDisplay) IsRunning() bool {
-	d.runLock.RLock()
-	defer d.runLock.RUnlock()
+	d.RLock()
+	defer d.RUnlock()
 	return d.running
 }
 
 func (d *CDisplay) setRunning(isRunning bool) {
-	d.runLock.Lock()
-	defer d.runLock.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	d.running = isRunning
 }
 
@@ -945,7 +957,7 @@ func (d *CDisplay) setRunning(isRunning bool) {
 func (d *CDisplay) StartupComplete() {
 	w, h := d.resizeWindowSurfacesOnStartupCompleted()
 	d.Emit(SignalStartupComplete)
-	d.ProcessEvent(NewEventResize(w, h))
+	_ = d.PostEvent(NewEventResize(w, h))
 }
 
 // AsyncCall runs the given DisplayCallbackFn on the UI thread, non-blocking
@@ -954,7 +966,6 @@ func (d *CDisplay) AsyncCall(fn DisplayCallbackFn) error {
 		return fmt.Errorf("application not running")
 	}
 	d.queue <- fn
-	d.requests <- displayFuncRequest
 	return nil
 }
 
@@ -970,7 +981,6 @@ func (d *CDisplay) AwaitCall(fn DisplayCallbackFn) error {
 		done <- true
 		return nil
 	}
-	d.requests <- displayFuncRequest
 	<-done
 	return err
 }
@@ -1037,6 +1047,7 @@ processEventWorkerLoop:
 		select {
 		case <-ctx.Done():
 			break processEventWorkerLoop
+
 		case evt := <-d.inbound:
 			select {
 			case <-ctx.Done():
@@ -1044,15 +1055,24 @@ processEventWorkerLoop:
 			default: // nop
 			}
 			if evt != nil {
+				// store the instance by type rather than the Event interface
+				d.Lock()
 				switch t := evt.(type) {
 				default:
-					d.Lock()
 					d.buffer = append(d.buffer, t)
-					d.Unlock()
 				}
+				d.loopNow <- true
+				d.Unlock()
 			} else {
 				// nil event, quit?
 				break
+			}
+
+		case fn, ok := <-d.queue:
+			if ok {
+				if err := fn(d); err != nil {
+					log.ErrorF("async/await handler error: %v", err)
+				}
 			}
 		}
 	}
@@ -1064,68 +1084,6 @@ func (d *CDisplay) startedAndCaptured() bool {
 	return d.started && d.captured && d.screen != nil
 }
 
-func (d *CDisplay) screenRequestWorker(ctx context.Context) {
-	// this happens in its own go thread
-screenRequestWorkerLoop:
-	for d.IsRunning() {
-		max := len(d.requests)
-		if max == 0 {
-			time.Sleep(MainIterateDelay)
-			continue
-		}
-		var buffered []displayRequest
-		for i := 0; i < max; i++ {
-			r := <-d.requests
-			found := false
-			for j := 0; j < len(buffered); j++ {
-				if buffered[j] == r {
-					found = true
-				}
-			}
-			if !found {
-				buffered = append(buffered, r)
-			}
-		}
-		for _, r := range buffered {
-			switch r {
-			case displayDrawRequest:
-				if d.startedAndCaptured() {
-					d.renderScreen()
-				}
-			case displayShowRequest:
-				if d.startedAndCaptured() {
-					d.screen.Show()
-				}
-			case displaySyncRequest:
-				if d.startedAndCaptured() {
-					d.screen.Sync()
-				}
-			case displayFuncRequest:
-				// one displayFuncRequest per d.queue fn
-				if d.DisplayCaptured() {
-					qlen := len(d.queue)
-					for i := 0; i < qlen; i++ {
-						if fn, ok := <-d.queue; ok {
-							if err := fn(d); err != nil {
-								log.ErrorF("async/await handler error: %v", err)
-							}
-						}
-					}
-				}
-			case displayQuitRequest:
-				d.done <- true
-				break screenRequestWorkerLoop
-			}
-			select {
-			case <-ctx.Done():
-				break screenRequestWorkerLoop
-			default: // nop
-			}
-		}
-		time.Sleep(MainRequestDelay)
-	}
-}
-
 // Run is the standard means of invoking a Display instance. It calls Startup,
 // handles the main event look and finally calls MainFinish when all is
 // complete.
@@ -1133,15 +1091,14 @@ func (d *CDisplay) Run() (err error) {
 	ctx, _, wg := d.Startup()
 	wg.Add(1)
 	Go(func() {
+
 		for d.HasPendingEvents() {
-			d.IterateBufferedEvents()
 			select {
 			case <-ctx.Done():
 				wg.Done()
 				return
-			default:
-				// nop
-				time.Sleep(MainIterateDelay)
+			case <-d.loopNow:
+				d.IterateBufferedEvents()
 			}
 		}
 		wg.Done()
@@ -1201,11 +1158,6 @@ func (d *CDisplay) Main(ctx context.Context, cancel context.CancelFunc, wg *sync
 		d.processEventWorker(ctx)
 		wg.Done()
 	})
-	wg.Add(1)
-	Go(func() {
-		d.screenRequestWorker(ctx)
-		wg.Done()
-	})
 mainForLoop:
 	for d.IsRunning() {
 		select {
@@ -1230,17 +1182,15 @@ mainForLoop:
 			CancelAllTimeouts()
 			cancel() // notify threads to exit
 			// guarantee main calls
-			mlen := len(d.mains)
-			for i := 0; i < mlen; i++ {
+			for i := 0; i < len(d.mains); i++ {
 				if fn, ok := <-d.mains; ok {
 					if err := fn(d); err != nil {
 						log.Error(err)
 					}
 				}
 			}
-			// guarantee ui calls
-			qlen := len(d.queue)
-			for i := 0; i < qlen; i++ {
+			// guarantee async calls
+			for i := 0; i < len(d.queue); i++ {
 				if fn, ok := <-d.queue; ok {
 					if err := fn(d); err != nil {
 						log.ErrorF("async/await handler error: %v", err)
@@ -1296,28 +1246,40 @@ func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 	if !d.DisplayCaptured() {
 		return false
 	}
+
 	d.Lock()
-	buffer := make([]interface{}, 0)
-	for len(d.buffer) > 0 {
-		buffer = append(buffer, d.buffer[0])
-		if len(d.buffer) > 1 {
-			d.buffer = d.buffer[1:]
-		} else {
-			d.buffer = nil
-		}
-	}
+	buffer := d.buffer
+	d.buffer = nil
 	d.Unlock()
+
+	var render *EventRender
 	var pending []interface{}
+
 	if d.GetCompressEvents() {
 		pending = make([]interface{}, 0)
+
 		for _, e := range buffer {
 			last := len(pending) - 1
+
 			switch t := e.(type) {
 			case *EventPaste, *EventKey:
 				// never compress paste or keys
 				pending = append(pending, t)
+
+			case *EventRender:
+				// compress render into a single request event
+				if render == nil {
+					render = t
+				} else if t.Draw() && !render.Draw() {
+					render = NewEventRender(true, render.Show(), render.Sync())
+				} else if t.Show() && !render.Show() && !render.Sync() {
+					render = NewEventRender(render.Draw(), true, render.Sync())
+				} else if t.Sync() && !render.Sync() {
+					render = NewEventRender(render.Draw(), false, true)
+				}
+
 			default:
-				if last <= -1 {
+				if last <= 0 {
 					pending = append(pending, t)
 				} else {
 					thisType := fmt.Sprintf("%T", t)
@@ -1328,9 +1290,12 @@ func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 				}
 			}
 		}
+
 	} else {
 		pending = buffer
 	}
+	buffer = nil
+
 	stopped := false
 	for _, e := range pending {
 		if evt, ok := e.(Event); ok {
@@ -1339,24 +1304,18 @@ func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 			}
 		}
 	}
-	if stopped {
+
+	if render != nil {
+		d.ProcessEvent(render)
+		return true
+	} else if stopped {
 		d.RequestDraw()
 		d.RequestShow()
 		return true
 	}
+
 	return false
 }
-
-type displayRequest uint64
-
-const (
-	displayNullRequest displayRequest = 1 << iota
-	displayDrawRequest
-	displayShowRequest
-	displaySyncRequest
-	displayFuncRequest
-	displayQuitRequest
-)
 
 const (
 	SignalDisplayCaptured     Signal = "display-captured"
