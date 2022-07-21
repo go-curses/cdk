@@ -1,6 +1,6 @@
 // +build plan9 nacl
 
-// Copyright 2021  The CDK Authors
+// Copyright 2022  The CDK Authors
 // Copyright 2015 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

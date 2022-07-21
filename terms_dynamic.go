@@ -1,6 +1,6 @@
 // +build !cdk_minimal,!nacl,!js,!zos,!plan9,!windows,!android
 
-// Copyright 2021  The CDK Authors
+// Copyright 2022  The CDK Authors
 // Copyright 2019 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
