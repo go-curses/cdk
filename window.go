@@ -130,10 +130,12 @@ func (w *CWindow) SetDisplay(d Display) {
 }
 
 func (w *CWindow) Draw() enums.EventFlag {
-	if surface, err := memphis.GetSurface(w.ObjectID()); err != nil {
-		w.LogErr(err)
-	} else {
-		return w.Emit(SignalDraw, w, surface)
+	if !w.IsFrozen() {
+		if surface, err := memphis.GetSurface(w.ObjectID()); err != nil {
+			w.LogErr(err)
+		} else {
+			return w.Emit(SignalDraw, w, surface)
+		}
 	}
 	return enums.EVENT_PASS
 }
