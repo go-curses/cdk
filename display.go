@@ -511,15 +511,6 @@ func (d *CDisplay) resizeWindowSurfacesOnStartupCompleted() (w, h int) {
 		d.LogErr(err)
 	}
 
-	for _, window := range d.windows {
-		if window.GetWindowType() != enums.WINDOW_POPUP {
-			wStyle := window.GetTheme().Content.Normal
-			if err := memphis.MakeConfigureSurface(window.ObjectID(), ptypes.MakePoint2I(0, 0), size, wStyle); err != nil {
-				d.LogErr(err)
-			}
-		}
-	}
-
 	return
 }
 
