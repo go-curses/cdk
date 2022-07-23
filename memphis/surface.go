@@ -52,8 +52,8 @@ type Surface interface {
 	DrawText(pos ptypes.Point2I, size ptypes.Rectangle, justify enums.Justification, singleLineMode bool, wrap enums.WrapMode, ellipsize bool, style paint.Style, markup, mnemonic bool, text string)
 	DrawSingleLineText(position ptypes.Point2I, maxChars int, ellipsize bool, justify enums.Justification, style paint.Style, markup, mnemonic bool, text string)
 	DrawLine(pos ptypes.Point2I, length int, orient enums.Orientation, style paint.Style)
-	DrawHorizontalLine(pos ptypes.Point2I, length int, style paint.Style)
-	DrawVerticalLine(pos ptypes.Point2I, length int, style paint.Style)
+	DrawHorizontalLine(pos ptypes.Point2I, length int, style paint.Style, lineRune rune)
+	DrawVerticalLine(pos ptypes.Point2I, length int, style paint.Style, lineRune rune)
 	Box(pos ptypes.Point2I, size ptypes.Rectangle, border, fill, overlay bool, fillRune rune, contentStyle, borderStyle paint.Style, borderRunes paint.BorderRuneSet)
 	BoxWithTheme(pos ptypes.Point2I, size ptypes.Rectangle, border, fill bool, theme paint.Theme)
 	DebugBox(color paint.Color, format string, argv ...interface{})
@@ -354,31 +354,33 @@ func (c *CSurface) DrawLine(pos ptypes.Point2I, length int, orient enums.Orienta
 	log.TraceF("c.DrawLine(%v,%v,%v,%v)", pos, length, orient, style)
 	switch orient {
 	case enums.ORIENTATION_HORIZONTAL:
-		c.DrawHorizontalLine(pos, length, style)
+		c.DrawHorizontalLine(pos, length, style, paint.RuneHLine)
 	case enums.ORIENTATION_VERTICAL:
-		c.DrawVerticalLine(pos, length, style)
+		c.DrawVerticalLine(pos, length, style, paint.RuneVLine)
 	}
 }
 
 // convenience method to draw a horizontal line
-func (c *CSurface) DrawHorizontalLine(pos ptypes.Point2I, length int, style paint.Style) {
+func (c *CSurface) DrawHorizontalLine(pos ptypes.Point2I, length int, style paint.Style, lineRune rune) {
+	size := c.GetSize()
 	c.Lock()
 	defer c.Unlock()
-	length = math.ClampI(length, pos.X, c.GetSize().W-pos.X)
+	length = math.ClampI(length, pos.X, size.W-pos.X)
 	end := pos.X + length
 	for i := pos.X; i < end; i++ {
-		_ = c.buffer.SetCell(i, pos.Y, paint.RuneHLine, style)
+		_ = c.buffer.SetCell(i, pos.Y, lineRune, style)
 	}
 }
 
 // convenience method to draw a vertical line
-func (c *CSurface) DrawVerticalLine(pos ptypes.Point2I, length int, style paint.Style) {
+func (c *CSurface) DrawVerticalLine(pos ptypes.Point2I, length int, style paint.Style, lineRune rune) {
+	size := c.GetSize()
 	c.Lock()
 	defer c.Unlock()
-	length = math.ClampI(length, pos.Y, c.GetSize().H-pos.Y)
+	length = math.ClampI(length, pos.Y, size.H-pos.Y)
 	end := pos.Y + length
 	for i := pos.Y; i < end; i++ {
-		_ = c.buffer.SetCell(i, pos.Y, paint.RuneVLine, style)
+		_ = c.buffer.SetCell(i, pos.Y, lineRune, style)
 	}
 }
 
