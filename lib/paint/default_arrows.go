@@ -12,13 +12,13 @@ var (
 	arrowOverrides = map[ArrowName]ArrowRuneSet{}
 )
 
-func SetDefaultArrow(name ArrowName, arrow ArrowRuneSet) {
+func RegisterArrows(name ArrowName, arrow ArrowRuneSet) {
 	pkgLock.Lock()
 	defer pkgLock.Unlock()
 	arrowOverrides[name] = arrow
 }
 
-func GetDefaultArrow(name ArrowName) (arrow ArrowRuneSet, ok bool) {
+func GetArrows(name ArrowName) (arrow ArrowRuneSet, ok bool) {
 	pkgLock.RLock()
 	defer pkgLock.RUnlock()
 	if arrow, ok = arrowOverrides[name]; !ok {

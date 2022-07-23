@@ -14,13 +14,13 @@ var (
 	borderOverrides = map[BorderName]BorderRuneSet{}
 )
 
-func SetDefaultBorder(name BorderName, border BorderRuneSet) {
+func RegisterBorderRunes(name BorderName, border BorderRuneSet) {
 	pkgLock.Lock()
 	defer pkgLock.Unlock()
 	borderOverrides[name] = border
 }
 
-func GetDefaultBorder(name BorderName) (border BorderRuneSet, ok bool) {
+func GetDefaultBorderRunes(name BorderName) (border BorderRuneSet, ok bool) {
 	pkgLock.RLock()
 	defer pkgLock.RUnlock()
 	if border, ok = borderOverrides[name]; !ok {

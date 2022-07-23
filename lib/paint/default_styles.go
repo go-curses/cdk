@@ -12,13 +12,13 @@ var (
 	styleOverrides = map[StyleName]Style{}
 )
 
-func SetDefaultStyle(name StyleName, theme Style) {
+func RegisterStyle(name StyleName, theme Style) {
 	pkgLock.Lock()
 	defer pkgLock.Unlock()
 	styleOverrides[name] = theme
 }
 
-func GetDefaultStyle(name StyleName) (theme Style, ok bool) {
+func GetStyle(name StyleName) (theme Style, ok bool) {
 	pkgLock.RLock()
 	defer pkgLock.RUnlock()
 	if theme, ok = styleOverrides[name]; !ok {
@@ -35,11 +35,11 @@ func GetDefaultStyle(name StyleName) (theme Style, ok bool) {
 }
 
 func GetDefaultMonoStyle() (theme Style) {
-	theme, _ = GetDefaultStyle(MonoStyle)
+	theme, _ = GetStyle(MonoStyle)
 	return
 }
 
 func GetDefaultColorStyle() (theme Style) {
-	theme, _ = GetDefaultStyle(MonoStyle)
+	theme, _ = GetStyle(MonoStyle)
 	return
 }

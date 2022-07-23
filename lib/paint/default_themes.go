@@ -11,13 +11,13 @@ const (
 
 var themeOverrides = map[ThemeName]Theme{}
 
-func SetDefaultTheme(name ThemeName, theme Theme) {
+func RegisterTheme(name ThemeName, theme Theme) {
 	pkgLock.Lock()
 	defer pkgLock.Unlock()
 	themeOverrides[name] = theme
 }
 
-func GetDefaultTheme(name ThemeName) (theme Theme, ok bool) {
+func GetTheme(name ThemeName) (theme Theme, ok bool) {
 	pkgLock.RLock()
 	defer pkgLock.RUnlock()
 	if theme, ok = themeOverrides[name]; !ok {
@@ -36,12 +36,12 @@ func GetDefaultTheme(name ThemeName) (theme Theme, ok bool) {
 }
 
 func GetDefaultMonoTheme() (theme Theme) {
-	theme, _ = GetDefaultTheme(MonoTheme)
+	theme, _ = GetTheme(MonoTheme)
 	return
 }
 
 func GetDefaultColorTheme() (theme Theme) {
-	theme, _ = GetDefaultTheme(ColorTheme)
+	theme, _ = GetTheme(ColorTheme)
 	return
 }
 
