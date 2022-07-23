@@ -30,3 +30,10 @@ func (t Theme) String() string {
 		t.Border,
 	)
 }
+
+func (t Theme) Clone() Theme {
+	return Theme{
+		Content: t.Content,
+		Border:  t.Border,
+	}
+}
