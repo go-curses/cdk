@@ -213,7 +213,7 @@ func (d *CDisplay) Init() (already bool) {
 	d.eventMutex = &sync.Mutex{}
 	d.drawMutex = &sync.Mutex{}
 
-	theme, _ := paint.GetDefaultTheme(paint.DisplayTheme)
+	theme, _ := paint.GetTheme(paint.DisplayTheme)
 	d.SetTheme(theme)
 
 	return false
@@ -319,7 +319,7 @@ func (d *CDisplay) CaptureDisplay() (err error) {
 			return fmt.Errorf("error initializing new tty path screen: %v", err)
 		}
 	}
-	theme, _ := paint.GetDefaultTheme(paint.DisplayTheme)
+	theme, _ := paint.GetTheme(paint.DisplayTheme)
 	enabled, _ := d.CallEnabled()
 	d.screen.TtyCloseWithStiRead(enabled)
 	d.screen.EnableMouse()
