@@ -7,6 +7,7 @@ const (
 	EmptyBorder   BorderName = "empty"
 	StockBorder   BorderName = "standard"
 	RoundedBorder BorderName = "rounded"
+	DoubleBorder  BorderName = "double"
 )
 
 var (
@@ -30,6 +31,8 @@ func GetDefaultBorder(name BorderName) (border BorderRuneSet, ok bool) {
 			return stockBorderRune, true
 		case RoundedBorder:
 			return roundedBorderRune, true
+		case DoubleBorder:
+			return doubleBorderRune, true
 		case NilBorder:
 			return nilBorderRune, true
 		}

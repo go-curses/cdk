@@ -31,6 +31,16 @@ var (
 		Bottom:      RuneHLine,
 		BottomRight: RuneLRCornerRounded,
 	}
+	doubleBorderRune = BorderRuneSet{
+		TopLeft:     RuneBoxDrawingsDoubleDownAndRight,
+		Top:         RuneBoxDrawingsDoubleHorizontal,
+		TopRight:    RuneBoxDrawingsDoubleDownAndLeft,
+		Left:        RuneBoxDrawingsDoubleVertical,
+		Right:       RuneBoxDrawingsDoubleVertical,
+		BottomLeft:  RuneBoxDrawingsDoubleUpAndRight,
+		Bottom:      RuneBoxDrawingsDoubleHorizontal,
+		BottomRight: RuneBoxDrawingsDoubleUpAndLeft,
+	}
 	emptyBorderRune = BorderRuneSet{
 		TopLeft:     ' ',
 		Top:         ' ',
