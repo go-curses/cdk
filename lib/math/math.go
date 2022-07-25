@@ -53,6 +53,15 @@ func FloorI(v, min int) int {
 	return v
 }
 
+// CeilI - Returns the `value` given unless it's greater than `max`, in which
+// case it returns `max`.
+func CeilI(v, max int) int {
+	if v > max {
+		return max
+	}
+	return v
+}
+
 // SumInts - Add the given list of integers up and return the result.
 func SumInts(ints []int) (sum int) {
 	sum = 0
