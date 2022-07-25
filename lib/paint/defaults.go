@@ -89,7 +89,7 @@ var (
 		Overlay:     false,
 	}
 	defaultColorThemeAspect = ThemeAspect{
-		Normal:      defaultColorStyle.Dim(true),
+		Normal:      defaultColorStyle,
 		Selected:    defaultColorStyle.Dim(false),
 		Active:      defaultColorStyle.Dim(false).Reverse(true),
 		Prelight:    defaultColorStyle.Dim(false),
