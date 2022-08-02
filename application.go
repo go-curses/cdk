@@ -347,7 +347,7 @@ func (app *CApplication) NotifyStartupComplete() {
 }
 
 func (app *CApplication) Run(args []string) (err error) {
-	if f := app.Emit(SignalPrepareStartup); f == enums.EVENT_STOP {
+	if f := app.Emit(SignalPrepareStartup, app.Self(), args); f == enums.EVENT_STOP {
 		app.LogDebug("application run SignalPrepareStartup requested EVENT_STOP")
 		return
 	}
