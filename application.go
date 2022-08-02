@@ -544,6 +544,10 @@ func (app *CApplication) MainFinish() {
 }
 
 func (app *CApplication) CliActionFn(ctx *cli.Context) (err error) {
+	if f := app.Emit(SignalPrepare, app.Self(), ctx); f == enums.EVENT_STOP {
+		app.Emit(SignalShutdown)
+		return nil
+	}
 	if !app.MainInit(ctx) {
 		return nil
 	}
@@ -558,6 +562,8 @@ const SignalReconfigure Signal = "reconfigure"
 const SignalChanged Signal = "changed"
 
 const SignalPrepareStartup Signal = "prepare-startup"
+
+const SignalPrepare Signal = "prepare"
 
 const SignalSetupDisplay Signal = "setup-display"
 
