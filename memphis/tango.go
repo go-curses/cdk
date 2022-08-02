@@ -31,6 +31,7 @@ package memphis
 <i></i>
 <s></s>
 <u></u>
+<d></d>
 
 */
 
@@ -91,8 +92,8 @@ func (m *CTango) init() error {
 
 	wid := 0
 
-	cStyle := m.style          // current style
-	pStyles := []paint.Style{} // previous styles
+	cStyle := m.style         // current style
+	var pStyles []paint.Style // previous styles
 
 	isWord := false
 	var err error
