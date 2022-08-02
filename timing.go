@@ -174,7 +174,9 @@ func CancelAllTimeouts() {
 	if cdkTimeouts != nil {
 		if cdkTimeouts.timers != nil {
 			for _, t := range cdkTimeouts.timers {
-				StopTimeout(t.id)
+				if t != nil {
+					StopTimeout(t.id)
+				}
 			}
 		}
 	}
