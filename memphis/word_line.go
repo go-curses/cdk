@@ -119,7 +119,11 @@ func (w *CWordLine) AppendWordRune(wordIndex int, char rune, style paint.Style) 
 	defer w.Unlock()
 	if wordIndex < len(w.words) {
 		w.cache.Clear()
-		w.words[wordIndex].AppendRune(char, style)
+		if wordIndex == -1 {
+			w.words = append(w.words, NewWordCell(string(char), style))
+		} else {
+			w.words[wordIndex].AppendRune(char, style)
+		}
 		return nil
 	}
 	return fmt.Errorf("word at index %d not found", wordIndex)
