@@ -386,7 +386,8 @@ func (app *CApplication) Run(args []string) (err error) {
 func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 	handled := false
 	argc := len(argv)
-	if argc > 1 {
+
+	if argc > 1 { // strings as if os.Args
 		var args []string
 		for _, arg := range argv {
 			if v, ok := arg.(string); ok {
@@ -402,12 +403,13 @@ func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 			app.LogErr(err)
 			return false
 		}
-	} else if argc == 1 {
+	} else if argc == 1 { // cli.Context
 		if ctx, ok := argv[0].(*cli.Context); ok {
 			app.context = ctx
 			handled = true
 		}
 	}
+
 	if !handled {
 		app.cli.Action = func(ctx *cli.Context) error {
 			app.context = ctx
@@ -418,6 +420,7 @@ func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 			return false
 		}
 	}
+
 	if Build.LogLevel {
 		if v := app.context.String("cdk-log-level"); !cstrings.IsEmpty(v) {
 			env.Set("GO_CDK_LOG_LEVEL", v)
@@ -462,6 +465,7 @@ func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 	if err := log.StartRestart(); err != nil {
 		panic(err)
 	}
+
 	if Build.Profiling {
 		if v := app.context.String("cdk-profile"); !cstrings.IsEmpty(v) {
 			v = strings.ToLower(v)
@@ -493,6 +497,7 @@ func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 			}
 		}
 	}
+
 	return true
 }
 
