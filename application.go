@@ -380,9 +380,10 @@ func (app *CApplication) Run(args []string) (err error) {
 // given at runtime.
 //
 // `argv` can be one of the following cases:
-//  nil/empty     use only the environment variables, if any are set
-//  *cli.Context  do not parse anything, just use existing context
-//  ...string     parse the given strings as if it were os.Args
+//
+//	nil/empty     use only the environment variables, if any are set
+//	*cli.Context  do not parse anything, just use existing context
+//	...string     parse the given strings as if it were os.Args
 func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 	handled := false
 	argc := len(argv)
@@ -505,16 +506,21 @@ func (app *CApplication) MainRun(runner ApplicationMain) {
 	app.SetupDisplay()
 	display := app.Display()
 	var wg *sync.WaitGroup
+	wg.Add(1)
 	GoWithMainContext(
 		env.Get("USER", "nil"),
 		"localhost",
 		display,
 		app.Self(),
 		func() {
+			var err error
 			var ctx context.Context
 			var cancel context.CancelFunc
-			ctx, cancel, wg = display.Startup()
-			wg.Add(1)
+			if ctx, cancel, wg, err = display.Startup(); err != nil {
+				wg.Done()
+				app.LogErr(err)
+				return
+			}
 			if f := app.Emit(SignalStartup, app.Self(), display, ctx, cancel, wg); f == enums.EVENT_STOP {
 				app.LogInfo("application startup signal listener requested EVENT_STOP")
 				app.display.RequestQuit()

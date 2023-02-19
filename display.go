@@ -111,7 +111,7 @@ type Display interface {
 	AwaitCallMain(fn DisplayCallbackFn) error
 	PostEvent(evt Event) error
 	Run() (err error)
-	Startup() (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup)
+	Startup() (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, err error)
 	Main(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) (err error)
 	MainFinish()
 	HasPendingEvents() (pending bool)
@@ -1065,7 +1065,11 @@ func (d *CDisplay) startedAndCaptured() bool {
 // handles the main event look and finally calls MainFinish when all is
 // complete.
 func (d *CDisplay) Run() (err error) {
-	ctx, _, wg := d.Startup()
+	var ctx context.Context
+	var wg *sync.WaitGroup
+	if ctx, _, wg, err = d.Startup(); err != nil {
+		return
+	}
 	wg.Add(1)
 	Go(func() {
 
@@ -1089,8 +1093,8 @@ func (d *CDisplay) Run() (err error) {
 // the necessary runtime context.WithCancel and sync.WaitGroup for the main
 // runner thread of the Display. Once setup, starts the Main runner with the
 // necessary rigging for thread synchronization and shutdown mechanics.
-func (d *CDisplay) Startup() (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
-	if err := d.CaptureDisplay(); err != nil {
+func (d *CDisplay) Startup() (ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, err error) {
+	if err = d.CaptureDisplay(); err != nil {
 		d.LogErr(err)
 		return
 	}
