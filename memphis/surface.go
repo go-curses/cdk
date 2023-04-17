@@ -237,11 +237,14 @@ func (c *CSurface) CompositeSurface(src *CSurface) error {
 	srcSize := src.buffer.Size()
 
 	if (srcSize.W <= 0 || srcSize.H <= 0) && (dstSize.W <= 0 || dstSize.H <= 0) {
-		return fmt.Errorf("source and destination have zero size")
+		log.TraceF("source and destination have zero size")
+		return nil
 	} else if srcSize.W <= 0 || srcSize.H <= 0 {
-		return fmt.Errorf("source has zero size")
+		log.TraceF("source has zero size")
+		return nil
 	} else if dstSize.W <= 0 || dstSize.H <= 0 {
-		return fmt.Errorf("destination has zero size")
+		log.TraceF("destination has zero size")
+		return nil
 	}
 
 	dstOrigin := c.GetOrigin()
