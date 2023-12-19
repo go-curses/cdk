@@ -1,4 +1,4 @@
-// Copyright 2022  The CDK Authors
+// Copyright (c) 2022-2023  The Go-Curses Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.

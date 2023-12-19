@@ -1,4 +1,4 @@
-// Copyright 2021  The CDK Authors
+// Copyright (c) 2021-2023  The Go-Curses Authors
 // Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

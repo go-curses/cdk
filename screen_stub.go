@@ -1,7 +1,7 @@
 //go:build js || nacl || plan9 || windows
 // +build js nacl plan9 windows
 
-// Copyright 2022  The CDK Authors
+// Copyright (c) 2022-2023  The Go-Curses Authors
 // Copyright 2021 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

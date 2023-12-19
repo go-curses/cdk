@@ -1,7 +1,7 @@
 //go:build !windows && !nacl && !plan9
 // +build !windows,!nacl,!plan9
 
-// Copyright 2022  The CDK Authors
+// Copyright (c) 2022-2023  The Go-Curses Authors
 // Copyright 2016 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
