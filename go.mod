@@ -1,6 +1,6 @@
 module github.com/go-curses/cdk
 
-go 1.17
+go 1.21
 
 require (
 	github.com/atotto/clipboard v0.1.4
