@@ -38,8 +38,9 @@ func MakeRectangle(w, h int) Rectangle {
 
 // Parse a Point2I structure from a string representation. There are two valid
 // formats supported by this parser function:
-//   formal    "{w:0,h:0}"
-//   plain     "0 0"
+//
+//	formal    "{w:0,h:0}"
+//	plain     "0 0"
 func ParseRectangle(value string) (point Rectangle, ok bool) {
 	if rxParseRectangle.MatchString(value) {
 		m := rxParseRectangle.FindStringSubmatch(value)

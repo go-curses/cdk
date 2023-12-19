@@ -38,8 +38,9 @@ func MakePoint2I(x, y int) Point2I {
 
 // Parse a Point2I structure from a string representation. There are two valid
 // formats supported by this parser function:
-//   formal    "{x:0,y:0}"
-//   plain     "0 0"
+//
+//	formal    "{x:0,y:0}"
+//	plain     "0 0"
 func ParsePoint2I(value string) (point Point2I, ok bool) {
 	if rxParsePoint2I.MatchString(value) {
 		m := rxParsePoint2I.FindStringSubmatch(value)

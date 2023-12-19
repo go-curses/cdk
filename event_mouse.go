@@ -239,16 +239,14 @@ func (ev *EventMouse) Report() string {
 }
 
 /*
-
-	MOUSE_NONE: non-event
-	MOUSE_MOVE: mouse moved, no buttons
-	BUTTON_PRESS: button pressed
-	BUTTON_RELEASE: button released
-	WHEEL_PULSE: wheel impulse (no release)
-	DRAG_START: prev is press, and mouse is moving
-	DRAG_MOVE: prev is drag start and mouse still moving
-	DRAG_STOP: button released and mouse may have moved
-
+MOUSE_NONE: non-event
+MOUSE_MOVE: mouse moved, no buttons
+BUTTON_PRESS: button pressed
+BUTTON_RELEASE: button released
+WHEEL_PULSE: wheel impulse (no release)
+DRAG_START: prev is press, and mouse is moving
+DRAG_MOVE: prev is drag start and mouse still moving
+DRAG_STOP: button released and mouse may have moved
 */
 func (ev *EventMouse) process_mouse_event() {
 	pem := previous_event_mouse

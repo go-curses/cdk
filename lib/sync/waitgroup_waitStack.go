@@ -1,3 +1,4 @@
+//go:build waitStack
 // +build waitStack
 
 package sync

@@ -1,3 +1,4 @@
+//go:build cdk_minimal || nacl || js || zos || plan9 || windows || android
 // +build cdk_minimal nacl js zos plan9 windows android
 
 // Copyright 2022  The CDK Authors

@@ -1,3 +1,4 @@
+//go:build !cdk_minimal
 // +build !cdk_minimal
 
 // Copyright 2022  The CDK Authors

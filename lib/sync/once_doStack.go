@@ -1,6 +1,12 @@
+//go:build doStack
 // +build doStack
 
 package sync
+
+import (
+	"fmt"
+	"runtime"
+)
 
 func (o *Once) makeTag(depth int) (tag string) {
 	depth += 1

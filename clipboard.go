@@ -7,6 +7,7 @@ func init() {
 }
 
 // Clipboard Hierarchy:
+//
 //	Object
 //	  +- Clipboard
 type Clipboard interface {

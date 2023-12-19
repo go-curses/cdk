@@ -1,3 +1,4 @@
+//go:build js || nacl || plan9 || windows
 // +build js nacl plan9 windows
 
 // Copyright 2022  The CDK Authors

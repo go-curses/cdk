@@ -38,7 +38,8 @@ func (q CQuark) String() string {
 // string	a string.
 //
 // Returns
-//     the QuarkID identifying the string, or 0 if string is nil
+//
+//	the QuarkID identifying the string, or 0 if string is nil
 func QuarkFromString(text string) (qid QuarkID) {
 	for id, cq := range cdkQuarkMap {
 		if cq.v == text {
@@ -61,10 +62,12 @@ func QuarkFromString(text string) (qid QuarkID) {
 // Gets the string associated with the given GQuark.
 //
 // Parameters:
-//     quark    a GQuark.
+//
+//	quark    a GQuark.
 //
 // Returns:
-//     the string associated with the GQuark
+//
+//	the string associated with the GQuark
 func QuarkToString(id QuarkID) string {
 	if q, ok := cdkQuarkMap[id]; ok {
 		return q.v
@@ -82,11 +85,13 @@ func QuarkToString(id QuarkID) string {
 // running.
 //
 // Parameters
-//     string     a string.
+//
+//	string     a string.
 //
 // Returns
-//     the GQuark associated with the string, or 0 if string is nil or there is
-//     no GQuark associated with it
+//
+//	the GQuark associated with the string, or 0 if string is nil or there is
+//	no GQuark associated with it
 func QuarkTryString(text string) QuarkID {
 	for id, cq := range cdkQuarkMap {
 		if cq.v == text {
