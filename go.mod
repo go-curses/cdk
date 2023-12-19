@@ -17,7 +17,7 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/tg123/go-htpasswd v1.2.1
+	github.com/tg123/go-htpasswd v1.2.2
 	github.com/urfave/cli/v2 v2.26.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	golang.org/x/crypto v0.17.0
