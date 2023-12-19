@@ -10,7 +10,7 @@ require (
 	github.com/go-curses/terminfo v1.0.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackdoe/go-gpmctl v0.0.0-20221007100923-dc00b863cb22
+	github.com/jackdoe/go-gpmctl v0.0.0-20231210204613-737e8a242925
 	github.com/jtolio/gls v4.20.0+incompatible
 	github.com/lucasb-eyer/go-colorful v1.2.0
 	github.com/mattn/go-runewidth v0.0.15
@@ -18,9 +18,9 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/tg123/go-htpasswd v1.2.1
-	github.com/urfave/cli/v2 v2.25.7
+	github.com/urfave/cli/v2 v2.26.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/sys v0.15.0
 	golang.org/x/term v0.15.0
 	golang.org/x/text v0.14.0
