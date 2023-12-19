@@ -79,6 +79,24 @@ const (
 	RuneTriangleRight = '▶'
 
 	RuneEllipsis = '…'
+
+	RuneBraille1235678 = '⣷'
+	RuneBraille2345678 = '⣾'
+	RuneBraille1345678 = '⣽'
+	RuneBraille1245678 = '⣻'
+	RuneBraille1234568 = '⢿'
+	RuneBraille1234567 = '⡿'
+	RuneBraille1234578 = '⣟'
+	RuneBraille1234678 = '⣯'
+
+	RuneBrailleSpinner0 = RuneBraille1235678
+	RuneBrailleSpinner1 = RuneBraille2345678
+	RuneBrailleSpinner2 = RuneBraille1345678
+	RuneBrailleSpinner3 = RuneBraille1245678
+	RuneBrailleSpinner4 = RuneBraille1234568
+	RuneBrailleSpinner5 = RuneBraille1234567
+	RuneBrailleSpinner6 = RuneBraille1234578
+	RuneBrailleSpinner7 = RuneBraille1234678
 )
 
 // RuneFallbacks is the default map of fallback strings that will be
@@ -164,4 +182,13 @@ var RuneFallbacks = map[rune]string{
 	RuneTriangleRight: ">",
 
 	RuneEllipsis: "…",
+
+	RuneBrailleSpinner0: "/",
+	RuneBrailleSpinner1: "|",
+	RuneBrailleSpinner2: "\\",
+	RuneBrailleSpinner3: "-",
+	RuneBrailleSpinner4: "/",
+	RuneBrailleSpinner5: "|",
+	RuneBrailleSpinner6: "\\",
+	RuneBrailleSpinner7: "-",
 }
