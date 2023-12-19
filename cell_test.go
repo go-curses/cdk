@@ -17,8 +17,9 @@ package cdk
 import (
 	"testing"
 
-	"github.com/go-curses/cdk/lib/paint"
 	. "github.com/smartystreets/goconvey/convey"
+
+	"github.com/go-curses/cdk/lib/paint"
 )
 
 func TestCellBasics(t *testing.T) {

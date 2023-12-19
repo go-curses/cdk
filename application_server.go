@@ -23,13 +23,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gofrs/uuid"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/crypto/ssh"
+
 	"github.com/go-curses/cdk/env"
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/exec"
 	"github.com/go-curses/cdk/lib/sync"
-	"github.com/gofrs/uuid"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/crypto/ssh"
 
 	cstrings "github.com/go-curses/cdk/lib/strings"
 	cterm "github.com/go-curses/cdk/lib/term"
