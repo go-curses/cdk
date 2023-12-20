@@ -34,10 +34,18 @@ func FileWritable(path string) (writable bool) {
 	return
 }
 
+func IsPipe(fh *os.File) (piped bool) {
+	if fi, err := fh.Stat(); err == nil {
+		if mode := fi.Mode(); mode > 0 {
+			piped = mode&os.ModeNamedPipe != 0
+		}
+	}
+	return
+}
+
 func IsDevice(path string) (present bool) {
 	if fi, err := os.Stat(path); err == nil {
 		if mode := fi.Mode(); mode > 0 {
-			// ModeDir | ModeSymlink | ModeNamedPipe | ModeSocket | ModeDevice | ModeCharDevice | ModeIrregular
 			present = mode&(os.ModeDevice|os.ModeCharDevice) != 0
 		}
 	}
