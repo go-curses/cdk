@@ -7,7 +7,7 @@ require (
 	github.com/creack/pty v1.1.21
 	github.com/gdamore/encoding v1.0.0
 	github.com/go-curses/term v1.2.2-gocurses.1
-	github.com/go-curses/terminfo v1.0.0
+	github.com/go-curses/terminfo v1.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackdoe/go-gpmctl v0.0.0-20231210204613-737e8a242925
