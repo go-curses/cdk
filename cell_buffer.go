@@ -59,7 +59,7 @@ func (cb *CellBuffer) SetCell(x int, y int, mainc rune, combc []rune, style pain
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		idx := (y * cb.w) + x
 		if len(cb.cells) <= idx {
-			log.ErrorF("set content index out of range: x=%v,y=%v w=%v,h=%v", x, y, cb.w, cb.h)
+			log.TraceDF(1, "set content index out of range: x=%v,y=%v w=%v,h=%v", x, y, cb.w, cb.h)
 			return
 		}
 		c := cb.cells[idx]
@@ -88,7 +88,7 @@ func (cb *CellBuffer) GetCell(x, y int) (mainc rune, combc []rune, style paint.S
 	if x >= 0 && y >= 0 && x < cb.w && y < cb.h {
 		idx := (y * cb.w) + x
 		if len(cb.cells) <= idx {
-			log.ErrorDF(1, "index out of range: x=%v,y=%v w=%v,h=%v", x, y, cb.w, cb.h)
+			log.TraceDF(1, "index out of range: x=%v,y=%v w=%v,h=%v", x, y, cb.w, cb.h)
 			return 0, []rune{}, paint.Style{}, -1
 		}
 		c := cb.cells[idx]
