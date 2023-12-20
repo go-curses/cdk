@@ -24,8 +24,9 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/term"
+
+	"github.com/go-curses/cdk/log"
 )
 
 // engage is used to place the terminal in raw mode and establish screen size, etc.
@@ -52,7 +53,7 @@ func (d *CScreen) disengage() {
 	}
 }
 
-func (d *CScreen) reengage() error {
+func (d *CScreen) reengage() (err error) {
 	if d.term != nil {
 		_ = term.CBreakMode(d.term)
 		_ = d.term.Restore()
@@ -63,35 +64,36 @@ func (d *CScreen) reengage() error {
 	if d.ttyFile != nil && !d.ttyKeepFH {
 		_ = d.ttyFile.Close()
 	}
-	return d.initialize()
+	_, _, err = d.initialize()
+	return
 }
 
 // initialize is used at application startup, and sets up the initial values
 // including file descriptors used for terminals and saving the initial state
 // so that it can be restored when the application terminates.
-func (d *CScreen) initialize() error {
-	var err error
+func (d *CScreen) initialize() (w, h int, err error) {
 	if d.ttyFile != nil {
 		if d.term, err = term.Open(d.ttyFile.Name()); err != nil {
-			return err
+			return
 		}
 	} else {
 		if d.ttyPath == "" {
 			d.ttyPath = "/dev/tty"
 		}
 		if d.term, err = term.Open(d.ttyPath); err != nil {
-			return err
+			return
 		}
 	}
 	if err = term.RawMode(d.term); err != nil {
-		return err
+		return
 	}
 	signal.Notify(d.sigWinch, syscall.SIGWINCH)
-	if w, h, e := d.getWinSize(); e == nil && w != 0 && h != 0 {
-		d.cells.Resize(w, h)
-		_ = d.PostEvent(NewEventResize(w, h))
+	if wsx, wsy, e := d.getWinSize(); e == nil && wsx != 0 && wsy != 0 {
+		w, h = wsx, wsy
+		d.cells.Resize(wsx, wsy)
+		_ = d.PostEvent(NewEventResize(wsx, wsy))
 	}
-	return nil
+	return
 }
 
 // finalize is used to at application shutdown, and restores the terminal
