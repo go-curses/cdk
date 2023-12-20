@@ -34,6 +34,16 @@ func FileWritable(path string) (writable bool) {
 	return
 }
 
+func IsDevice(path string) (present bool) {
+	if fi, err := os.Stat(path); err == nil {
+		if mode := fi.Mode(); mode > 0 {
+			// ModeDir | ModeSymlink | ModeNamedPipe | ModeSocket | ModeDevice | ModeCharDevice | ModeIrregular
+			present = mode&(os.ModeDevice|os.ModeCharDevice) != 0
+		}
+	}
+	return
+}
+
 func IsFile(path string) (found bool) {
 	if fi, err := os.Stat(path); err == nil {
 		found = fi.Mode().IsRegular()
