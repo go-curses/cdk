@@ -89,14 +89,42 @@ const (
 	RuneBraille1234578 = '⣟'
 	RuneBraille1234678 = '⣯'
 
-	RuneBrailleSpinner0 = RuneBraille1235678
-	RuneBrailleSpinner1 = RuneBraille2345678
-	RuneBrailleSpinner2 = RuneBraille1345678
-	RuneBrailleSpinner3 = RuneBraille1245678
-	RuneBrailleSpinner4 = RuneBraille1234568
-	RuneBrailleSpinner5 = RuneBraille1234567
-	RuneBrailleSpinner6 = RuneBraille1234578
-	RuneBrailleSpinner7 = RuneBraille1234678
+	RuneBraille1 = '⠁'
+	RuneBraille2 = '⠂'
+	RuneBraille3 = '⠄'
+	RuneBraille4 = '⠈'
+	RuneBraille5 = '⠐'
+	RuneBraille6 = '⠠'
+	RuneBraille7 = '⡀'
+	RuneBraille8 = '⢀'
+
+	RuneBraille47 = '⡈'
+	RuneBraille18 = '⢁'
+	RuneBraille26 = '⠢'
+	RuneBraille35 = '⠔'
+
+	RuneSevenDotSpinner0 = RuneBraille1235678
+	RuneSevenDotSpinner1 = RuneBraille2345678
+	RuneSevenDotSpinner2 = RuneBraille1345678
+	RuneSevenDotSpinner3 = RuneBraille1245678
+	RuneSevenDotSpinner4 = RuneBraille1234568
+	RuneSevenDotSpinner5 = RuneBraille1234567
+	RuneSevenDotSpinner6 = RuneBraille1234578
+	RuneSevenDotSpinner7 = RuneBraille1234678
+
+	RuneOneDotSpinner0 = RuneBraille4
+	RuneOneDotSpinner1 = RuneBraille1
+	RuneOneDotSpinner2 = RuneBraille2
+	RuneOneDotSpinner3 = RuneBraille3
+	RuneOneDotSpinner4 = RuneBraille7
+	RuneOneDotSpinner5 = RuneBraille8
+	RuneOneDotSpinner6 = RuneBraille6
+	RuneOneDotSpinner7 = RuneBraille5
+
+	RuneOrbitDotSpinner0 = RuneBraille47
+	RuneOrbitDotSpinner1 = RuneBraille18
+	RuneOrbitDotSpinner2 = RuneBraille26
+	RuneOrbitDotSpinner3 = RuneBraille35
 )
 
 // RuneFallbacks is the default map of fallback strings that will be
@@ -183,12 +211,26 @@ var RuneFallbacks = map[rune]string{
 
 	RuneEllipsis: "…",
 
-	RuneBrailleSpinner0: "/",
-	RuneBrailleSpinner1: "|",
-	RuneBrailleSpinner2: "\\",
-	RuneBrailleSpinner3: "-",
-	RuneBrailleSpinner4: "/",
-	RuneBrailleSpinner5: "|",
-	RuneBrailleSpinner6: "\\",
-	RuneBrailleSpinner7: "-",
+	RuneSevenDotSpinner0: "/",
+	RuneSevenDotSpinner1: "|",
+	RuneSevenDotSpinner2: "\\",
+	RuneSevenDotSpinner3: "-",
+	RuneSevenDotSpinner4: "/",
+	RuneSevenDotSpinner5: "|",
+	RuneSevenDotSpinner6: "\\",
+	RuneSevenDotSpinner7: "-",
+
+	RuneOneDotSpinner0: "/",
+	RuneOneDotSpinner1: "|",
+	RuneOneDotSpinner2: "\\",
+	RuneOneDotSpinner3: "-",
+	RuneOneDotSpinner4: "/",
+	RuneOneDotSpinner5: "|",
+	RuneOneDotSpinner6: "\\",
+	RuneOneDotSpinner7: "-",
+
+	RuneOrbitDotSpinner0: "/",
+	RuneOrbitDotSpinner1: "|",
+	RuneOrbitDotSpinner2: "\\",
+	RuneOrbitDotSpinner3: "-",
 }
