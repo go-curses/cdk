@@ -3,6 +3,7 @@
 DEV_EXAMPLE := helloworld
 CDK_PATH := ../cdk
 TERM_PATH := ../term
+TERMINFO_PATH := ../terminfo
 
 .PHONY: all build clean cover dev examples fmt help run test tidy vet
 
@@ -136,17 +137,31 @@ local-term:
 	@if [ -d "${TERM_PATH}" ]; then \
 		echo "# adding go.mod local TERM package replacements..."; \
 		go mod edit -replace=github.com/go-curses/term=${TERM_PATH}; \
-		go mod tidy; \
 	fi
 
 unlocal-term:
 	@if [ -d "${TERM_PATH}" ]; then \
 		echo "# removing go.mod local TERM package replacements..."; \
 		go mod edit -dropreplace=github.com/go-curses/term; \
-		go mod tidy; \
 	fi
 
-local: local-term
+local-terminfo:
+	@if [ -d "${TERMINFO_PATH}" ]; then \
+		echo "# adding go.mod local TERMINFO package replacements..."; \
+		go mod edit -replace=github.com/go-curses/terminfo=${TERMINFO_PATH}; \
+	fi
+
+unlocal-terminfo:
+	@if [ -d "${TERMINFO_PATH}" ]; then \
+		echo "# removing go.mod local TERMINFO package replacements..."; \
+		go mod edit -dropreplace=github.com/go-curses/terminfo; \
+	fi
+
+tidy:
+	@echo "# running go mod tidy"
+	@go mod tidy
+
+local: local-term local-terminfo
 	@echo "# adding go.mod local package replacements..."
 	@go mod edit -replace=github.com/go-curses/cdk=${CDK_PATH}
 	@for tgt in charset encoding env log memphis; do \
@@ -161,10 +176,8 @@ local: local-term
 			go mod edit -replace=github.com/go-curses/cdk/lib/$$tgt=${CDK_PATH}/lib/$$tgt ; \
 		fi; \
 	done
-	@echo "# running go mod tidy"
-	@go mod tidy
 
-unlocal: unlocal-term
+unlocal: unlocal-term unlocal-terminfo
 	@echo "# removing go.mod local CDK package replacements..."
 	@go mod edit -dropreplace=github.com/go-curses/cdk
 	@for tgt in charset encoding env log memphis; do \
@@ -179,8 +192,6 @@ unlocal: unlocal-term
 			go mod edit -dropreplace=github.com/go-curses/cdk/lib/$$tgt ; \
 		fi; \
 	done
-	@echo "# running go mod tidy"
-	@go mod tidy
 
 dev: clean
 	@if [ -d examples/${DEV_EXAMPLE} ]; \
