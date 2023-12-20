@@ -18,6 +18,7 @@ package cdk
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -378,7 +379,7 @@ func (d *CScreen) GetTtyCloseWithStiRead() (enabled bool) {
 	return
 }
 
-func (d *CScreen) initReal() error {
+func (d *CScreen) initReal() (err error) {
 	d.useHostClipboard = false
 	d.useTermClipboard = true
 	d.evCh = make(chan Event, EventQueueSize)
@@ -396,17 +397,19 @@ func (d *CScreen) initReal() error {
 	}
 	ti := d.ti
 
-	// environment overrides
-	w := ti.Columns
-	h := ti.Lines
-	if i, _ := strconv.Atoi(os.Getenv("LINES")); i != 0 {
-		h = i
-	}
-	if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
-		w = i
-	}
-	if e := d.initialize(); e != nil {
-		return e
+	var w, h int
+	if w, h, err = d.initialize(); err != nil {
+		return
+	} else if w == 0 && h == 0 {
+		// environment overrides
+		if w, h = ti.Columns, ti.Lines; w == 0 && h == 0 {
+			if i, _ := strconv.Atoi(os.Getenv("LINES")); i != 0 {
+				h = i
+			}
+			if i, _ := strconv.Atoi(os.Getenv("COLUMNS")); i != 0 {
+				w = i
+			}
+		}
 	}
 
 	if d.ti.SetFgBgRGB != "" || d.ti.SetFgRGB != "" || d.ti.SetBgRGB != "" {
