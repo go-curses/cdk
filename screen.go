@@ -1134,6 +1134,8 @@ func (d *CScreen) EnableMouse(flags ...MouseFlags) {
 
 		d.TPuts(fmt.Sprintf("\x1b[?%dh\x1b[?1006h", mm))
 	}
+
+	d.EnableGPM()
 }
 
 func (d *CScreen) DisableMouse() {
@@ -1721,15 +1723,25 @@ func (d *CScreen) gpmLoop() {
 		return
 	}
 	d.gpmRunning = true
-	if gpm, err := gpmctl.NewGPM(gpmctl.DefaultConf); err != nil {
-		panic(err)
+	if gpm, err := gpmctl.NewGPM(gpmctl.GPMConnect{
+		EventMask:   gpmctl.ANY,
+		DefaultMask: gpmctl.ANY,
+		MinMod:      0,
+		MaxMod:      ^uint16(0),
+	}); err != nil {
+		log.ErrorDF(2, "error constructing gpmctl: %v", err)
 	} else {
 		for {
-			event, err := gpm.Read()
-			if err != nil {
-				panic(err)
+			var event gpmctl.Event
+			if event, err = gpm.Read(); err != nil {
+				if errors.Is(err, io.EOF) {
+					log.ErrorF("end of reading gpmctl: %v", err)
+					return
+				}
+				log.ErrorF("error reading gpmctl: %v", err)
+				continue
 			}
-			btn := ButtonMask(0)
+			var btn ButtonMask
 			if event.Type == gpmctl.DOWN || event.Type == gpmctl.UP || event.Type == gpmctl.DRAG {
 				if event.Buttons&gpmctl.B_LEFT != 0 {
 					btn = btn.Set(Button1)
