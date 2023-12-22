@@ -562,7 +562,6 @@ func (app *CApplication) CliActionFn(ctx *cli.Context) (err error) {
 	if proceed := app.MainInit(ctx); !proceed {
 		return nil
 	}
-	app.ttyPathSetup(app.ttyPath)
 	if app.runFn != nil {
 		return app.runFn(ctx)
 	}
