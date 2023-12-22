@@ -206,6 +206,9 @@ type Screen interface {
 	// by your terminal except by changing the terminal database.
 	UnregisterRuneFallback(r rune)
 
+	RegisterConsoleFallback(r rune, subst rune)
+	UnregisterConsoleFallback(r rune)
+
 	// CanDisplay returns true if the given rune can be displayed on
 	// this screen.  Note that this is a best guess effort -- whether
 	// your fonts support the character or not may be questionable.
