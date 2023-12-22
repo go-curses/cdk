@@ -129,6 +129,7 @@ type COffScreen struct {
 	fillChar  rune
 	fillStyle paint.Style
 	fallback  map[rune]string
+	fallcons  map[rune]rune
 
 	sync.Mutex
 }
@@ -181,6 +182,11 @@ func (o *COffScreen) Init() error {
 	o.fallback = make(map[rune]string)
 	for k, v := range paint.RuneFallbacks {
 		o.fallback[k] = v
+	}
+
+	o.fallcons = make(map[rune]rune)
+	for k, v := range paint.RuneConsoleFallbacks {
+		o.fallcons[k] = v
 	}
 	return nil
 }
@@ -529,6 +535,19 @@ func (o *COffScreen) UnregisterRuneFallback(r rune) {
 	o.Lock()
 	defer o.Unlock()
 	delete(o.fallback, r)
+}
+
+func (o *COffScreen) RegisterConsoleFallback(r rune, subst rune) {
+	o.Lock()
+	defer o.Unlock()
+	o.fallcons[r] = subst
+	return
+}
+
+func (o *COffScreen) UnregisterConsoleFallback(orig rune) {
+	o.Lock()
+	defer o.Unlock()
+	delete(o.fallcons, orig)
 }
 
 func (o *COffScreen) CanDisplay(r rune, checkFallbacks bool) bool {
