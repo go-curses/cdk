@@ -38,6 +38,7 @@ import (
 	"github.com/go-curses/cdk/charset"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/sync"
+	cterm "github.com/go-curses/cdk/lib/term"
 	"github.com/go-curses/cdk/log"
 )
 
@@ -54,6 +55,7 @@ type Screen interface {
 	TtyKeepingFileHandle() (keeping bool)
 	TtyCloseWithStiRead(enabled bool)
 	GetTtyCloseWithStiRead() (enabled bool)
+	GetTermType() (ttyType cterm.TermType)
 
 	// Close finalizes the screen also releasing resources.
 	Close()
