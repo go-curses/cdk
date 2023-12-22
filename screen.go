@@ -287,6 +287,11 @@ func NewScreen() (Screen, error) {
 	for k, v := range paint.RuneFallbacks {
 		t.fallback[k] = v
 	}
+	t.fallcons = make(map[rune]rune)
+	for k, v := range paint.RuneConsoleFallbacks {
+		t.fallback[k] = string(v)
+		t.fallcons[k] = v
+	}
 
 	return t, nil
 }
@@ -337,6 +342,7 @@ type CScreen struct {
 	encoder      transform.Transformer
 	decoder      transform.Transformer
 	fallback     map[rune]string
+	fallcons     map[rune]rune
 	colors       map[paint.Color]paint.Color
 	palette      []paint.Color
 	trueColor    bool
@@ -810,7 +816,13 @@ func (d *CScreen) Fill(r rune, style paint.Style) {
 func (d *CScreen) SetContent(x, y int, mc rune, comb []rune, style paint.Style) {
 	d.Lock()
 	if !d.finished {
-		d.cells.SetCell(x, y, mc, comb, style)
+		actual := mc
+		if d.ttyType == cterm.ConsoleTTY {
+			if v, ok := d.fallcons[mc]; ok {
+				actual = v
+			}
+		}
+		d.cells.SetCell(x, y, actual, comb, style)
 	}
 	d.Unlock()
 }
@@ -1895,6 +1907,19 @@ func (d *CScreen) UnregisterRuneFallback(orig rune) {
 	d.Lock()
 	delete(d.fallback, orig)
 	d.Unlock()
+}
+
+func (d *CScreen) RegisterConsoleFallback(r rune, subst rune) {
+	d.Lock()
+	defer d.Unlock()
+	d.fallcons[r] = subst
+	return
+}
+
+func (d *CScreen) UnregisterConsoleFallback(orig rune) {
+	d.Lock()
+	defer d.Unlock()
+	delete(d.fallcons, orig)
 }
 
 func (d *CScreen) CanDisplay(r rune, checkFallbacks bool) bool {
