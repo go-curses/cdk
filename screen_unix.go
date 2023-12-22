@@ -77,9 +77,6 @@ func (d *CScreen) initialize() (w, h int, err error) {
 			return
 		}
 	} else {
-		if d.ttyPath == "" {
-			d.ttyPath = "/dev/tty"
-		}
 		if d.term, err = term.Open(d.ttyPath); err != nil {
 			return
 		}
