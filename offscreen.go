@@ -25,6 +25,7 @@ import (
 	ccharset "github.com/go-curses/cdk/charset"
 	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/sync"
+	"github.com/go-curses/cdk/lib/term"
 	"github.com/go-curses/cdk/log"
 
 	cstrings "github.com/go-curses/cdk/lib/strings"
@@ -195,6 +196,11 @@ func (o *COffScreen) Close() {
 	o.physW = 0
 	o.physH = 0
 	o.front = nil
+}
+
+func (o *COffScreen) GetTermType() (ttyType term.TermType) {
+	ttyType = term.PseudoTTY
+	return
 }
 
 func (o *COffScreen) SetStyle(style paint.Style) {
