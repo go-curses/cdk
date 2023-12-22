@@ -269,6 +269,7 @@ func NewScreen() (Screen, error) {
 		ti:          ti,
 		ttyPath:     "/dev/tty",
 		ttyReadLock: &sync.Mutex{},
+		ttyType:     cterm.InvalidTermType,
 	}
 
 	t.keyExist = make(map[Key]bool)
@@ -301,6 +302,7 @@ type CScreen struct {
 	ttyReadSti   bool        // inject " " to cancel term.Read
 	ttyReading   bool        // is currently waiting for a term.Read
 	ttyReadLock  *sync.Mutex // thread-safe term.Read tracking
+	ttyType      cterm.TermType
 	ti           *terminfo.Terminfo
 	h            int
 	w            int
@@ -378,6 +380,11 @@ func (d *CScreen) TtyCloseWithStiRead(enabled bool) {
 
 func (d *CScreen) GetTtyCloseWithStiRead() (enabled bool) {
 	enabled = d.ttyReadSti
+	return
+}
+
+func (d *CScreen) GetTermType() (ttyType cterm.TermType) {
+	ttyType = d.ttyType
 	return
 }
 
