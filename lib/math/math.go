@@ -16,6 +16,8 @@ package math
 
 import (
 	"fmt"
+
+	"golang.org/x/exp/constraints"
 )
 
 // ClampI - Returns the `value` given unless it's smaller than `min` or greater
@@ -164,6 +166,20 @@ func Distribute(total, available, parts, nChildren, spacing int) (values, gaps [
 	} else if totalDist < total {
 		delta := total - totalDist
 		values = DistInts(SumInts(values)+delta, values)
+	}
+	return
+}
+
+func InRange[T constraints.Integer](v, min, max T) (present bool) {
+	present = v >= min && v <= max
+	return
+}
+
+func IsOneOf[T constraints.Integer](v T, list ...T) (present bool) {
+	for _, i := range list {
+		if present = v == i; present {
+			return
+		}
 	}
 	return
 }
