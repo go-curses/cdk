@@ -438,7 +438,7 @@ func (d *CScreen) initReal() (err error) {
 	if d.ti.SetFgBgRGB != "" || d.ti.SetFgRGB != "" || d.ti.SetBgRGB != "" {
 		d.trueColor = true
 	}
-	// A user who wants to have his themes honored can
+	// A user who wants to have their themes honored can
 	// set this environment variable.
 	if os.Getenv("GO_CDK_TRUECOLOR") == "disable" {
 		d.trueColor = false
