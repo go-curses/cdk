@@ -389,6 +389,20 @@ func (d *CScreen) GetTermType() (ttyType cterm.TermType) {
 }
 
 func (d *CScreen) initReal() (err error) {
+	if d.ttyFile != nil {
+		d.ttyPath = d.ttyFile.Name()
+	}
+	if d.ttyPath == "" || d.ttyPath == "auto" || d.ttyPath == "/dev/tty" {
+		if d.ttyPath, d.ttyType, err = cterm.ResolveTTY(); err != nil {
+			err = fmt.Errorf("error resolving tty path: %w", err)
+			return
+		}
+		log.InfoDF(1, "using ttyPath (resolved): %q (%v)", d.ttyPath, d.ttyType)
+	} else {
+		_, _, d.ttyType, _ = cterm.CharDeviceInfo(d.ttyPath)
+		log.InfoDF(1, "using ttyPath (specified): %q (%v)", d.ttyPath, d.ttyType)
+	}
+
 	d.useHostClipboard = false
 	d.useTermClipboard = true
 	d.evCh = make(chan Event, EventQueueSize)
