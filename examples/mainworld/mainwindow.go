@@ -67,7 +67,7 @@ func (w *MainWindow) event(data []interface{}, argv ...interface{}) enums.EventF
 		case *cdk.EventKey:
 			if v.Key() == cdk.KeyESC {
 				w.LogInfo("ProcessEvent: RequestQuit (key:%v)", v.Name())
-				cdk.GetDefaultDisplay().RequestQuit()
+				w.GetDisplay().RequestQuit()
 			} else {
 				w.LogInfo("ProcessEvent: Key (key:%v)", v.Name())
 			}
