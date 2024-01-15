@@ -506,7 +506,6 @@ func (app *CApplication) MainRun(runner ApplicationMain) {
 	app.SetupDisplay()
 	display := app.Display()
 	var wg *sync.WaitGroup
-	wg.Add(1)
 	GoWithMainContext(
 		env.Get("USER", "nil"),
 		"localhost",
@@ -517,7 +516,6 @@ func (app *CApplication) MainRun(runner ApplicationMain) {
 			var ctx context.Context
 			var cancel context.CancelFunc
 			if ctx, cancel, wg, err = display.Startup(); err != nil {
-				wg.Done()
 				app.LogErr(err)
 				return
 			}
@@ -528,7 +526,6 @@ func (app *CApplication) MainRun(runner ApplicationMain) {
 			if runner != nil {
 				runner(ctx, cancel, wg)
 			}
-			wg.Done()
 		},
 	)
 	wg.Wait()
