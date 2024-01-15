@@ -52,7 +52,7 @@ func (o *CObject) Init() (already bool) {
 	o.properties = make([]*CProperty, 0)
 	_ = o.InstallProperty(PropertyDebug, BoolProperty, true, false)
 	_ = o.InstallProperty(PropertyName, StringProperty, true, "")
-	_ = o.InstallProperty(PropertyTheme, ThemeProperty, true, paint.NilTheme)
+	_ = o.InstallProperty(PropertyTheme, ThemeProperty, true, paint.GetDefaultColorTheme())
 	return false
 }
 
