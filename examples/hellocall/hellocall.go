@@ -23,25 +23,9 @@ import (
 	"github.com/go-curses/cdk"
 	"github.com/go-curses/cdk/lib/enums"
 	"github.com/go-curses/cdk/lib/ptypes"
-	cstrings "github.com/go-curses/cdk/lib/strings"
 	"github.com/go-curses/cdk/lib/sync"
 	"github.com/go-curses/cdk/log"
 	"github.com/go-curses/cdk/memphis"
-)
-
-// Build Configuration Flags
-// setting these will enable command line flags and their corresponding features
-// use `go build -v -ldflags="-X 'main.IncludeLogFullPaths=false'"`
-var (
-	IncludeProfiling          = "false"
-	IncludeLogFile            = "false"
-	IncludeLogFormat          = "false"
-	IncludeLogFullPaths       = "false"
-	IncludeLogLevel           = "false"
-	IncludeLogLevels          = "false"
-	IncludeLogTimestamps      = "false"
-	IncludeLogTimestampFormat = "false"
-	IncludeLogOutput          = "false"
 )
 
 var CdkApp cdk.Application
@@ -55,15 +39,6 @@ func main() {
 }
 
 func init() {
-	cdk.Build.Profiling = cstrings.IsTrue(IncludeProfiling)
-	cdk.Build.LogFile = cstrings.IsTrue(IncludeLogFile)
-	cdk.Build.LogFormat = cstrings.IsTrue(IncludeLogFormat)
-	cdk.Build.LogFullPaths = cstrings.IsTrue(IncludeLogFullPaths)
-	cdk.Build.LogLevel = cstrings.IsTrue(IncludeLogLevel)
-	cdk.Build.LogLevels = cstrings.IsTrue(IncludeLogLevels)
-	cdk.Build.LogTimestamps = cstrings.IsTrue(IncludeLogTimestamps)
-	cdk.Build.LogTimestampFormat = cstrings.IsTrue(IncludeLogTimestampFormat)
-	cdk.Build.LogOutput = cstrings.IsTrue(IncludeLogOutput)
 	cdk.Build.DisableLocalCall = false
 	CdkApp = cdk.NewApplication(
 		"hellocall",
