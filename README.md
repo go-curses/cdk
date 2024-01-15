@@ -1,4 +1,4 @@
-[![Go-Curses](https://go-curses.github.io/curses-logo-banner.png)](https://go-curses.github.io)
+[![Go-Curses](https://go-curses.org/media/curses-logo-banner.png)](https://go-curses.org)
 
 [![Made with Go](https://img.shields.io/badge/go-v1.16+-blue.svg)](https://golang.org)
 [![Go documentation](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/go-curses/cdk)
@@ -233,7 +233,7 @@ file for details.
 [appserver]: https://github.com/go-curses/cdk/blob/trunk/examples/appserver
 [GoConvey]: https://github.com/smartystreets/goconvey
 [LICENSE.md]: https://github.com/go-curses/cdk/blob/trunk/LICENSE.md
-[helloworld screenshot]: https://go-curses.github.io/screenshots/cdk-helloworld.png
-[appserver server-side screenshot]: https://go-curses.github.io/screenshots/cdk-appserver--server.png
-[appserver client-side screenshot]: https://go-curses.github.io/screenshots/cdk-appserver--client.png
-[appserver server-side-with-client screenshot]: https://go-curses.github.io/screenshots/cdk-appserver--server-with-client.png
+[helloworld screenshot]: https://go-curses.org/screenshots/cdk-helloworld.png
+[appserver server-side screenshot]: https://go-curses.org/screenshots/cdk-appserver--server.png
+[appserver client-side screenshot]: https://go-curses.org/screenshots/cdk-appserver--client.png
+[appserver server-side-with-client screenshot]: https://go-curses.org/screenshots/cdk-appserver--server-with-client.png
