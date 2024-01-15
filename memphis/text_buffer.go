@@ -168,6 +168,9 @@ func (b *CTextBuffer) LineCount() (lineCount int) {
 }
 
 func (b *CTextBuffer) ClearText(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (plain string) {
+	if b.input == nil {
+		return
+	}
 	lines := b.input.Make(false, wordWrap, ellipsize, justify, maxChars, b.style)
 	for _, line := range lines {
 		if len(plain) > 0 {
@@ -183,6 +186,9 @@ func (b *CTextBuffer) ClearText(wordWrap enums.WrapMode, ellipsize bool, justify
 }
 
 func (b *CTextBuffer) PlainText(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (plain string) {
+	if b.input == nil {
+		return
+	}
 	lines := b.input.Make(b.mnemonics, wordWrap, ellipsize, justify, maxChars, b.style)
 	for _, line := range lines {
 		if len(plain) > 0 {
@@ -198,6 +204,9 @@ func (b *CTextBuffer) PlainText(wordWrap enums.WrapMode, ellipsize bool, justify
 }
 
 func (b *CTextBuffer) PlainTextInfo(wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, maxChars int) (longestLine, lineCount int) {
+	if b.input == nil {
+		return
+	}
 	lines := b.input.Make(b.mnemonics, wordWrap, ellipsize, justify, maxChars, b.style)
 	lineCount = len(lines)
 	for _, line := range lines {
@@ -210,6 +219,9 @@ func (b *CTextBuffer) PlainTextInfo(wordWrap enums.WrapMode, ellipsize bool, jus
 }
 
 func (b *CTextBuffer) Draw(canvas Surface, singleLine bool, wordWrap enums.WrapMode, ellipsize bool, justify enums.Justification, vAlign enums.VerticalAlignment) enums.EventFlag {
+	if b.input == nil {
+		return enums.EVENT_PASS
+	}
 	b.Lock()
 	defer b.Unlock()
 	characterCount := b.input.CharacterCount()
