@@ -16,13 +16,13 @@ directly.
 
 This project should not be used for any purpose other than intellectual
 curiosity. This status is reflected in the tagged versioning of this `trunk`
-branch, v0.1.x, ie: entirely experimental and unfinished in any sense of the
+branch, v0.5.x, ie: still experimental and unfinished, yet getting near the
 word "done".
 
 ## Installing
 
 ```
-$ go get -u github.com/go-curses/cdk/...
+$ go get github.com/go-curses/cdk
 ```
 
 ## Building
