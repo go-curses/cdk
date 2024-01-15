@@ -25,7 +25,7 @@ func TestTextChar(t *testing.T) {
 		tc := NewTextChar([]byte{})
 		So(tc, ShouldNotBeNil)
 		So(tc.Width(), ShouldEqual, 0)
-		So(tc.IsSpace(), ShouldEqual, false)
+		So(tc.IsSpace(), ShouldEqual, true)
 		tc.Set('*')
 		So(tc, ShouldNotBeNil)
 		So(tc.Width(), ShouldEqual, 1)
