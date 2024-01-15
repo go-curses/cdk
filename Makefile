@@ -110,30 +110,29 @@ generate:
 
 build: clean
 	@echo "# building cdk"
-	@go build -v
+	@go build -v ./...
 
-examples: clean demoplugin.so demoplugin
-	@echo "# building all examples..."
-	@for name in `ls examples`; do \
-		if [ -d examples/$$name ]; then \
-			cd examples/$$name/; \
-			echo -n "#\tbuilding $$name... "; \
-			( go build -v \
-					-trimpath \
-					-gcflags=all="-N -l" \
-					-ldflags="\
--X 'main.IncludeProfiling=true' \
--X 'main.IncludeLogFile=true'   \
--X 'main.IncludeLogLevel=true'  \
+define __go_build
+$(shell \
+	echo -n "#\tbuilding $(1)... "; \
+	( go build -v $(3) \
+			-trimpath \
+			-gcflags='all="-N" -l' \
+			-ldflags="\
+-X 'github.com/go-curses/cdk.IncludeProfiling=true' \
+-X 'github.com/go-curses/cdk.IncludeLogFile=true'   \
+-X 'github.com/go-curses/cdk.IncludeLogLevel=true'  \
 " \
-					-o ../../$$name 2>&1 \
-			) > ../../$$name.build.log; \
-			cd - > /dev/null; \
-			[ -f $$name ] \
-				&& echo "done." \
-				|| echo "failed.\n>\tsee ./$$name.build.log for errors"; \
-		fi; \
-	done
+			-o ./$(1) $(2) 2>&1 \
+	) > ./$(1).build.log \
+)
+endef
+
+define __go_build_plugin
+$(call __go_build,$(1).so,$(2),-buildmode=plugin)
+endef
+
+examples: clean demoplugin.so demoplugin appserver hellocall helloworld mainworld pluginworld
 
 local-term:
 	@if [ -d "${TERM_PATH}" ]; then \
@@ -199,19 +198,10 @@ dev: clean
 	@if [ -d examples/${DEV_EXAMPLE} ]; \
 	then \
 		echo -n "# building: ${DEV_EXAMPLE} [dev]... "; \
-		cd examples/${DEV_EXAMPLE}; \
-		( go build -v \
-				-ldflags="\
--X 'main.IncludeProfiling=true' \
--X 'main.IncludeLogFile=true'   \
--X 'main.IncludeLogLevel=true'  \
-" \
-				-o ../../${DEV_EXAMPLE} \
-			2>&1 ) > ../../${DEV_EXAMPLE}.build.log; \
-		cd - > /dev/null; \
+		$(call __go_build,${DEV_EXAMPLE},./examples/${DEV_EXAMPLE}); \
 		[ -f ${DEV_EXAMPLE} ] \
 			&& echo "done." \
-			|| echo "failed.\n>\tsee ./${DEV_EXAMPLE}.build.log for errors"; \
+			|| echo -e "failed.\n>\tsee ./${DEV_EXAMPLE}.build.log for errors"; \
 	else \
 		echo "# dev example not found: ${DEV_EXAMPLE}"; \
 	fi
@@ -223,7 +213,7 @@ run:
 	@if [ -f ${DEV_EXAMPLE} ]; \
 	then \
 		echo "# starting ${DEV_EXAMPLE}..."; \
-		./${DEV_EXAMPLE}; \
+		( ./${DEV_EXAMPLE} 2>> "${GO_CDK_LOG_FILE}" ); \
 		if [ $$? -ne 0 ]; \
 		then \
 			stty sane; echo ""; \
@@ -248,13 +238,15 @@ profile.cpu: dev
 	@mkdir -v /tmp/${DEV_EXAMPLE}.cdk.pprof 2>/dev/null || true
 	@if [ -f ${DEV_EXAMPLE} ]; \
 		then \
-			./${DEV_EXAMPLE} && \
-			if [ -f /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof ]; \
-			then \
-				read -p "# Press enter to open a pprof instance" JUNK \
-				&& go tool pprof -http=:8080 /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof ; \
-			else \
-				echo "# missing /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof"; \
+			( ./${DEV_EXAMPLE} 2>> "${GO_CDK_LOG_FILE}" ); \
+			if [ $$? -eq 0 ]; then \
+				if [ -f /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof ]; \
+				then \
+					read -p "# Press enter to open a pprof instance" JUNK \
+					&& go tool pprof -http=:8080 /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof ; \
+				else \
+					echo "# missing /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof"; \
+				fi ; \
 			fi ; \
 		fi
 
@@ -267,13 +259,15 @@ profile.mem: dev
 	@mkdir -v /tmp/${DEV_EXAMPLE}.cdk.pprof 2>/dev/null || true
 	@if [ -f ${DEV_EXAMPLE} ]; \
 		then \
-			./${DEV_EXAMPLE} && \
-			if [ -f /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof ]; \
-			then \
-				read -p "# Press enter to open a pprof instance" JUNK \
-				&& go tool pprof -http=:8080 /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof; \
-			else \
-				echo "# missing /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof"; \
+			( ./${DEV_EXAMPLE} 2>> "${GO_CDK_LOG_FILE}" ); \
+			if [ $$? -eq 0 ]; then \
+				if [ -f /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof ]; \
+				then \
+					read -p "# Press enter to open a pprof instance" JUNK \
+					&& go tool pprof -http=:8080 /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof; \
+				else \
+					echo "# missing /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof"; \
+				fi ; \
 			fi ; \
 		fi
 
@@ -282,73 +276,29 @@ profile.mem: dev
 	@if [ -d examples/pluginworld/$(PLUGNAME) ]; \
 	then \
 		echo -n "# building plugin $(PLUGNAME)... "; \
-		cd examples/pluginworld/$(PLUGNAME); \
-		( go build -v \
-				-buildmode=plugin \
-				-trimpath \
-				-gcflags=all="-N -l" \
-				-ldflags="\
--X 'main.IncludeProfiling=true' \
--X 'main.IncludeLogFile=true'   \
--X 'main.IncludeLogLevel=true'  \
-" \
-				-o ../../../$@ \
-			2>&1 ) > ../../../$(PLUGNAME).build.log; \
-		cd - > /dev/null; \
-		if [ -f $@ ]; \
-		then \
-			echo "done."; \
-		else \
-			echo "fail.\n#\tsee ./$(PLUGNAME).build.log"; \
-		fi; \
+		$(call __go_build_plugin,$(PLUGNAME),./examples/pluginworld/$(PLUGNAME)); \
+		[ -f $@ ] \
+			&& echo "done." \
+			|| echo -e "fail.\n#\tsee ./$(PLUGNAME).build.log"; \
 	else \
 		echo "not a plugin: $@"; \
 		false; \
 	fi
 
 %:
-	@if [ -d examples/$@ ]; \
-	then \
+	@if [ -d examples/$@ ]; then \
 		echo -n "# building example $@... "; \
-		cd examples/$@; \
-		( go build -v \
-				-trimpath \
-				-gcflags=all="-N -l" \
-				-ldflags="\
--X 'main.IncludeProfiling=true' \
--X 'main.IncludeLogFile=true'   \
--X 'main.IncludeLogLevel=true'  \
-" \
-				-o ../../$@ \
-			2>&1 ) > ../../$@.build.log; \
-		cd - > /dev/null; \
-		if [ -f $@ ]; \
-		then \
-			echo "done."; \
-		else \
-			echo "fail.\n#\tsee ./$@.build.log"; \
-		fi; \
+		$(call __go_build,$@,./examples/$@); \
+		[ -f $@ ] \
+			&& echo "done." \
+			|| echo -e "fail.\n#\tsee ./$@.build.log"; \
 	elif [ -d examples/pluginworld/$@ ]; \
 	then \
 		echo -n "# building example pluginworld/$@... "; \
-		cd examples/pluginworld/$@; \
-		( go build -v \
-				-trimpath \
-				-gcflags=all="-N -l" \
-				-ldflags="\
--X 'main.IncludeProfiling=true' \
--X 'main.IncludeLogFile=true'   \
--X 'main.IncludeLogLevel=true'  \
-" \
-				-o ../../../$@ \
-			2>&1 ) > ../../../$@.build.log; \
-		cd - > /dev/null; \
-		if [ -f $@ ]; \
-		then \
-			echo "done."; \
-		else \
-			echo "fail.\n#\tsee ./$@.build.log"; \
-		fi; \
+		$(call __go_build,$@,./examples/pluginworld/$@); \
+		[ -f $@ ] \
+			&& echo "done." \
+			|| echo -e "fail.\n#\tsee ./$@.build.log"; \
 	else \
 		echo "not an example: $@"; \
 	fi
