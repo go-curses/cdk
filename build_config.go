@@ -14,6 +14,26 @@
 
 package cdk
 
+import (
+	cstrings "github.com/go-curses/cdk/lib/strings"
+)
+
+// Setting these globals will enable command line flags and their
+// corresponding features. To set these, use the go build -ldflags:
+//
+//	go build -v -ldflags="-X 'github.com/go-curses/cdk.IncludeLogFullPaths=true'"
+var (
+	IncludeProfiling          = "false"
+	IncludeLogFile            = "false"
+	IncludeLogFormat          = "false"
+	IncludeLogFullPaths       = "false"
+	IncludeLogLevel           = "false"
+	IncludeLogLevels          = "false"
+	IncludeLogTimestamps      = "false"
+	IncludeLogTimestampFormat = "false"
+	IncludeLogOutput          = "false"
+)
+
 type Config struct {
 	Profiling          bool
 	LogFile            bool
@@ -40,4 +60,16 @@ var Build = Config{
 	LogOutput:          false,
 	DisableLocalCall:   true,
 	DisableRemoteCall:  true,
+}
+
+func init() {
+	Build.Profiling = cstrings.IsTrue(IncludeProfiling)
+	Build.LogFile = cstrings.IsTrue(IncludeLogFile)
+	Build.LogFormat = cstrings.IsTrue(IncludeLogFormat)
+	Build.LogFullPaths = cstrings.IsTrue(IncludeLogFullPaths)
+	Build.LogLevel = cstrings.IsTrue(IncludeLogLevel)
+	Build.LogLevels = cstrings.IsTrue(IncludeLogLevels)
+	Build.LogTimestamps = cstrings.IsTrue(IncludeLogTimestamps)
+	Build.LogTimestampFormat = cstrings.IsTrue(IncludeLogTimestampFormat)
+	Build.LogOutput = cstrings.IsTrue(IncludeLogOutput)
 }
