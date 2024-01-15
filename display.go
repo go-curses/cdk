@@ -154,6 +154,8 @@ type CDisplay struct {
 	lastLoop time.Time
 	loopNow  chan bool
 
+	notifyLoopNow bool
+
 	eventMutex *sync.Mutex
 	drawMutex  *sync.Mutex
 }
@@ -1037,7 +1039,9 @@ processEventWorkerLoop:
 				default:
 					d.Lock()
 					d.buffer = append(d.buffer, t)
-					d.loopNow <- true
+					if d.notifyLoopNow {
+						d.loopNow <- true
+					}
 					d.Unlock()
 				}
 			} else {
@@ -1070,9 +1074,9 @@ func (d *CDisplay) Run() (err error) {
 	if ctx, _, wg, err = d.Startup(); err != nil {
 		return
 	}
+	d.notifyLoopNow = true
 	wg.Add(1)
 	Go(func() {
-
 		for d.HasPendingEvents() {
 			select {
 			case <-ctx.Done():
