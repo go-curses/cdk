@@ -53,8 +53,12 @@ func (c *CTextChar) Set(r rune) {
 }
 
 func (c *CTextChar) SetByte(b []byte) {
-	c.value, c.width = utf8.DecodeRune(b)
-	c.count = runewidth.RuneWidth(rune(string(b)[0]))
+	if len(b) > 0 {
+		c.value, c.width = utf8.DecodeRune(b)
+		c.count = runewidth.RuneWidth(rune(string(b)[0]))
+	} else {
+		c.value, c.width, c.count = 0, 0, 0
+	}
 }
 
 func (c *CTextChar) Width() int {
