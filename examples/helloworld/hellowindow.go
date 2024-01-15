@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-curses/cdk"
 	"github.com/go-curses/cdk/lib/enums"
+	"github.com/go-curses/cdk/lib/paint"
 	"github.com/go-curses/cdk/lib/ptypes"
 	"github.com/go-curses/cdk/memphis"
 )
@@ -38,6 +39,7 @@ func (w *HelloWindow) Init() (already bool) {
 		return true
 	}
 	w.CWindow.Init()
+	w.SetTheme(paint.GetDefaultColorTheme())
 	w.Connect(cdk.SignalDraw, "hello-draw-handler", w.draw)
 	w.Connect(cdk.SignalEvent, "hello-event-handler", w.event)
 	return false
