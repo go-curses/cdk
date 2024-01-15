@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+SHELL := /bin/bash
+
 DEV_EXAMPLE := helloworld
 CDK_PATH := ../cdk
 TERM_PATH := ../term
