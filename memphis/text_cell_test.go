@@ -29,7 +29,7 @@ func TestTextCell(t *testing.T) {
 		So(tc.IsSpace(), ShouldEqual, false)
 		So(tc.Width(), ShouldEqual, 1)
 		So(tc.Style().String(), ShouldEqual, paint.GetDefaultMonoStyle().String())
-		So(tc.Dirty(), ShouldEqual, false)
+		So(tc.Dirty(), ShouldEqual, true)
 		So(tc.Value(), ShouldEqual, '*')
 		So(tc.String(), ShouldEqual, "{Char=*,Style={white[#ffffff],black[#000000],0}}")
 		tc.Set(' ')
