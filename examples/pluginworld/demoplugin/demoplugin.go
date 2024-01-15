@@ -113,6 +113,9 @@ func init() {
 						case *cdk.EventResize:
 							width, height := v.Size()
 							w.LogInfo("ProcessEvent: Resize (width:%v, height:%v)", width, height)
+							if surface, err := memphis.GetSurface(w.ObjectID()); err == nil {
+								surface.Resize(ptypes.MakeRectangle(width, height))
+							}
 						default:
 							w.LogInfo("ProcessEvent: %T %v", v, v)
 						}
