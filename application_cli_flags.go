@@ -15,33 +15,35 @@
 package cdk
 
 import (
-	"github.com/go-curses/cdk/log"
 	"github.com/urfave/cli/v2"
+
+	"github.com/go-curses/cdk/log"
 )
 
 var (
 	AppCliProfileFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-profile",
 		EnvVars:     []string{"GO_CDK_PROFILE"},
-		Value:       "",
 		Usage:       "profile one of: none, block, cpu, goroutine, mem, mutex, thread or trace",
 		DefaultText: "none",
 	}
 	AppCliProfilePathFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-profile-path",
 		EnvVars:     []string{"GO_CDK_PROFILE_PATH"},
-		Value:       "",
 		Usage:       "specify the directory path to store the profile data",
 		DefaultText: DefaultGoProfilePath,
 	}
 	AppCliLogFileFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-file",
 		EnvVars:     []string{"GO_CDK_LOG_FILE"},
-		Value:       "",
 		Usage:       "path to log file",
 		DefaultText: log.DefaultLogPath,
 	}
-	AppCliLogLevel = &cli.StringFlag{
+	AppCliLogLevelFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-level",
 		EnvVars:     []string{"GO_CDK_LOG_LEVEL"},
 		Value:       "error",
@@ -49,6 +51,7 @@ var (
 		DefaultText: "error",
 	}
 	AppCliLogFormatFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-format",
 		EnvVars:     []string{"GO_CDK_LOG_FORMAT"},
 		Value:       "pretty",
@@ -56,13 +59,14 @@ var (
 		DefaultText: "pretty",
 	}
 	AppCliLogTimestampsFlag = &cli.BoolFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-timestamps",
 		EnvVars:     []string{"GO_CDK_LOG_TIMESTAMPS"},
-		Value:       false,
 		Usage:       "enable timestamps",
 		DefaultText: "false",
 	}
 	AppCliLogTimestampFormatFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-timestamp-format",
 		EnvVars:     []string{"GO_CDK_LOG_TIMESTAMP_FORMAT"},
 		Value:       log.DefaultTimestampFormat,
@@ -70,13 +74,14 @@ var (
 		DefaultText: log.DefaultTimestampFormat,
 	}
 	AppCliLogFullPathsFlag = &cli.BoolFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-full-paths",
 		EnvVars:     []string{"GO_CDK_LOG_FULL_PATHS"},
-		Value:       false,
 		Usage:       "log the full paths of source files",
 		DefaultText: "false",
 	}
 	AppCliLogOutputFlag = &cli.StringFlag{
+		Category:    "Go-Curses",
 		Name:        "cdk-log-output",
 		EnvVars:     []string{"GO_CDK_LOG_OUTPUT"},
 		Value:       "file",
@@ -84,9 +89,9 @@ var (
 		DefaultText: "file",
 	}
 	AppCliLogLevelsFlag = &cli.BoolFlag{
-		Name:  "cdk-log-levels",
-		Value: false,
-		Usage: "list the levels of logging verbosity",
+		Category: "Go-Curses",
+		Name:     "cdk-log-levels",
+		Usage:    "list the levels of logging verbosity",
 	}
 )
 
@@ -104,7 +109,7 @@ func GetApplicationCliFlags() (flags []cli.Flag) {
 		flags = append(flags, AppCliLogFullPathsFlag)
 	}
 	if Build.LogLevel {
-		flags = append(flags, AppCliLogLevel)
+		flags = append(flags, AppCliLogLevelFlag)
 	}
 	if Build.LogLevels {
 		flags = append(flags, AppCliLogLevelsFlag)
