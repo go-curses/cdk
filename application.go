@@ -152,10 +152,10 @@ func (app *CApplication) SetupDisplay() {
 		display := NewDisplay(app.title, app.ttyPath)
 		display.app = app
 		username := env.Get("USER", "nil")
-		display.SetName(cstrings.MakeObjectName(app.name, username, "/dev/tty"))
+		display.SetName(cstrings.MakeObjectName(app.name, username, app.ttyPath))
 		_ = display.SetStringProperty(PropertyDisplayName, app.name)
 		_ = display.SetStringProperty(PropertyDisplayUser, username)
-		_ = display.SetStringProperty(PropertyDisplayHost, "/dev/tty")
+		_ = display.SetStringProperty(PropertyDisplayHost, app.ttyPath)
 		if err := app.SetDisplay(display); err != nil {
 			app.LogErr(err)
 		}
