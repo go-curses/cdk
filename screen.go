@@ -407,9 +407,16 @@ func (d *CScreen) initReal() (err error) {
 			return
 		}
 		log.InfoDF(1, "using ttyPath (resolved): %q (%v)", d.ttyPath, d.ttyType)
+	} else if d.ttyPath == "/dev/tty" {
+		// can be console or pseudo, use ResolveTTY to get just the ttyType, retaining ttyPath
+		if _, d.ttyType, err = cterm.ResolveTTY(); err != nil {
+			err = fmt.Errorf("error resolving tty type: %w", err)
+			return
+		}
+		log.InfoDF(1, "using ttyPath (defaults): %q (%v)", d.ttyPath, d.ttyType)
 	} else {
 		_, _, d.ttyType, _ = cterm.CharDeviceInfo(d.ttyPath)
-		log.InfoDF(1, "using ttyPath (specified): %q (%v)", d.ttyPath, d.ttyType)
+		log.InfoDF(1, "using ttyPath (specific): %q (%v)", d.ttyPath, d.ttyType)
 	}
 
 	d.useHostClipboard = false
