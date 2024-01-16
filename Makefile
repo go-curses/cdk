@@ -21,7 +21,29 @@ RUN_ARGS ?=
 DLV_PORT      ?= 2345
 DLV_BIN ?= $(shell which dlv)
 
-.PHONY: all build clean cover dev examples fmt help run test tidy vet
+.PHONY: all build clean cover dev examples fmt help run dlv test tidy vet
+
+define __go_build
+$(shell \
+	echo -n "#\tbuilding $(1)... "; \
+	( go build -v $(3) \
+			-trimpath \
+			-gcflags='all="-N" -l' \
+			-ldflags="\
+-X 'github.com/go-curses/cdk.IncludeTtyFlag=true'  \
+-X 'github.com/go-curses/cdk.IncludeProfiling=true' \
+-X 'github.com/go-curses/cdk.IncludeLogFile=true'   \
+-X 'github.com/go-curses/cdk.IncludeLogLevel=true'  \
+" \
+			${BUILD_TAG_OPT} \
+			-o ./$(1) $(2) 2>&1 \
+	) > ./$(1).build.log \
+)
+endef
+
+define __go_build_plugin
+$(call __go_build,$(1).so,$(2),-buildmode=plugin)
+endef
 
 all: help
 
@@ -128,28 +150,6 @@ generate:
 build: clean
 	@echo "# building cdk"
 	@go build -v ./...
-
-define __go_build
-$(shell \
-	echo -n "#\tbuilding $(1)... "; \
-	( go build -v $(3) \
-			-trimpath \
-			-gcflags='all="-N" -l' \
-			-ldflags="\
--X 'github.com/go-curses/cdk.IncludeTtyFlag=true'  \
--X 'github.com/go-curses/cdk.IncludeProfiling=true' \
--X 'github.com/go-curses/cdk.IncludeLogFile=true'   \
--X 'github.com/go-curses/cdk.IncludeLogLevel=true'  \
-" \
-			${BUILD_TAG_OPT} \
-			-o ./$(1) $(2) 2>&1 \
-	) > ./$(1).build.log \
-)
-endef
-
-define __go_build_plugin
-$(call __go_build,$(1).so,$(2),-buildmode=plugin)
-endef
 
 examples: clean demoplugin.so demoplugin appserver hellocall helloworld mainworld pluginworld
 
@@ -322,7 +322,7 @@ profile.mem: dev
 
 %.so: PLUGNAME=$(basename $@)
 %.so:
-	@if [ -d examples/pluginworld/$(PLUGNAME) ]; \
+	@if [ -d "examples/plugin-world/$(PLUGNAME)" ]; \
 	then \
 		echo -n "# building plugin $(PLUGNAME)... "; \
 		$(call __go_build_plugin,$(PLUGNAME),./examples/pluginworld/$(PLUGNAME)); \
@@ -335,13 +335,13 @@ profile.mem: dev
 	fi
 
 %:
-	@if [ -d examples/$@ ]; then \
+	@if [ -d "examples/$@" ]; then \
 		echo -n "# building example $@... "; \
 		$(call __go_build,$@,./examples/$@); \
 		[ -f $@ ] \
 			&& echo "done." \
 			|| echo -e "fail.\n#\tsee ./$@.build.log"; \
-	elif [ -d examples/pluginworld/$@ ]; \
+	elif [ -d "examples/pluginworld/$@"]; \
 	then \
 		echo -n "# building example pluginworld/$@... "; \
 		$(call __go_build,$@,./examples/pluginworld/$@); \
