@@ -1031,10 +1031,10 @@ processEventWorkerLoop:
 				default:
 					d.Lock()
 					d.buffer = append(d.buffer, t)
+					d.Unlock()
 					if d.notifyLoopNow {
 						d.loopNow <- true
 					}
-					d.Unlock()
 				}
 			} else {
 				// nil event, quit?
@@ -1225,7 +1225,7 @@ func (d *CDisplay) IterateBufferedEvents() (refreshed bool) {
 	}
 
 	d.Lock()
-	buffer := d.buffer
+	buffer := d.buffer[:]
 	d.buffer = nil
 	d.Unlock()
 
