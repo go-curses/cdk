@@ -21,8 +21,9 @@ import (
 // Setting these globals will enable command line flags and their
 // corresponding features. To set these, use the go build -ldflags:
 //
-//	go build -v -ldflags="-X 'github.com/go-curses/cdk.IncludeLogFullPaths=true'"
+//	go build -v -ldflags="-X 'github.com/go-curses/cdk.IncludeTtyFlag=true'"
 var (
+	IncludeTtyFlag            = "false"
 	IncludeProfiling          = "false"
 	IncludeLogFile            = "false"
 	IncludeLogFormat          = "false"
@@ -35,6 +36,7 @@ var (
 )
 
 type Config struct {
+	TtyFlag            bool
 	Profiling          bool
 	LogFile            bool
 	LogFormat          bool
@@ -63,6 +65,7 @@ var Build = Config{
 }
 
 func init() {
+	Build.TtyFlag = cstrings.IsTrue(IncludeTtyFlag)
 	Build.Profiling = cstrings.IsTrue(IncludeProfiling)
 	Build.LogFile = cstrings.IsTrue(IncludeLogFile)
 	Build.LogFormat = cstrings.IsTrue(IncludeLogFormat)

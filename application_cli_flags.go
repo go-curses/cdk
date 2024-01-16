@@ -93,9 +93,17 @@ var (
 		Name:     "cdk-log-levels",
 		Usage:    "list the levels of logging verbosity",
 	}
+	AppCliTtyFlag = &cli.StringFlag{
+		Category: "Go-Curses",
+		Name:     "cdk-tty",
+		Usage:    "specify the display tty",
+		EnvVars:  []string{"GO_CDK_TTY"},
+	}
 )
 
 func GetApplicationCliFlags() (flags []cli.Flag) {
+	AppCliTtyFlag.Hidden = !Build.TtyFlag
+	flags = append(flags, AppCliTtyFlag)
 	if Build.Profiling {
 		flags = append(flags, AppCliProfileFlag, AppCliProfilePathFlag)
 	}
