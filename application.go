@@ -351,10 +351,21 @@ func (app *CApplication) Run(args []string) (err error) {
 		app.LogDebug("application run SignalPrepareStartup requested EVENT_STOP")
 		return
 	}
+	return app.cli.Run(args)
+}
+
+func (app *CApplication) CliActionFn(ctx *cli.Context) (err error) {
+	if f := app.Emit(SignalPrepare, app.Self(), ctx); f == enums.EVENT_STOP {
+		app.Emit(SignalShutdown)
+		return nil
+	} else if proceed := app.MainInit(ctx); !proceed {
+		return nil
+	}
+
 	app.SetupDisplay()
-	err = nil
 	var wg sync.WaitGroup
 	wg.Add(1)
+
 	GoWithMainContext(
 		env.Get("USER", "nil"),
 		"localhost",
@@ -368,12 +379,17 @@ func (app *CApplication) Run(args []string) (err error) {
 				app.cli.Commands = nil
 			}
 			sort.Sort(cfsorter.FlagSorter(app.cli.Flags))
-			err = app.cli.Run(args)
+			if app.runFn != nil {
+				err = app.runFn(ctx)
+			} else {
+				err = app.Display().Run()
+			}
 			wg.Done()
 		},
 	)
+
 	wg.Wait()
-	return err
+	return
 }
 
 // MainInit is used to initialize the Application based on the CLI arguments
@@ -467,6 +483,12 @@ func (app *CApplication) MainInit(argv ...interface{}) (ok bool) {
 		panic(err)
 	}
 
+	if app.context.IsSet(AppCliTtyFlag.Name) {
+		prev := app.ttyPath
+		app.ttyPath = app.context.String(AppCliTtyFlag.Name)
+		log.InfoF("%v=%v (prev: %v)", AppCliTtyFlag.Name, app.ttyPath, prev)
+	}
+
 	if Build.Profiling {
 		if v := app.context.String("cdk-profile"); !cstrings.IsEmpty(v) {
 			v = strings.ToLower(v)
@@ -549,20 +571,6 @@ func (app *CApplication) MainFinish() {
 	if d := app.Display(); d != nil {
 		d.MainFinish()
 	}
-}
-
-func (app *CApplication) CliActionFn(ctx *cli.Context) (err error) {
-	if f := app.Emit(SignalPrepare, app.Self(), ctx); f == enums.EVENT_STOP {
-		app.Emit(SignalShutdown)
-		return nil
-	}
-	if proceed := app.MainInit(ctx); !proceed {
-		return nil
-	}
-	if app.runFn != nil {
-		return app.runFn(ctx)
-	}
-	return app.Display().Run()
 }
 
 const SignalReconfigure Signal = "reconfigure"
