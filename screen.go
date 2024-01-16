@@ -401,7 +401,7 @@ func (d *CScreen) initReal() (err error) {
 	if d.ttyFile != nil {
 		d.ttyPath = d.ttyFile.Name()
 	}
-	if d.ttyPath == "" || d.ttyPath == "auto" || d.ttyPath == "/dev/tty" {
+	if d.ttyPath == "" || d.ttyPath == "auto" {
 		if d.ttyPath, d.ttyType, err = cterm.ResolveTTY(); err != nil {
 			err = fmt.Errorf("error resolving tty path: %w", err)
 			return
