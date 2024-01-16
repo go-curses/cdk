@@ -7,6 +7,20 @@ CDK_PATH := ../cdk
 TERM_PATH := ../term
 TERMINFO_PATH := ../terminfo
 
+BUILD_TAGS ?=
+
+BUILD_TAG_OPT := $(shell \
+	if [ -n "${BUILD_TAGS}" ]; then \
+		echo "-tags $$(echo ${BUILD_TAGS} | perl -pe 's/\s+/,/msg')"; \
+	fi \
+)
+
+RUN_ENV  ?=
+RUN_ARGS ?=
+
+DLV_PORT      ?= 2345
+DLV_BIN ?= $(shell which dlv)
+
 .PHONY: all build clean cover dev examples fmt help run test tidy vet
 
 all: help
@@ -38,6 +52,9 @@ help:
 	@echo
 	@echo "run targets:"
 	@echo "  run         - run the dev build (sanely handle crashes)"
+ifneq (${DLV_BIN},)
+	@echo "  dlv         - use dlv to run the dev build"
+endif
 	@echo "  profile.cpu - run the dev build and profile CPU"
 	@echo "  profile.mem - run the dev build and profile memory"
 
@@ -119,10 +136,12 @@ $(shell \
 			-trimpath \
 			-gcflags='all="-N" -l' \
 			-ldflags="\
+-X 'github.com/go-curses/cdk.IncludeTtyFlag=true'  \
 -X 'github.com/go-curses/cdk.IncludeProfiling=true' \
 -X 'github.com/go-curses/cdk.IncludeLogFile=true'   \
 -X 'github.com/go-curses/cdk.IncludeLogLevel=true'  \
 " \
+			${BUILD_TAG_OPT} \
 			-o ./$(1) $(2) 2>&1 \
 	) > ./$(1).build.log \
 )
@@ -213,7 +232,7 @@ run:
 	@if [ -f ${DEV_EXAMPLE} ]; \
 	then \
 		echo "# starting ${DEV_EXAMPLE}..."; \
-		( ./${DEV_EXAMPLE} 2>> "${GO_CDK_LOG_FILE}" ); \
+		( ${RUN_ENV} ./${DEV_EXAMPLE} ${RUN_ARGS} 2>> "${GO_CDK_LOG_FILE}" ); \
 		if [ $$? -ne 0 ]; \
 		then \
 			stty sane; echo ""; \
@@ -229,6 +248,36 @@ run:
 		fi; \
 	fi
 
+ifneq (${DLV_BIN},)
+dlv: export GO_CDK_LOG_FILE=./${DEV_EXAMPLE}.cdk.log
+dlv: export GO_CDK_LOG_LEVEL=debug
+dlv: export GO_CDK_LOG_FULL_PATHS=true
+dlv:
+	@if [ -f ${DEV_EXAMPLE} ]; \
+	then \
+		echo "# delving ${DEV_EXAMPLE}..."; \
+		( ${RUN_ENV} \
+			${DLV_BIN} --listen=:${DLV_PORT} --headless=true \
+			--api-version=2 --accept-multiclient exec -- \
+			./${DEV_EXAMPLE} ${RUN_ARGS} \
+			2>> "${GO_CDK_LOG_FILE}" \
+		); \
+		if [ $$? -ne 0 ]; \
+		then \
+			stty sane; echo ""; \
+			echo "# ${DEV_EXAMPLE} crashed, see: ./${DEV_EXAMPLE}.cdk.log"; \
+			read -p "# reset terminal? [Yn] " RESP; \
+			if [ "$$RESP" = "" -o "$$RESP" = "Y" -o "$$RESP" = "y" ]; \
+			then \
+				reset; \
+				echo "# ${DEV_EXAMPLE} crashed, terminal reset, see: ./${DEV_EXAMPLE}.cdk.log"; \
+			fi; \
+		else \
+			echo "# ${DEV_EXAMPLE} exited normally."; \
+		fi; \
+	fi
+endif
+
 profile.cpu: export GO_CDK_LOG_FILE=./${DEV_EXAMPLE}.cdk.log
 profile.cpu: export GO_CDK_LOG_LEVEL=debug
 profile.cpu: export GO_CDK_LOG_FULL_PATHS=true
@@ -238,7 +287,7 @@ profile.cpu: dev
 	@mkdir -v /tmp/${DEV_EXAMPLE}.cdk.pprof 2>/dev/null || true
 	@if [ -f ${DEV_EXAMPLE} ]; \
 		then \
-			( ./${DEV_EXAMPLE} 2>> "${GO_CDK_LOG_FILE}" ); \
+			( ${RUN_ENV} ./${DEV_EXAMPLE} ${RUN_ARGS} 2>> "${GO_CDK_LOG_FILE}" ); \
 			if [ $$? -eq 0 ]; then \
 				if [ -f /tmp/${DEV_EXAMPLE}.cdk.pprof/cpu.pprof ]; \
 				then \
@@ -259,7 +308,7 @@ profile.mem: dev
 	@mkdir -v /tmp/${DEV_EXAMPLE}.cdk.pprof 2>/dev/null || true
 	@if [ -f ${DEV_EXAMPLE} ]; \
 		then \
-			( ./${DEV_EXAMPLE} 2>> "${GO_CDK_LOG_FILE}" ); \
+			( ${RUN_ENV} ./${DEV_EXAMPLE} ${RUN_ARGS} 2>> "${GO_CDK_LOG_FILE}" ); \
 			if [ $$? -eq 0 ]; then \
 				if [ -f /tmp/${DEV_EXAMPLE}.cdk.pprof/mem.pprof ]; \
 				then \
