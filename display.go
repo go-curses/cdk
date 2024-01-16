@@ -720,25 +720,25 @@ func (d *CDisplay) ProcessEvent(evt Event) enums.EventFlag {
 	}
 
 	if req, ok := evt.(*EventRender); ok {
-		d.Lock()
+		d.RLock()
 		hasScreen := d.screen != nil
-		d.Unlock()
+		d.RUnlock()
 		if hasScreen {
 			if req.Draw() {
 				d.renderScreen()
 			}
 			if req.Sync() {
-				d.Lock()
+				d.RLock()
 				if d.screen != nil {
 					d.screen.Sync()
 				}
-				d.Unlock()
+				d.RUnlock()
 			} else if req.Show() {
-				d.Lock()
+				d.RLock()
 				if d.screen != nil {
 					d.screen.Show()
 				}
-				d.Unlock()
+				d.RUnlock()
 			}
 		}
 		return enums.EVENT_STOP
@@ -1217,8 +1217,8 @@ func (d *CDisplay) HasPendingEvents() (pending bool) {
 // HasBufferedEvents returns TRUE if there are any pending events buffered.
 func (d *CDisplay) HasBufferedEvents() (hasEvents bool) {
 	d.RLock()
+	defer d.RUnlock()
 	hasEvents = len(d.buffer) > 0
-	d.RUnlock()
 	return
 }
 
