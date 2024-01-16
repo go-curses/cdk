@@ -898,30 +898,22 @@ func (d *CDisplay) renderScreen() enums.EventFlag {
 // RequestDraw asks the Display to process a SignalDraw event cycle, this does
 // not actually render the contents to in Screen, just update
 func (d *CDisplay) RequestDraw() {
-	if d.IsRunning() {
-		_ = d.PostEvent(NewEventDraw())
-	}
+	_ = d.PostEvent(NewEventDraw())
 }
 
 // RequestShow asks the Display to render pending Screen changes
 func (d *CDisplay) RequestShow() {
-	if d.IsRunning() {
-		_ = d.PostEvent(NewEventShow())
-	}
+	_ = d.PostEvent(NewEventShow())
 }
 
 // RequestSync asks the Display to render everything in the Screen
 func (d *CDisplay) RequestSync() {
-	if d.IsRunning() {
-		_ = d.PostEvent(NewEventShow())
-	}
+	_ = d.PostEvent(NewEventShow())
 }
 
 // RequestQuit asks the Display to quit nicely
 func (d *CDisplay) RequestQuit() {
-	if d.IsRunning() {
-		_ = d.PostEvent(NewEventQuit())
-	}
+	_ = d.PostEvent(NewEventQuit())
 }
 
 // IsRunning returns TRUE if the main thread is currently running.
