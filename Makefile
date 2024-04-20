@@ -341,7 +341,7 @@ profile.mem: dev
 		[ -f $@ ] \
 			&& echo "done." \
 			|| echo -e "fail.\n#\tsee ./$@.build.log"; \
-	elif [ -d "examples/pluginworld/$@"]; \
+	elif [ -d "examples/pluginworld/$@" ]; \
 	then \
 		echo -n "# building example pluginworld/$@... "; \
 		$(call __go_build,$@,./examples/pluginworld/$@); \
@@ -349,5 +349,5 @@ profile.mem: dev
 			&& echo "done." \
 			|| echo -e "fail.\n#\tsee ./$@.build.log"; \
 	else \
-		echo "not an example: $@"; \
+		echo "unknown target or not an example: $@"; \
 	fi
