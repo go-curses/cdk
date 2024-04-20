@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/creack/pty v1.1.21
-	github.com/gdamore/encoding v1.0.0
+	github.com/gdamore/encoding v1.0.1
 	github.com/go-curses/term v1.2.2-gocurses.1
 	github.com/go-curses/terminfo v1.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
@@ -20,10 +20,10 @@ require (
 	github.com/tg123/go-htpasswd v1.2.2
 	github.com/urfave/cli/v2 v2.27.1
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
-	golang.org/x/crypto v0.18.0
-	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
-	golang.org/x/sys v0.16.0
-	golang.org/x/term v0.16.0
+	golang.org/x/crypto v0.22.0
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
+	golang.org/x/sys v0.19.0
+	golang.org/x/term v0.19.0
 	golang.org/x/text v0.14.0
 )
 
