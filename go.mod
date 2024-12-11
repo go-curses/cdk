@@ -20,11 +20,11 @@ require (
 	github.com/tg123/go-htpasswd v1.2.2
 	github.com/urfave/cli/v2 v2.27.1
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
-	golang.org/x/crypto v0.22.0
+	golang.org/x/crypto v0.31.0
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
-	golang.org/x/sys v0.19.0
-	golang.org/x/term v0.19.0
-	golang.org/x/text v0.14.0
+	golang.org/x/sys v0.28.0
+	golang.org/x/term v0.27.0
+	golang.org/x/text v0.21.0
 )
 
 require (
