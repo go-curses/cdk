@@ -480,7 +480,12 @@ func (c *CSurface) BoxWithTheme(pos ptypes.Point2I, size ptypes.Rectangle, borde
 // for debugging more than anything else as the normal draw primitives are far
 // more flexible
 func (c *CSurface) DebugBox(color paint.Color, format string, argv ...interface{}) {
-	text := fmt.Sprintf(format, argv...)
+	var text string
+	if len(argv) == 0 {
+		text = format
+	} else {
+		text = fmt.Sprintf(format, argv...)
+	}
 	cSize := c.GetSize()
 	if cSize.Equals(0, 0) {
 		log.DebugDF(1, "[DebugBox] (zero-size) info: %v (%v)", text, color)
