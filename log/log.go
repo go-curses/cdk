@@ -258,7 +258,7 @@ func FatalDF(depth int, format string, argv ...interface{}) {
 	// 	dm.ReleaseDisplay()
 	// }
 	message := fmt.Sprintf(cstrings.NLSprintf("%s\t%s", getLogPrefix(depth+1), format), argv...)
-	logger.Fatalf(message)
+	logger.Fatalf("%s", message)
 }
 
 func Panic(err error)                           { PanicDF(1, err.Error()) }
@@ -268,7 +268,7 @@ func PanicDF(depth int, format string, argv ...interface{}) {
 	// 	dm.ReleaseDisplay()
 	// }
 	message := fmt.Sprintf(cstrings.NLSprintf("%s\t%s", getLogPrefix(depth+1), format), argv...)
-	logger.Errorf(message)
+	logger.Errorf("%s", message)
 	_ = Stop()
 	panic(message)
 }
