@@ -1,6 +1,4 @@
-[![Go-Curses](https://go-curses.org/media/curses-logo-banner.png)](https://go-curses.org)
-
-[![Made with Go](https://img.shields.io/badge/go-v1.26.5+-blue.svg)](https://golang.org)
+[![Made with Go](https://img.shields.io/badge/go-v1.26.5+-blue.svg)](https://go.dev)
 [![Go documentation](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/go-curses/cdk)
 
 # CDK - Curses Development Kit
